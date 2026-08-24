@@ -133,9 +133,3 @@ Write-only audit trail for the flat-permissions model (§2) — not read for bal
 - **CORS (confirmed):** allow the production Vercel domain plus a pattern for this project's Vercel preview URLs (`*.vercel.app` scoped to the project, not a global wildcard) — lets preview deploys work without opening CORS to arbitrary origins.
 - **Rate limiting (confirmed):** basic per-IP throttling (`express-rate-limit` or equivalent) on `POST /groups`, `POST /groups/:code/people`, and `POST /groups/:code/expenses` — these are unauthenticated write endpoints on a public URL. A few lines, closes off casual spam.
 - **Error tracking:** deferred to post-MVP. `ActivityLog` (§3) already covers app-level audit trail; exception/crash tracking (e.g. Sentry) can be added once the app is live and there's real traffic to watch.
-
----
-
-## Open Items to Confirm
-
-*(none — all resolved as of 2026-08-23 grill session: join code format confirmed as-is; `Person.email` stays fully invisible in MVP UI)*

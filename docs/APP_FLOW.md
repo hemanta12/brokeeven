@@ -115,7 +115,3 @@
 | Custom amount split doesn't sum to the expense total | Inline validation before save |
 | Browser's local shortcut list is at 20 groups, person creates/joins group #21 | No block — group works normally server-side; oldest entry silently evicted from the local shortcut list (LRU), no warning shown |
 | Client's Socket.io connection drops and reconnects (phone locks, wifi blip) | On reconnect, client refetches the group's current state via the existing REST `GET /groups/:code`, then resumes listening for live events — no missed-event replay logic needed |
-
-## Open Items to Confirm
-
-*(none — all resolved as of 2026-08-23 grill session; §2.2 auto-naming confirmed as-is)*

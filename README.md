@@ -6,7 +6,7 @@ BrokeEven is a no-signup web app for creating a group, sharing an invite link, r
 
 ## Status
 
-The product requirements, application flow, technical architecture, and design system are approved. Implementation is planned in phases and has not started yet.
+The product requirements, application flow, technical architecture, and design system are approved, with all current decisions recorded in the project documentation. Implementation is planned in phases and has not started yet.
 
 ## What It Does
 
@@ -109,8 +109,6 @@ Deferred until after the MVP:
 - [`APP_FLOW.md`](APP_FLOW.md): routes, screens, interactions, and edge cases
 - [`TECH_STACK.md`](TECH_STACK.md): architecture, data model, API behavior, and deployment
 - [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md): visual language, components, forms, and accessibility floor
-- [`UIUX_rules.md`](UIUX_rules.md): interaction and usability baseline
-- [`ROADMAP.md`](ROADMAP.md): implementation phases, sprints, and tasks
 
 ## Roadmap
 
@@ -122,4 +120,4 @@ Deferred until after the MVP:
 
 ## License
 
-No license has been selected yet.
+This project is licensed under the [MIT License](https://opensource.org/license/mit/).

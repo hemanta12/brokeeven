@@ -148,15 +148,3 @@ fontSize: {
 All font sizes are `rem`, not `px` — required so mobile OS text-size settings and 200% browser zoom reflow correctly without clipping (never override with a hardcoded px value at component level).
 
 Enable tabular figures on the mono face wherever amounts render (`font-variant-numeric: tabular-nums` or the Plex Mono `tnum` feature).
-
----
-
-## Open Items to Confirm
-
-*(none — direction and approved interaction decisions confirmed 2026-08-23. Safe to start Phase 4 token/component work.)*
-
-Resolved (2026-08-23 grill session): signature stamp interaction — MVP ships a plain static badge (§5), full animated stamp deferred to polish pass.
-
-Resolved (2026-08-23 design council): Brass contrast, motion easing gaps, i18n/focus build notes — see below.
-
-Resolved (2026-08-23 UIUX_rules.md checklist pass): pulse duration cut to 250ms (Doherty Threshold), one-primary-CTA hierarchy fixed on Group View (Hick's Law — Add Expense primary, Settle Up secondary, Share invite link tertiary), new §9 Forms section (single-column/persistent-labels/on-blur validation), type scale converted px→rem (mobile reflow), touch-target minimums and thumb-reachable primary-action placement added to §10, per-field `inputmode`/`autocomplete`/`autocorrect` specified, haptic confirmation added for stamp/settle.

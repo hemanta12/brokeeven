@@ -113,9 +113,3 @@ Hemanta and a known circle of friends/housemates. Public-facing, but not designe
 - Everyone currently using Splitwise/alternatives in your circle switches to this within a few weeks of launch.
 - Zero "it's missing X so we worked around it" complaints — the exact problem this project exists to fix.
 - Live, deployed, and linkable from your resume/portfolio.
-
----
-
-## Open Items to Confirm
-
-*(none — all resolved as of 2026-08-23 grill session; §10 success criteria confirmed as-is)*
