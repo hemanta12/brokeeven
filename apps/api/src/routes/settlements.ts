@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { logActivity } from '../activityLog.js';
 import { centsToAmount, toCents } from '../money.js';
 import { prisma } from '../prisma.js';
+import { broadcastGroupUpdate } from '../realtime.js';
 
 const NOTE_MAX_LENGTH = 200;
 const MAX_AMOUNT = 1_000_000;
@@ -71,4 +72,5 @@ settlementsRouter.post('/groups/:code/settlements', async (request, response) =>
     return created;
   });
   response.status(201).json(settlement);
+  void broadcastGroupUpdate(group.id);
 });

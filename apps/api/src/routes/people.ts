@@ -4,6 +4,7 @@ import { Router } from 'express';
 import { logActivity } from '../activityLog.js';
 import { centsToAmount, toCents } from '../money.js';
 import { prisma } from '../prisma.js';
+import { broadcastGroupUpdate } from '../realtime.js';
 import { redistributeAmounts } from '../redistribution.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -91,4 +92,5 @@ peopleRouter.patch('/people/:id', async (request, response) => {
     return removed;
   });
   response.status(200).json(updated);
+  void broadcastGroupUpdate(updated.groupId);
 });

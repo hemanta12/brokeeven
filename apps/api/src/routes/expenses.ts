@@ -5,6 +5,7 @@ import { logActivity } from '../activityLog.js';
 import { centsToAmount, toCents } from '../money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
+import { broadcastGroupUpdate } from '../realtime.js';
 import type { SplitInput } from '../splitResolution.js';
 import { resolveSplits } from '../splitResolution.js';
 
@@ -157,6 +158,7 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, re
       return created;
     });
     response.status(201).json(expense);
+    void broadcastGroupUpdate(group.id);
   } catch (error) {
     if (idempotencyKey && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       const existing = await prisma.expense.findUnique({ where: { idempotencyKey }, include: { splits: true } });
@@ -247,6 +249,7 @@ expensesRouter.patch('/expenses/:id', async (request, response) => {
     return expense;
   });
   response.status(200).json(updated);
+  void broadcastGroupUpdate(existing.groupId);
 });
 
 expensesRouter.delete('/expenses/:id', async (request, response) => {
@@ -266,4 +269,5 @@ expensesRouter.delete('/expenses/:id', async (request, response) => {
     await logActivity(tx, existing.groupId, 'expense_delete', `${existing.description} deleted`);
   });
   response.status(204).send();
+  void broadcastGroupUpdate(existing.groupId);
 });

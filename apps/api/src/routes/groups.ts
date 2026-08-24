@@ -2,11 +2,11 @@ import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 
 import { logActivity } from '../activityLog.js';
-import { computeBalances } from '../balances.js';
+import { getGroupStateByCode } from '../groupState.js';
 import { generateJoinCode } from '../joinCode.js';
-import { centsToAmount, toCents } from '../money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
+import { broadcastGroupUpdate } from '../realtime.js';
 
 const MEMBER_CAP = 20;
 const NAME_MAX_LENGTH = 60;
@@ -52,38 +52,12 @@ groupsRouter.post('/groups', writeRateLimit, async (request, response) => {
 // list and balance summary (2.3.1) ride along on the same fetch — no separate
 // endpoint needed yet since nothing else consumes expenses/settlements/balances alone.
 groupsRouter.get('/groups/:code', async (request, response) => {
-  const group = await prisma.group.findUnique({
-    where: { joinCode: request.params.code.toUpperCase() },
-    include: {
-      people: { where: { removedAt: null }, orderBy: { createdAt: 'asc' } },
-      expenses: { orderBy: { date: 'desc' }, include: { splits: true } },
-      settlements: { orderBy: { settledAt: 'desc' } }
-    }
-  });
-
-  if (!group) {
+  const state = await getGroupStateByCode(request.params.code);
+  if (!state) {
     response.status(404).json({ error: 'Group not found' });
     return;
   }
-
-  const expenses = group.expenses ?? [];
-  const settlements = group.settlements ?? [];
-  const balances = computeBalances(
-    expenses.map((expense) => ({
-      payerId: expense.payerId,
-      splits: expense.splits.map((split) => ({
-        personId: split.personId,
-        amountCents: toCents(Number(split.amount))
-      }))
-    })),
-    settlements.map((settlement) => ({
-      fromPersonId: settlement.fromPersonId,
-      toPersonId: settlement.toPersonId,
-      amountCents: toCents(Number(settlement.amount))
-    }))
-  ).map((balance) => ({ ...balance, amount: centsToAmount(balance.amountCents) }));
-
-  response.status(200).json({ ...group, balances });
+  response.status(200).json(state);
 });
 
 groupsRouter.post('/groups/:code/people', writeRateLimit, async (request, response) => {
@@ -116,4 +90,5 @@ groupsRouter.post('/groups/:code/people', writeRateLimit, async (request, respon
     return created;
   });
   response.status(201).json(person);
+  void broadcastGroupUpdate(group.id);
 });
