@@ -1,0 +1,25 @@
+{
+  "name": "brokeeven",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev:api": "npm run dev --workspace @brokeeven/api",
+    "dev:web": "npm run dev --workspace @brokeeven/web",
+    "generate": "npm run generate --workspace @brokeeven/api",
+    "lint": "eslint . --max-warnings=0",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.35.0",
+    "eslint": "^9.35.0",
+    "globals": "^16.3.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0"
+  }
+}

@@ -6,7 +6,7 @@ BrokeEven is a no-signup web app for creating a group, sharing an invite link, r
 
 ## Status
 
-The product requirements, application flow, technical architecture, and design system are approved, with all current decisions recorded in the project documentation. Implementation is planned in phases and has not started yet.
+The product requirements, application flow, technical architecture, and design system are approved. Phase 1.1 project scaffolding is complete locally; Railway database provisioning and the first Vercel deployment remain external setup steps.
 
 ## What It Does
 

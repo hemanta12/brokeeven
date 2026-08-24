@@ -1,0 +1,17 @@
+:root {
+  color: #1e2e23;
+  background: #e6f1e2;
+  font-family: Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 32.5rem;
+  min-height: 100vh;
+  padding: 3rem 1.5rem;
+}
