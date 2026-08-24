@@ -9,6 +9,7 @@ import { ExpenseModal } from '../expense/ExpenseModal';
 import { SettleUpModal } from '../settlement/SettleUpModal';
 import { useAddPerson, useGroupByCode, useRemovePerson } from './api';
 import type { Expense } from './types';
+import { useGroupRealtime } from './useGroupRealtime';
 import { WhoAreYouPrompt } from './WhoAreYouPrompt';
 
 const MEMBER_CAP = 20;
@@ -31,6 +32,7 @@ export function GroupPage() {
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);
   const { touch, isRequiredError } = useBlurValidation();
+  const pulsingIds = useGroupRealtime(code, group?.id);
 
   function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
@@ -87,7 +89,7 @@ export function GroupPage() {
       <section aria-label="Members">
         <ul>
           {group.people.map((person) => (
-            <li key={person.id}>
+            <li key={person.id} className={pulsingIds.has(person.id) ? 'row-pulse' : undefined}>
               <button type="button" onClick={() => setExpandedPersonId((current) => (current === person.id ? null : person.id))}>
                 {person.name}
                 {person.id === identityPersonId ? ' (you)' : ''}
@@ -168,7 +170,7 @@ export function GroupPage() {
               {group.expenses.map((expense) => {
                 const payer = group.people.find((p) => p.id === expense.payerId);
                 return (
-                  <li key={expense.id}>
+                  <li key={expense.id} className={pulsingIds.has(expense.id) ? 'row-pulse' : undefined}>
                     <button type="button" onClick={() => setEditingExpense(expense)}>
                       {expense.description} — ${expense.amount} — paid by {payer?.name ?? 'someone removed'} —{' '}
                       {expense.date.slice(0, 10)}
@@ -191,8 +193,9 @@ export function GroupPage() {
                 {group.balances.map((balance) => {
                   const from = group.people.find((p) => p.id === balance.fromPersonId);
                   const to = group.people.find((p) => p.id === balance.toPersonId);
+                  const balanceKey = `${balance.fromPersonId}:${balance.toPersonId}`;
                   return (
-                    <li key={`${balance.fromPersonId}-${balance.toPersonId}`}>
+                    <li key={balanceKey} className={pulsingIds.has(balanceKey) ? 'row-pulse' : undefined}>
                       {from?.name ?? 'Someone'} owes {to?.name ?? 'someone'} ${balance.amount}
                     </li>
                   );

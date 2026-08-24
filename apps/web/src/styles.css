@@ -46,3 +46,21 @@ main {
     flex-direction: column;
   }
 }
+
+/* One-shot real-time update cue (Design System §6): a transition, not a
+   keyframe, so a second update arriving mid-fade retargets smoothly instead
+   of restarting. Color is a functional placeholder — Phase 4 (Sprint 4.1)
+   swaps this for the actual Ledger Green/Brass token. */
+li {
+  transition: background-color 250ms ease-out;
+}
+
+li.row-pulse {
+  background-color: #b9dfae;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  li {
+    transition: none;
+  }
+}

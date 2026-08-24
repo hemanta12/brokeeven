@@ -4,6 +4,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test-utils';
 import { GroupPage } from './GroupPage';
 
+// Group View joins a realtime room on mount (useGroupRealtime) — none of
+// these tests exercise live updates, so stub the socket to avoid a real
+// network connection attempt from jsdom.
+vi.mock('socket.io-client', () => ({
+  io: vi.fn(() => ({
+    emit: vi.fn(),
+    on: vi.fn(),
+    disconnect: vi.fn(),
+    io: { on: vi.fn() }
+  }))
+}));
+
 const baseGroup = {
   id: 'g1',
   name: 'Trip',
