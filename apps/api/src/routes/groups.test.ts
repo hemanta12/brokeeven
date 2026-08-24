@@ -89,6 +89,31 @@ describe('GET /groups/:code', () => {
 
     expect(response.status).toBe(404);
   });
+
+  it('includes expenses, settlements, and computed balances', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      people: [],
+      expenses: [
+        {
+          id: 'e1',
+          payerId: 'alice',
+          splits: [
+            { personId: 'alice', amount: '5.00' },
+            { personId: 'bob', amount: '5.00' }
+          ]
+        }
+      ],
+      settlements: []
+    } as never);
+
+    const response = await request(app).get('/groups/ABCD2345');
+
+    expect(response.status).toBe(200);
+    expect(response.body.expenses).toHaveLength(1);
+    expect(response.body.balances).toEqual([{ fromPersonId: 'bob', toPersonId: 'alice', amountCents: 500, amount: '5.00' }]);
+  });
 });
 
 describe('POST /groups/:code/people', () => {

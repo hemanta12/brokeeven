@@ -2,7 +2,9 @@ import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 
 import { logActivity } from '../activityLog.js';
+import { computeBalances } from '../balances.js';
 import { generateJoinCode } from '../joinCode.js';
+import { centsToAmount, toCents } from '../money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 
@@ -46,17 +48,42 @@ groupsRouter.post('/groups', writeRateLimit, async (request, response) => {
   response.status(500).json({ error: 'Could not generate a unique join code' });
 });
 
+// Balances are computed on read (TECH_STACK.md §4), so Group View's expense
+// list and balance summary (2.3.1) ride along on the same fetch — no separate
+// endpoint needed yet since nothing else consumes expenses/settlements/balances alone.
 groupsRouter.get('/groups/:code', async (request, response) => {
   const group = await prisma.group.findUnique({
     where: { joinCode: request.params.code.toUpperCase() },
-    include: { people: { where: { removedAt: null }, orderBy: { createdAt: 'asc' } } }
+    include: {
+      people: { where: { removedAt: null }, orderBy: { createdAt: 'asc' } },
+      expenses: { orderBy: { date: 'desc' }, include: { splits: true } },
+      settlements: { orderBy: { settledAt: 'desc' } }
+    }
   });
 
   if (!group) {
     response.status(404).json({ error: 'Group not found' });
     return;
   }
-  response.status(200).json(group);
+
+  const expenses = group.expenses ?? [];
+  const settlements = group.settlements ?? [];
+  const balances = computeBalances(
+    expenses.map((expense) => ({
+      payerId: expense.payerId,
+      splits: expense.splits.map((split) => ({
+        personId: split.personId,
+        amountCents: toCents(Number(split.amount))
+      }))
+    })),
+    settlements.map((settlement) => ({
+      fromPersonId: settlement.fromPersonId,
+      toPersonId: settlement.toPersonId,
+      amountCents: toCents(Number(settlement.amount))
+    }))
+  ).map((balance) => ({ ...balance, amount: centsToAmount(balance.amountCents) }));
+
+  response.status(200).json({ ...group, balances });
 });
 
 groupsRouter.post('/groups/:code/people', writeRateLimit, async (request, response) => {
