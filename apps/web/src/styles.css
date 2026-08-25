@@ -198,8 +198,10 @@ main {
   transition: transform 100ms ease-out;
 }
 
-.segment:not([data-active="true"]):hover {
-  background: color-mix(in srgb, var(--color-ink-forest) 6%, transparent);
+@media (hover: hover) {
+  .segment:not([data-active="true"]):hover {
+    background: color-mix(in srgb, var(--color-ink-forest) 6%, transparent);
+  }
 }
 
 .segment:active {
@@ -246,7 +248,10 @@ main {
 
 .paid-by-date {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* Date's content (mm/dd/yyyy + picker icon) doesn't shrink below a native
+     minimum on mobile browsers the way a plain 1fr track assumes — capping
+     its track keeps Paid by's longer names from forcing the row to overflow. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 110px);
   gap: 1rem;
 }
 
@@ -286,12 +291,14 @@ main {
 /* Only cards that are themselves a tap target get the feedback — a balance
    card isn't clickable as a whole (just its Settle button), so lighting it up
    on hover would promise an interaction that isn't there. */
-.entry-card-tappable:hover {
-  background-color: color-mix(
-    in srgb,
-    var(--color-ledger-paper) 90%,
-    var(--color-ink-forest)
-  );
+@media (hover: hover) {
+  .entry-card-tappable:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--color-ledger-paper) 90%,
+      var(--color-ink-forest)
+    );
+  }
 }
 
 .entry-card-tappable:active {
