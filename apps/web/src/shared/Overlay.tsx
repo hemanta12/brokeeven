@@ -103,7 +103,7 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
             {closeLabel === 'Close' ? '×' : closeLabel}
           </button>
         </div>
-        {children}
+        <div className="mt-4">{children}</div>
       </div>
     </div>
   );
