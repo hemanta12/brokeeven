@@ -7,6 +7,7 @@ import { HomePage } from './features/home/HomePage';
 import { JoinPage } from './features/join/JoinPage';
 import { QuickOneOnOnePage } from './features/quick/QuickOneOnOnePage';
 import { queryClient } from './lib/queryClient';
+import { Navbar } from './components/Navbar';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { NotFoundState } from './shared/RouteStates';
 
@@ -15,6 +16,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <BrowserRouter>
+          <Navbar />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreateGroupPage />} />
