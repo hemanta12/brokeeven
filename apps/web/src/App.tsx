@@ -1,5 +1,5 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 
 import { CreateGroupPage } from './features/create-group/CreateGroupPage';
 import { GroupPage } from './features/group/GroupPage';
@@ -23,7 +23,20 @@ export function App() {
             <Route path="/join" element={<JoinPage />} />
             <Route path="/quick" element={<QuickOneOnOnePage />} />
             <Route path="/g/:code" element={<GroupPage />} />
-            <Route path="*" element={<NotFoundState />} />
+            <Route
+              path="*"
+              element={
+                <main>
+                  <NotFoundState />
+                  <p className="mt-4 font-sans text-body text-ink-forest">
+                    <Link to="/" className="underline">
+                      Back to home
+                    </Link>
+                    .
+                  </p>
+                </main>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </ErrorBoundary>

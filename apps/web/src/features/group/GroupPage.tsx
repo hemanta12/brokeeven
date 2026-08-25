@@ -93,7 +93,7 @@ export function GroupPage() {
     if (error instanceof ApiError && error.status === 404) {
       return (
         <main>
-          <NotFoundState message="We couldn't find a group with that code." />
+          <NotFoundState message="Group not found — check the code and try again." />
           <p className="mt-4 font-sans text-body text-ink-forest">
             <Link to="/join" className="underline">
               Try another code
@@ -258,7 +258,7 @@ export function GroupPage() {
 
           {group.people.length >= MEMBER_CAP ? (
             <p className="mt-3 font-sans text-label text-ink-forest/70">
-              Group already has the maximum of {MEMBER_CAP} members.
+              This group is full ({MEMBER_CAP} members max).
             </p>
           ) : (
             showAddPersonForm && (
@@ -377,7 +377,7 @@ export function GroupPage() {
             className="mt-3 px-4 sm:px-6"
           >
             {group.balances.length === 0 ? (
-              <EmptyState message="Balances appear here once an expense has been added." />
+              <EmptyState message="No balances yet — add an expense to get started." />
             ) : (
               <div>
                 <ul className="flex flex-col gap-2">

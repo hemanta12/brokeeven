@@ -99,6 +99,7 @@ export function CreateGroupPage() {
           />
           <Button
             type="submit"
+            variant="secondary"
             aria-label="Add person"
             disabled={addPerson.isPending}
             className="h-11! w-11! shrink-0 rounded-full! p-0!"

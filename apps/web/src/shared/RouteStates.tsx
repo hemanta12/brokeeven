@@ -10,7 +10,7 @@ export function EmptyState({ message }: { message: string }) {
   return <p className="font-sans text-body text-ink-forest/70">{message}</p>;
 }
 
-export function ErrorState({ message = 'Something went wrong.', onRetry }: { message?: string; onRetry?: () => void }) {
+export function ErrorState({ message = 'Something broke — try again.', onRetry }: { message?: string; onRetry?: () => void }) {
   return (
     <div role="alert" className="flex flex-col items-start gap-2 font-sans text-body text-debt-red">
       <p>{message}</p>
@@ -23,7 +23,7 @@ export function ErrorState({ message = 'Something went wrong.', onRetry }: { mes
   );
 }
 
-export function NotFoundState({ message = "We couldn't find that page." }: { message?: string }) {
+export function NotFoundState({ message = 'Page not found — check the link and try again.' }: { message?: string }) {
   return (
     <div>
       <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Not found</h1>

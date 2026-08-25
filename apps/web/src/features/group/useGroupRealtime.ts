@@ -69,6 +69,7 @@ export function useGroupRealtime(code: string | undefined, groupId: string | und
     socket.emit('group:join', groupId);
     socket.on('group:update', applyUpdate);
     socket.io.on('reconnect', () => {
+      socket.emit('group:join', groupId);
       void queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
     });
 

@@ -19,7 +19,7 @@ export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundarySta
 
   render() {
     if (this.state.error) {
-      return <ErrorState message={this.state.error.message} onRetry={() => this.setState({ error: null })} />;
+      return <ErrorState onRetry={() => this.setState({ error: null })} />;
     }
 
     return this.props.children;
