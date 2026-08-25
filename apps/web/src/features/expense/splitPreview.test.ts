@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { centsToDollars, dollarsToCents, equalSplitCents } from './splitPreview';
+import { dollarsToCents, equalSplitCents } from './splitPreview';
 
 describe('equalSplitCents', () => {
   it('splits evenly when it divides cleanly', () => {
@@ -21,10 +21,9 @@ describe('equalSplitCents', () => {
   });
 });
 
-describe('dollarsToCents / centsToDollars', () => {
-  it('round-trips a typed amount', () => {
+describe('dollarsToCents', () => {
+  it('parses a typed amount', () => {
     expect(dollarsToCents('12.50')).toBe(1250);
-    expect(centsToDollars(1250)).toBe('12.50');
   });
 
   it('treats an unparsable amount as zero', () => {

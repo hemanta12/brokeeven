@@ -6,10 +6,10 @@ import { Overlay } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
-import { formatExpenseTitle } from '../../shared/format';
+import { formatCurrency, formatExpenseTitle } from '../../shared/format';
 import type { Expense, Person, SplitMethod } from '../group/types';
 import { useCreateExpense, useUpdateExpense } from './api';
-import { centsToDollars, dollarsToCents, equalSplitCents } from './splitPreview';
+import { dollarsToCents, equalSplitCents } from './splitPreview';
 
 const selectClassName =
   'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/55 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
@@ -33,6 +33,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   const mutation = isEdit ? updateExpense : createExpense;
 
   const [touched, setTouched] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [title, setTitle] = useState(expense ? formatExpenseTitle(expense.title) : '');
   const [description, setDescription] = useState(expense?.description ?? '');
   const [amount, setAmount] = useState(expense?.amount ?? '');
@@ -74,9 +75,16 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   const equalPreview = splitMethod === 'equal' ? equalSplitCents(amountCents, participantIds.length) : [];
   const percentEntered = participantIds.reduce((sum, id) => sum + (Number(percentByPerson[id]) || 0), 0);
   const customEnteredCents = participantIds.reduce((sum, id) => sum + dollarsToCents(customByPerson[id] ?? ''), 0);
+  const percentMismatch = splitMethod === 'percent' && Math.round(percentEntered * 100) !== 10000;
+  const customMismatch = splitMethod === 'custom' && customEnteredCents !== amountCents;
+  const splitMismatch = percentMismatch || customMismatch;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (splitMismatch) {
+      setSubmitAttempted(true);
+      return;
+    }
     if (participantIds.length === 0) return;
 
     const splits =
@@ -222,7 +230,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                 </label>
                 {checked && splitMethod === 'equal' && (
                   <span className="font-mono text-row-amount tabular-nums text-ink-forest">
-                    {centsToDollars(equalPreview[participantIndex] ?? 0)}
+                    {formatCurrency((equalPreview[participantIndex] ?? 0) / 100)}
                   </span>
                 )}
                 {checked && splitMethod === 'percent' && (
@@ -259,18 +267,21 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
           })}
           </div>
           {splitMethod === 'percent' && (
-            <p className="font-sans text-label text-ink-forest/70">Entered: {percentEntered} / 100</p>
+            <p className={`font-sans text-label ${percentMismatch && submitAttempted ? 'text-debt-red' : 'text-ink-forest/70'}`}>
+              Entered: {percentEntered} / 100{percentMismatch && submitAttempted ? ' — must add up to 100%' : ''}
+            </p>
           )}
           {splitMethod === 'custom' && (
-            <p className="font-sans text-label text-ink-forest/70">
-              Entered: {centsToDollars(customEnteredCents)} / {amount || '0.00'}
+            <p className={`font-sans text-label ${customMismatch && submitAttempted ? 'text-debt-red' : 'text-ink-forest/70'}`}>
+              Entered: {formatCurrency(customEnteredCents / 100)} / {formatCurrency(amountCents / 100)}
+              {customMismatch && submitAttempted ? ' — must add up to the total' : ''}
             </p>
           )}
         </fieldset>
 
         {mutation.isError && <ErrorState message={mutation.error.message} />}
         <Button type="submit" disabled={mutation.isPending || participantIds.length === 0}>
-          {mutation.isPending ? 'Saving…' : 'Save'}
+          {mutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Add expense'}
         </Button>
       </form>
     </Overlay>

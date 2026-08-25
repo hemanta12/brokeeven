@@ -19,7 +19,3 @@ export function dollarsToCents(amount: string): number {
   const parsed = Number(amount);
   return Number.isFinite(parsed) ? Math.round(parsed * 100) : 0;
 }
-
-export function centsToDollars(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
