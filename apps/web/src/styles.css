@@ -93,6 +93,14 @@
   button:disabled {
     cursor: not-allowed;
   }
+
+  main {
+    box-sizing: border-box;
+    margin: 0 auto;
+    max-width: 32.5rem;
+    min-height: 100vh;
+    padding: 1rem 1rem;
+  }
 }
 
 @layer components {
@@ -109,14 +117,6 @@
       0 0 0 2px var(--color-paper-white),
       0 0 0 4px var(--color-brass-ui);
   }
-}
-
-main {
-  box-sizing: border-box;
-  margin: 0 auto;
-  max-width: 32.5rem;
-  min-height: 100vh;
-  padding: 1rem 1rem;
 }
 
 /* Fixed full-viewport scroll region. Width itself is capped one level in,
@@ -315,6 +315,10 @@ main {
   --bottom-bar-height: calc(
     1rem + 2.75rem + max(1rem, env(safe-area-inset-bottom)) + 1px
   );
+  /* Navbar's own box model (py-2 + h-11 content + border-b) — kept in sync
+     the same way, so a page can center within the space actually left under
+     it instead of within the full 100vh main{} sets by default. */
+  --navbar-height: calc(0.5rem + 2.75rem + 0.5rem + 1px);
 }
 
 .bottom-bar-clearance {
