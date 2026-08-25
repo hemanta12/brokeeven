@@ -9,12 +9,19 @@ import { broadcastGroupUpdate } from '../realtime.js';
 import type { SplitInput } from '../splitResolution.js';
 import { resolveSplits } from '../splitResolution.js';
 
-const DESCRIPTION_MAX_LENGTH = 200;
+const TITLE_MAX_LENGTH = 200;
+const DESCRIPTION_MAX_LENGTH = 1000;
 const MAX_AMOUNT = 1_000_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isNonEmptyString(value: unknown, maxLength: number): value is string {
   return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
+}
+
+// Description is optional free-text notes — unlike title, an absent or
+// empty value is valid; only a too-long or non-string value is rejected.
+function isValidOptionalDescription(value: unknown): value is string | undefined {
+  return value === undefined || value === null || value === '' || (typeof value === 'string' && value.length <= DESCRIPTION_MAX_LENGTH);
 }
 
 function isPositiveAmount(value: unknown): value is number {
@@ -75,11 +82,15 @@ export const expensesRouter = Router();
 
 expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, response) => {
   const body = request.body as Record<string, unknown>;
-  const { description, amount, date, payerId, splitMethod, splits } = body;
+  const { title, description, amount, date, payerId, splitMethod, splits } = body;
   const idempotencyKey = (request.header('Idempotency-Key') ?? body.idempotencyKey) as string | undefined;
 
-  if (!isNonEmptyString(description, DESCRIPTION_MAX_LENGTH)) {
-    response.status(400).json({ error: 'description is required' });
+  if (!isNonEmptyString(title, TITLE_MAX_LENGTH)) {
+    response.status(400).json({ error: 'title is required' });
+    return;
+  }
+  if (!isValidOptionalDescription(description)) {
+    response.status(400).json({ error: `description must be ${DESCRIPTION_MAX_LENGTH} characters or fewer` });
     return;
   }
   if (!isPositiveAmount(amount)) {
@@ -138,7 +149,8 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, re
       const created = await tx.expense.create({
         data: {
           groupId: group.id,
-          description: description.trim(),
+          title: title.trim(),
+          description: description ? (description as string).trim() || null : null,
           amount: centsToAmount(amountCents),
           date: parsedDate,
           payerId,
@@ -154,7 +166,7 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, re
         },
         include: { splits: true }
       });
-      await logActivity(tx, group.id, 'expense_add', `${created.description} — $${created.amount.toString()}`);
+      await logActivity(tx, group.id, 'expense_add', `${created.title} — $${created.amount.toString()}`);
       return created;
     });
     response.status(201).json(expense);
@@ -182,10 +194,14 @@ expensesRouter.patch('/expenses/:id', async (request, response) => {
   }
 
   const body = request.body as Record<string, unknown>;
-  const { description, amount, date, payerId, splitMethod, splits } = body;
+  const { title, description, amount, date, payerId, splitMethod, splits } = body;
 
-  if (!isNonEmptyString(description, DESCRIPTION_MAX_LENGTH)) {
-    response.status(400).json({ error: 'description is required' });
+  if (!isNonEmptyString(title, TITLE_MAX_LENGTH)) {
+    response.status(400).json({ error: 'title is required' });
+    return;
+  }
+  if (!isValidOptionalDescription(description)) {
+    response.status(400).json({ error: `description must be ${DESCRIPTION_MAX_LENGTH} characters or fewer` });
     return;
   }
   if (!isPositiveAmount(amount)) {
@@ -230,7 +246,8 @@ expensesRouter.patch('/expenses/:id', async (request, response) => {
     const expense = await tx.expense.update({
       where: { id: existing.id },
       data: {
-        description: description.trim(),
+        title: title.trim(),
+        description: description ? (description as string).trim() || null : null,
         amount: centsToAmount(amountCents),
         date: parsedDate,
         payerId,
@@ -245,7 +262,7 @@ expensesRouter.patch('/expenses/:id', async (request, response) => {
       },
       include: { splits: true }
     });
-    await logActivity(tx, existing.groupId, 'expense_edit', `${expense.description} edited`);
+    await logActivity(tx, existing.groupId, 'expense_edit', `${expense.title} edited`);
     return expense;
   });
   response.status(200).json(updated);
@@ -266,7 +283,7 @@ expensesRouter.delete('/expenses/:id', async (request, response) => {
 
   await prisma.$transaction(async (tx) => {
     await tx.expense.delete({ where: { id: existing.id } });
-    await logActivity(tx, existing.groupId, 'expense_delete', `${existing.description} deleted`);
+    await logActivity(tx, existing.groupId, 'expense_delete', `${existing.title} deleted`);
   });
   response.status(204).send();
   void broadcastGroupUpdate(existing.groupId);

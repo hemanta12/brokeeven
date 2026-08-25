@@ -36,7 +36,7 @@ describe('POST /groups/:code/expenses', () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
     vi.mocked(prisma.expense.create).mockResolvedValue({
       id: EXPENSE_ID,
-      description: 'Dinner',
+      title: 'Dinner',
       amount: '10.00',
       splits: [
         { personId: ALICE, amount: '5.00' },
@@ -45,7 +45,7 @@ describe('POST /groups/:code/expenses', () => {
     } as never);
 
     const response = await request(app).post('/groups/ABCD2345/expenses').send({
-      description: 'Dinner',
+      title: 'Dinner',
       amount: 10,
       date: '2026-08-23',
       payerId: ALICE,
@@ -62,11 +62,59 @@ describe('POST /groups/:code/expenses', () => {
     ]);
   });
 
+  it('accepts an optional description and stores null when it is omitted', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
+    vi.mocked(prisma.expense.create).mockResolvedValue({
+      id: EXPENSE_ID,
+      title: 'Dinner',
+      amount: '10.00',
+      splits: []
+    } as never);
+
+    const withDescription = await request(app).post('/groups/ABCD2345/expenses').send({
+      title: 'Dinner',
+      description: 'Split four ways, tip included',
+      amount: 10,
+      date: '2026-08-23',
+      payerId: ALICE,
+      splitMethod: 'equal',
+      splits: [{ personId: ALICE }, { personId: BOB }]
+    });
+    expect(withDescription.status).toBe(201);
+    expect(vi.mocked(prisma.expense.create).mock.calls[0]![0].data.description).toBe('Split four ways, tip included');
+
+    const withoutDescription = await request(app).post('/groups/ABCD2345/expenses').send({
+      title: 'Dinner',
+      amount: 10,
+      date: '2026-08-23',
+      payerId: ALICE,
+      splitMethod: 'equal',
+      splits: [{ personId: ALICE }, { personId: BOB }]
+    });
+    expect(withoutDescription.status).toBe(201);
+    expect(vi.mocked(prisma.expense.create).mock.calls[1]![0].data.description).toBeNull();
+  });
+
+  it('rejects a title that is missing', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
+
+    const response = await request(app).post('/groups/ABCD2345/expenses').send({
+      amount: 10,
+      date: '2026-08-23',
+      payerId: ALICE,
+      splitMethod: 'equal',
+      splits: [{ personId: ALICE }]
+    });
+
+    expect(response.status).toBe(400);
+    expect(prisma.expense.create).not.toHaveBeenCalled();
+  });
+
   it('rejects a group that does not exist', async () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue(null);
 
     const response = await request(app).post('/groups/NOPE0000/expenses').send({
-      description: 'Dinner',
+      title: 'Dinner',
       amount: 10,
       date: '2026-08-23',
       payerId: ALICE,
@@ -81,7 +129,7 @@ describe('POST /groups/:code/expenses', () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
 
     const response = await request(app).post('/groups/ABCD2345/expenses').send({
-      description: 'Dinner',
+      title: 'Dinner',
       amount: 10,
       date: '2026-08-23',
       payerId: ALICE,
@@ -100,7 +148,7 @@ describe('POST /groups/:code/expenses', () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
 
     const response = await request(app).post('/groups/ABCD2345/expenses').send({
-      description: 'Dinner',
+      title: 'Dinner',
       amount: 10,
       date: '2026-08-23',
       payerId: ALICE,
@@ -113,14 +161,14 @@ describe('POST /groups/:code/expenses', () => {
 
   it('returns the original expense on a repeated Idempotency-Key instead of creating a duplicate', async () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
-    const existing = { id: EXPENSE_ID, description: 'Dinner', idempotencyKey: 'key-1', splits: [] };
+    const existing = { id: EXPENSE_ID, title: 'Dinner', idempotencyKey: 'key-1', splits: [] };
     vi.mocked(prisma.expense.findUnique).mockResolvedValue(existing as never);
 
     const response = await request(app)
       .post('/groups/ABCD2345/expenses')
       .set('Idempotency-Key', 'key-1')
       .send({
-        description: 'Dinner',
+        title: 'Dinner',
         amount: 10,
         date: '2026-08-23',
         payerId: ALICE,
@@ -135,16 +183,16 @@ describe('POST /groups/:code/expenses', () => {
 });
 
 describe('PATCH /expenses/:id', () => {
-  it('replaces the description, amount, payer, and splits', async () => {
+  it('replaces the title, amount, payer, and splits', async () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({ id: EXPENSE_ID, groupId: GROUP_ID } as never);
     vi.mocked(prisma.expense.update).mockResolvedValue({
       id: EXPENSE_ID,
-      description: 'Dinner (updated)',
+      title: 'Dinner (updated)',
       splits: []
     } as never);
 
     const response = await request(app).patch(`/expenses/${EXPENSE_ID}`).send({
-      description: 'Dinner (updated)',
+      title: 'Dinner (updated)',
       amount: 20,
       date: '2026-08-24',
       payerId: BOB,
@@ -161,7 +209,7 @@ describe('PATCH /expenses/:id', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue(null);
 
     const response = await request(app).patch(`/expenses/${EXPENSE_ID}`).send({
-      description: 'Dinner',
+      title: 'Dinner',
       amount: 10,
       date: '2026-08-23',
       payerId: ALICE,
@@ -185,7 +233,7 @@ describe('DELETE /expenses/:id', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
-      description: 'Dinner'
+      title: 'Dinner'
     } as never);
 
     const response = await request(app).delete(`/expenses/${EXPENSE_ID}`);
@@ -211,7 +259,7 @@ describe('POST /groups/:code/expenses — idempotency race', () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
     vi.mocked(prisma.expense.findUnique)
       .mockResolvedValueOnce(null) // pre-check: no existing expense yet
-      .mockResolvedValueOnce({ id: EXPENSE_ID, description: 'Dinner', splits: [] } as never); // re-fetch after race
+      .mockResolvedValueOnce({ id: EXPENSE_ID, title: 'Dinner', splits: [] } as never); // re-fetch after race
     const collision = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',
       clientVersion: '6.19.3'
@@ -222,7 +270,7 @@ describe('POST /groups/:code/expenses — idempotency race', () => {
       .post('/groups/ABCD2345/expenses')
       .set('Idempotency-Key', 'key-race')
       .send({
-        description: 'Dinner',
+        title: 'Dinner',
         amount: 10,
         date: '2026-08-23',
         payerId: ALICE,
