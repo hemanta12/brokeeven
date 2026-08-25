@@ -7,7 +7,7 @@ import { prisma } from '../prisma.js';
 vi.mock('../prisma.js', () => {
   const prismaMock = {
     person: { findUnique: vi.fn(), update: vi.fn() },
-    expense: { count: vi.fn() },
+    expense: { findMany: vi.fn() },
     expenseSplit: { findMany: vi.fn(), delete: vi.fn(), update: vi.fn() },
     activityLog: { create: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock))
@@ -64,7 +64,7 @@ describe('PATCH /people/:id/name', () => {
 describe('PATCH /people/:id', () => {
   it('soft-deletes a person with no expenses as payer', async () => {
     vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);
-    vi.mocked(prisma.expense.count).mockResolvedValue(0);
+    vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
     vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, removedAt: new Date() } as never);
 
     const response = await request(app).patch(`/people/${VALID_ID}`);
@@ -92,11 +92,13 @@ describe('PATCH /people/:id', () => {
 
   it('blocks removal when the person is a payer on an expense', async () => {
     vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);
-    vi.mocked(prisma.expense.count).mockResolvedValue(2);
+    vi.mocked(prisma.expense.findMany).mockResolvedValue([{ title: 'Dinner' }, { title: 'Rent' }] as never);
 
     const response = await request(app).patch(`/people/${VALID_ID}`);
 
     expect(response.status).toBe(409);
+    expect(response.body.error).toContain('"Dinner"');
+    expect(response.body.error).toContain('"Rent"');
     expect(prisma.person.update).not.toHaveBeenCalled();
   });
 
@@ -107,13 +109,13 @@ describe('PATCH /people/:id', () => {
     const response = await request(app).patch(`/people/${VALID_ID}`);
 
     expect(response.status).toBe(200);
-    expect(prisma.expense.count).not.toHaveBeenCalled();
+    expect(prisma.expense.findMany).not.toHaveBeenCalled();
     expect(prisma.person.update).not.toHaveBeenCalled();
   });
 
   it('redistributes an equal-split expense across the remaining participants on removal', async () => {
     vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);
-    vi.mocked(prisma.expense.count).mockResolvedValue(0);
+    vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
     vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, groupId: 'g1', removedAt: new Date() } as never);
 
     const removedSplit = {

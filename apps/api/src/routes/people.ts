@@ -115,9 +115,12 @@ peopleRouter.patch('/people/:id', async (request, response) => {
     return;
   }
 
-  const payerExpenseCount = await prisma.expense.count({ where: { payerId: person.id } });
-  if (payerExpenseCount > 0) {
-    response.status(409).json({ error: 'Reassign this person\'s expenses to someone else before removing them' });
+  const payerExpenses = await prisma.expense.findMany({ where: { payerId: person.id }, select: { title: true } });
+  if (payerExpenses.length > 0) {
+    const names = payerExpenses.map((e) => `"${e.title}"`).join(', ');
+    response
+      .status(409)
+      .json({ error: `Reassign ${names} to someone else before removing this person` });
     return;
   }
 
