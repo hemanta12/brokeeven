@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
@@ -17,7 +17,11 @@ export function JoinPage() {
 
   return (
     <main>
-      <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Join a Group</h1>
+      <Link to="/" className="focus-ring font-sans text-body font-medium text-ink-forest hover:underline active:opacity-70">
+        ‹ Back
+      </Link>
+
+      <h1 className="mt-6 font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Join a Group</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <Field
           id="join-code"
