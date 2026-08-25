@@ -103,6 +103,25 @@
   }
 }
 
+/* Tablet/desktop framing (DESIGN_SYSTEM.md §4: column width itself never
+   changes — a ledger stays a narrow bound page even on a laptop). Below
+   this, the column already fills the viewport edge-to-edge as designed for
+   mobile; above it, a wide bare browser window reads as unfinished rather
+   than intentional, so the page gets a visible "desk" surrounding a raised
+   paper sheet instead. */
+@media (min-width: 640px) {
+  body {
+    background: color-mix(in srgb, var(--color-ledger-green) 12%, var(--color-ledger-paper));
+  }
+
+  main {
+    margin-block: 2rem;
+    border-radius: 16px;
+    background: var(--color-paper-white);
+    box-shadow: 0 12px 32px -8px color-mix(in srgb, var(--color-ink-forest) 25%, transparent);
+  }
+}
+
 @layer components {
   /* Contrast-safe double focus ring (DESIGN_SYSTEM.md §10): outer ring
      (brass-ui) reads against both app backgrounds, inner ring (paper-white)
