@@ -11,6 +11,7 @@ coverage/
 .vercel/
 .railway/
 .DS_Store
+mockups/
 
 .env
 .env.*
