@@ -17,6 +17,7 @@ interface OverlayProps {
   isDirty: boolean;
   onClose: () => void;
   closeLabel?: string;
+  centerTitle?: boolean;
   children: ReactNode;
 }
 
@@ -24,7 +25,7 @@ interface OverlayProps {
 // Who Are You prompt (APP_FLOW §2.5, §2.7, §2.9): one-X close, focus trap,
 // background scroll lock, focus restoration, Escape, safe-area insets, and
 // dirty-form discard confirmation.
-export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', children }: OverlayProps) {
+export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerTitle = false, children }: OverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestCloseRef = useRef<() => void>(() => {});
   const exitingRef = useRef(false);
@@ -91,7 +92,7 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', childre
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={title} ref={containerRef}>
       <div className="overlay-content bg-paper-white shadow-lg sm:rounded-lg" data-phase={phase}>
-        <div className="overlay-header mb-6">
+        <div className={`overlay-header mb-6${centerTitle ? ' overlay-header-centered' : ''}`}>
           <h2 className="font-display text-[1.375rem] font-semibold tracking-[-0.02em] leading-[1.15] text-ink-forest">{title}</h2>
           <button
             type="button"

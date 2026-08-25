@@ -1,54 +1,54 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
 /* Self-hosted fonts (DESIGN_SYSTEM.md §3). Latin subset only — app is
    English-only, so the other Google-served unicode-range subsets
    (cyrillic, greek, vietnamese, etc.) are dead weight. */
 @font-face {
-  font-family: 'Fraunces';
+  font-family: "Fraunces";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/fraunces-600.woff2') format('woff2');
+  src: url("/fonts/fraunces-600.woff2") format("woff2");
 }
 
 /* IBM Plex Sans ships as a single variable file; three @font-face blocks
    pinned to different font-weight values each resolve their own instance
    from it (standard modern practice, mirrors Google Fonts' own css2 API). */
 @font-face {
-  font-family: 'IBM Plex Sans';
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/plexsans-variable.woff2') format('woff2');
+  src: url("/fonts/plexsans-variable.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'IBM Plex Sans';
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/plexsans-variable.woff2') format('woff2');
+  src: url("/fonts/plexsans-variable.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'IBM Plex Sans';
+  font-family: "IBM Plex Sans";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/plexsans-variable.woff2') format('woff2');
+  src: url("/fonts/plexsans-variable.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'IBM Plex Mono';
+  font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/plexmono-400.woff2') format('woff2');
+  src: url("/fonts/plexmono-400.woff2") format("woff2");
 }
 @font-face {
-  font-family: 'IBM Plex Mono';
+  font-family: "IBM Plex Mono";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/plexmono-500.woff2') format('woff2');
+  src: url("/fonts/plexmono-500.woff2") format("woff2");
 }
 
 /* Tailwind token mapping — DESIGN_SYSTEM.md §11 */
@@ -61,9 +61,9 @@
   --color-brass: #b8912b;
   --color-brass-ui: #96762a;
 
-  --font-display: 'Fraunces', serif;
-  --font-sans: 'IBM Plex Sans', sans-serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-display: "Fraunces", serif;
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
 
   --text-display: 2rem;
   --text-section: 1.125rem;
@@ -116,17 +116,25 @@ main {
   margin: 0 auto;
   max-width: 32.5rem;
   min-height: 100vh;
-  padding: 3rem 1.5rem;
+  padding: 1rem 1rem;
 }
 
 /* Fixed full-viewport scroll region. Width itself is capped one level in,
    on .overlay-content, so the modal matches <main>'s column width instead
-   of spanning edge-to-edge on desktop while every other screen doesn't. */
+   of spanning edge-to-edge on desktop while every other screen doesn't. Its
+   own background is required here — .overlay-content's cap leaves bare
+   viewport margin on anything wider than 32.5rem, and without this the page
+   underneath (still mounted, mid-modal) shows through that margin. */
 .overlay {
   --field-bg: var(--color-ledger-paper);
   position: fixed;
   inset: 0;
   overflow-y: auto;
+  background: var(--color-ledger-paper);
+  /* Positioned page content with any positive z-index would otherwise paint
+     over this (z-index:auto sorts below z-index:1+ in the same stacking
+     context), leaving bits of the page visible through the modal. */
+  z-index: 50;
 }
 
 .overlay-content {
@@ -134,8 +142,10 @@ main {
   min-height: 100%;
   max-width: 32.5rem;
   margin-inline: auto;
-  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
-    max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  padding: max(1.5rem, env(safe-area-inset-top))
+    max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom))
+    max(1.5rem, env(safe-area-inset-left));
   opacity: 1;
   transform: translateY(0);
   transition:
@@ -146,12 +156,12 @@ main {
 /* Entering starts from this offset state; the component flips to
    data-phase="visible" a frame after mount so the transition above actually
    animates in (UIUX_rules.md Core §10: ease-out entering, ease-in exiting). */
-.overlay-content[data-phase='entering'] {
+.overlay-content[data-phase="entering"] {
   opacity: 0;
   transform: translateY(8px);
 }
 
-.overlay-content[data-phase='exiting'] {
+.overlay-content[data-phase="exiting"] {
   opacity: 0;
   transform: translateY(8px);
   transition-duration: 150ms;
@@ -166,12 +176,18 @@ main {
 
 /* Segmented-pill control (DESIGN_SYSTEM.md §7-adjacent) — shared by Group
    View tabs and the Add Expense split-method control. */
+/* Border, not just background, groups the segments: .segmented's fill falls
+   back to Paper White when --field-bg isn't set (only .overlay sets it), and
+   on GroupPage the tabs sit directly on a Paper White card — the fill alone
+   would be invisible there, leaving the inactive tab floating with no visible
+   tie to the active one. */
 .segmented {
   display: flex;
   gap: 0;
   border-radius: 10px;
   padding: 4px;
   background: var(--field-bg, var(--color-paper-white));
+  border: 1px solid color-mix(in srgb, var(--color-ink-forest) 15%, transparent);
 }
 
 .segment {
@@ -182,7 +198,7 @@ main {
   transition: transform 100ms ease-out;
 }
 
-.segment:not([data-active='true']):hover {
+.segment:not([data-active="true"]):hover {
   background: color-mix(in srgb, var(--color-ink-forest) 6%, transparent);
 }
 
@@ -190,7 +206,7 @@ main {
   transform: scale(0.97);
 }
 
-.segment[data-active='true'] {
+.segment[data-active="true"] {
   background: var(--color-ink-forest);
   color: var(--color-paper-white);
 }
@@ -201,81 +217,103 @@ main {
   }
 }
 
-/* Member chip's edit/remove icons stay hidden until the viewer actually
-   means to reach them: real mouse hover on pointer-capable devices, or a tap
-   (tracked as data-revealed) on touch devices — never permanently-visible
-   icons or a floating text-label panel. Keyboard focus always reveals them
-   too, since the buttons themselves stay in the DOM and tabbable regardless. */
-.member-hover-reveal .member-chip-action {
-  opacity: 0;
-  pointer-events: none;
-  transition:
-    opacity 150ms ease-out,
-    background-color 100ms ease-out,
-    transform 100ms ease-out;
-}
-
-@media (hover: hover) {
-  .member-hover-reveal:hover .member-chip-action {
-    opacity: 1;
-    pointer-events: auto;
-  }
-}
-
-.member-hover-reveal[data-revealed='true'] .member-chip-action,
-.member-hover-reveal:focus-within .member-chip-action {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .member-chip-action {
-    transition: none;
-  }
-}
-
 .overlay-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+.overlay-header-centered {
+  position: relative;
+  justify-content: center;
+  min-height: 2.75rem;
+}
+
+.overlay-header-centered h2 {
+  box-sizing: border-box;
+  width: 100%;
+  text-align: center;
+  max-width: 100%;
+  padding-inline: 3.25rem;
+}
+
+.overlay-header-centered > button {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
 .paid-by-date {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem;
 }
 
 .paid-by-date > div {
-  flex: 1 1 160px;
-  /* Flex items default to min-width:auto, which floors their width at
-     content size — a long payer name in the <select> was overflowing its
-     160px basis and forcing the pair to wrap even on normal-width screens. */
+  min-width: 0;
+}
+
+.paid-by-date select,
+.paid-by-date input[type="date"] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
   min-width: 0;
 }
 
 @media (max-width: 360px) {
   .paid-by-date {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* Green-bar ledger rows (DESIGN_SYSTEM.md §4): hairline between rows, faint
-   alternating tint. Shared by the member/expense/balance lists. */
-.ledger-list > li {
-  border-bottom: 1px solid color-mix(in srgb, var(--color-ink-forest) 10%, transparent);
-}
-
-.ledger-list > li:last-child {
-  border-bottom: none;
-}
-
-.ledger-list > li:nth-child(odd) {
+/* Entry cards. Replaces the banded hairline list: each expense/balance is its
+   own Ledger Paper surface separated by a gap, sitting on the Paper White
+   group surface. Radius stays in DESIGN_SYSTEM.md §4's 8–10px band. The fill
+   lives here rather than on the inner <button> so the .row-pulse cue below —
+   which is set on the <li> — isn't painted over by its own child. */
+.entry-card {
+  border-radius: 10px;
   background-color: var(--color-ledger-paper);
+  /* background-color stays at §6's 250ms: this element is also the .row-pulse
+     target, and a shorter duration here would quietly retime that cue. */
+  transition:
+    background-color 250ms ease-out,
+    transform 100ms ease-out;
+}
+
+/* Only cards that are themselves a tap target get the feedback — a balance
+   card isn't clickable as a whole (just its Settle button), so lighting it up
+   on hover would promise an interaction that isn't there. */
+.entry-card-tappable:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-ledger-paper) 90%,
+    var(--color-ink-forest)
+  );
+}
+
+.entry-card-tappable:active {
+  transform: scale(0.98);
 }
 
 /* Persistent bottom-anchored Add Expense action (DESIGN_SYSTEM.md §10) —
    thumb-reachable on small mobile widths, safe-area aware. */
+/* Kept in sync with .bottom-bar's own box model below (padding + border +
+   button min-height) so content clearance always lands exactly at its top
+   edge, plus an 8px reveal so the card visibly ends instead of blending into
+   the bar underneath it. */
+:root {
+  --bottom-bar-height: calc(
+    1rem + 2.75rem + max(1rem, env(safe-area-inset-bottom)) + 1px
+  );
+}
+
+.bottom-bar-clearance {
+  padding-bottom: calc(var(--bottom-bar-height) + 8px);
+}
+
 .bottom-bar {
   position: fixed;
   inset-inline: 0;
@@ -283,7 +321,9 @@ main {
   display: flex;
   justify-content: center;
   padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, var(--color-ledger-paper) 65%, transparent);
+  background: var(--color-paper-white);
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-ink-forest) 8%, transparent);
 }
 
 .bottom-bar > button {
@@ -301,19 +341,26 @@ li {
 li.row-pulse {
   /* Tinted, not solid — a full-strength Ledger Green fill drops text
      contrast below the readable floor against Ink Forest copy. */
-  background-color: color-mix(in srgb, var(--color-ledger-green) 25%, transparent);
-}
-
-/* Same rule, scoped one level more specifically than `.ledger-list >
-   li:nth-child(odd)` above, so a pulsing odd row isn't masked by its own
-   alternating tint. */
-.ledger-list > li.row-pulse {
-  background-color: color-mix(in srgb, var(--color-ledger-green) 25%, transparent);
+  background-color: color-mix(
+    in srgb,
+    var(--color-ledger-green) 25%,
+    transparent
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {
   li {
     transition: none;
+  }
+
+  /* Needed on top of the `li` rule above — .entry-card outranks a bare element
+     selector, so it would otherwise keep animating. */
+  .entry-card {
+    transition: none;
+  }
+
+  .entry-card-tappable:active {
+    transform: none;
   }
 
   .animate-pulse {

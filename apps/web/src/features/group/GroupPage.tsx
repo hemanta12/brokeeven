@@ -1,52 +1,69 @@
-import { useState, type FormEvent } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useState, type FormEvent } from "react";
+import { Link, useParams } from "react-router-dom";
 
-import { BalanceRow } from '../../components/BalanceRow';
-import { Button } from '../../components/Button';
-import { ExpenseRow } from '../../components/ExpenseRow';
-import { Field } from '../../components/Field';
-import { MemberChip } from '../../components/MemberChip';
-import { Tabs } from '../../components/Tabs';
-import { ApiError } from '../../lib/apiClient';
-import { EmptyState, ErrorState, NotFoundState } from '../../shared/RouteStates';
-import { getIdentity } from '../../shared/identity';
-import { useBlurValidation } from '../../shared/useBlurValidation';
-import { ExpenseDetail } from '../expense/ExpenseDetail';
-import { ExpenseModal } from '../expense/ExpenseModal';
-import { SettleUpModal } from '../settlement/SettleUpModal';
-import { useAddPerson, useGroupByCode, useRemovePerson } from './api';
-import { EditPersonForm } from './EditPersonForm';
-import { GroupPageSkeleton } from './GroupPageSkeleton';
-import type { Balance, Expense } from './types';
-import { useGroupRealtime } from './useGroupRealtime';
-import { WhoAreYouPrompt } from './WhoAreYouPrompt';
+import { BalanceRow } from "../../components/BalanceRow";
+import { Button } from "../../components/Button";
+import { ExpenseRow } from "../../components/ExpenseRow";
+import { Field } from "../../components/Field";
+import { MemberChip } from "../../components/MemberChip";
+import { Tabs } from "../../components/Tabs";
+import { ApiError } from "../../lib/apiClient";
+import {
+  EmptyState,
+  ErrorState,
+  NotFoundState,
+} from "../../shared/RouteStates";
+import { formatDateGroupLabel } from "../../shared/format";
+import { getIdentity } from "../../shared/identity";
+import { useBlurValidation } from "../../shared/useBlurValidation";
+import { ExpenseDetail } from "../expense/ExpenseDetail";
+import { ExpenseModal } from "../expense/ExpenseModal";
+import { SettleUpModal } from "../settlement/SettleUpModal";
+import { useAddPerson, useGroupByCode, useRemovePerson } from "./api";
+import { EditPersonForm } from "./EditPersonForm";
+import { groupExpensesByDate } from "./expenseGroups";
+import { GroupPageSkeleton } from "./GroupPageSkeleton";
+import type { Balance, Expense } from "./types";
+import { useGroupRealtime } from "./useGroupRealtime";
+import { WhoAreYouPrompt } from "./WhoAreYouPrompt";
 
 const MEMBER_CAP = 20;
-type Tab = 'expenses' | 'balances';
+type Tab = "expenses" | "balances";
 
-function balanceKey(balance: Pick<Balance, 'fromPersonId' | 'toPersonId'>): string {
+function balanceKey(
+  balance: Pick<Balance, "fromPersonId" | "toPersonId">,
+): string {
   return `${balance.fromPersonId}:${balance.toPersonId}`;
 }
 
 export function GroupPage() {
   const { code } = useParams<{ code: string }>();
-  const { data: group, isLoading, isError, error, refetch } = useGroupByCode(code);
+  const {
+    data: group,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGroupByCode(code);
 
-  const [tab, setTab] = useState<Tab>('expenses');
-  const [identityPersonId, setIdentityPersonId] = useState<string | null>(() => (code ? getIdentity(code) : null));
+  const [tab, setTab] = useState<Tab>("expenses");
+  const [identityPersonId, setIdentityPersonId] = useState<string | null>(() =>
+    code ? getIdentity(code) : null,
+  );
   const [dismissedWhoAreYou, setDismissedWhoAreYou] = useState(false);
-  const [expandedPersonId, setExpandedPersonId] = useState<string | null>(null);
+  const [isEditingMembers, setIsEditingMembers] = useState(false);
   const [showAddPersonForm, setShowAddPersonForm] = useState(false);
-  const [personName, setPersonName] = useState('');
-  const [editingPersonId, setEditingPersonId] = useState<string | null>(null);
+  const [personName, setPersonName] = useState("");
   const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
-  const [editingExpense, setEditingExpense] = useState<Expense | 'new' | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | "new" | null>(
+    null,
+  );
   const [settlingBalance, setSettlingBalance] = useState<Balance | null>(null);
   const [copied, setCopied] = useState(false);
 
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);
-  const { touch, isRequiredError } = useBlurValidation();
+  const { touch, untouch, isRequiredError } = useBlurValidation();
   const pulsingIds = useGroupRealtime(code, group?.id);
 
   async function handleCopyInviteLink() {
@@ -64,7 +81,8 @@ export function GroupPage() {
     event.preventDefault();
     if (!code || !personName.trim()) return;
     await addPerson.mutateAsync({ code, name: personName });
-    setPersonName('');
+    setPersonName("");
+    untouch("personName");
   }
 
   if (isLoading) {
@@ -79,8 +97,8 @@ export function GroupPage() {
           <p className="mt-4 font-sans text-body text-ink-forest">
             <Link to="/join" className="underline">
               Try another code
-            </Link>{' '}
-            or{' '}
+            </Link>{" "}
+            or{" "}
             <Link to="/create" className="underline">
               create a new group
             </Link>
@@ -96,189 +114,309 @@ export function GroupPage() {
     return null;
   }
 
-  const shouldShowWhoAreYou = !identityPersonId && group.people.length > 0 && !dismissedWhoAreYou;
+  const shouldShowWhoAreYou =
+    !identityPersonId && group.people.length > 0 && !dismissedWhoAreYou;
   const inviteLink = `${window.location.origin}/g/${code}`;
 
-  function balanceDirection(balance: Balance): 'owe' | 'owed' | 'neutral' {
-    if (balance.fromPersonId === identityPersonId) return 'owe';
-    if (balance.toPersonId === identityPersonId) return 'owed';
-    return 'neutral';
+  function balanceDirection(balance: Balance): "owe" | "owed" | "neutral" {
+    if (balance.fromPersonId === identityPersonId) return "owe";
+    if (balance.toPersonId === identityPersonId) return "owed";
+    return "neutral";
   }
 
   return (
-    <main className="pb-28">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">{group.name}</h1>
-          {group.label && (
-            <span className="mt-1 inline-flex self-start rounded-full border border-brass-ui px-2.5 py-0.5 font-sans text-label text-ink-forest">
-              {group.label}
-            </span>
-          )}
-        </div>
-        <Button variant="tertiary" onClick={handleCopyInviteLink}>
-          <span aria-live="polite">{copied ? 'Copied!' : 'Share invite link'}</span>
-        </Button>
-      </header>
-      <p className="mt-1 font-sans text-label text-ink-forest/70">
-        Code: <span className="font-mono">{group.joinCode}</span>
-      </p>
-
-      <section aria-label="Members" className="mt-6">
-        <ul className="flex flex-wrap items-center gap-2">
-          {group.people.map((person) =>
-            editingPersonId === person.id ? (
-              <li key={person.id} className="w-full">
-                <EditPersonForm code={code} person={person} onDone={() => setEditingPersonId(null)} />
-              </li>
-            ) : (
-              <li
-                key={person.id}
-                onClick={() => setExpandedPersonId((current) => (current === person.id ? null : person.id))}
-                data-revealed={expandedPersonId === person.id}
-                className={`member-hover-reveal relative flex min-h-11 cursor-pointer items-center rounded-full ${pulsingIds.has(person.id) ? 'row-pulse' : ''}`}
+    <main className="bottom-bar-clearance flex flex-col pt-4">
+      <div className="group-surface flex-1 rounded-[14px] bg-paper-white pb-6">
+        <header className="px-4 pt-4 text-center sm:px-6">
+          <div className="relative flex min-w-0 flex-col items-center rounded-[12px] border border-ledger-green/20 bg-ledger-paper px-4 pb-4 pt-10">
+            <div className="absolute inset-x-3 top-2 flex min-w-0 items-center justify-between gap-3">
+              <p className="min-w-0 truncate font-sans text-label text-ink-forest/65">
+                Code:{" "}
+                <span className="font-mono tracking-[0.06em]">
+                  {group.joinCode}
+                </span>
+              </p>
+              <Button
+                variant="tertiary"
+                onClick={handleCopyInviteLink}
+                className="h-8! min-h-8! shrink-0 rounded-full! border border-ink-forest/20 bg-paper-white px-3! text-label hover:bg-paper-white"
               >
-                <MemberChip
-                  name={person.name}
-                  isYou={person.id === identityPersonId}
-                  onEdit={() => setEditingPersonId(person.id)}
-                  onRemove={removePerson.isPending ? undefined : () => removePerson.mutate(person.id)}
-                />
-                {removePerson.isError && removePerson.variables === person.id && (
-                  <div className="absolute left-0 top-full z-10 mt-2 w-max">
-                    <ErrorState message={removePerson.error.message} />
-                  </div>
-                )}
+                <span aria-live="polite">
+                  {copied ? "Copied!" : "Share link"}
+                </span>
+              </Button>
+            </div>
+            <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">
+              {group.name}
+            </h1>
+            {group.label && (
+              <span className="mt-2 inline-flex rounded-full border border-brass-ui px-2.5 py-0.5 font-sans text-label text-brass-ui">
+                {group.label}
+              </span>
+            )}
+          </div>
+        </header>
+
+        <section
+          aria-label="Members"
+          className="mx-4 mt-5 rounded-[12px] border border-ledger-green/10 bg-ledger-paper/40 px-3 py-3 sm:mx-6 sm:px-4"
+        >
+          {/* text-section (1.125rem Semibold) is DESIGN_SYSTEM.md §3's
+              documented scale for section headers like this one — it just
+              wasn't wired up anywhere yet; "People" was sitting at the
+              smallest, most muted label scale in the whole type system. */}
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h2 className="font-sans text-section font-semibold text-ink-forest">
+              People
+            </h2>
+            <Button
+              variant={isEditingMembers ? "primary" : "tertiary"}
+              aria-label={
+                isEditingMembers ? "Cancel editing members" : "Edit members"
+              }
+              onClick={() => setIsEditingMembers((current) => !current)}
+              disabled={showAddPersonForm}
+              className="h-11! w-11! shrink-0 rounded-full! p-0!"
+            >
+              {isEditingMembers ? (
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-3.5 w-3.5"
+                >
+                  <path
+                    d="M5 5l10 10M15 5 5 15"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-3.5 w-3.5"
+                >
+                  <path
+                    d="M13.3 3.7a1.6 1.6 0 0 1 2.3 2.3L6.4 15.2l-3 .9.9-3 9-9.4Z"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </Button>
+          </div>
+          <ul className="flex flex-wrap items-center gap-2">
+            {group.people.map((person) =>
+              isEditingMembers ? (
+                <li key={person.id} className="w-full">
+                  <EditPersonForm
+                    code={code}
+                    person={person}
+                    onRemove={() => removePerson.mutate(person.id)}
+                    removePending={
+                      removePerson.isPending &&
+                      removePerson.variables === person.id
+                    }
+                    removeError={
+                      removePerson.isError &&
+                      removePerson.variables === person.id
+                        ? removePerson.error.message
+                        : undefined
+                    }
+                  />
+                </li>
+              ) : (
+                <li
+                  key={person.id}
+                  className={`flex min-h-11 items-center rounded-full ${pulsingIds.has(person.id) ? "row-pulse" : ""}`}
+                >
+                  <MemberChip
+                    name={person.name}
+                    isYou={person.id === identityPersonId}
+                  />
+                </li>
+              ),
+            )}
+            {group.people.length < MEMBER_CAP && !showAddPersonForm && (
+              <li>
+                <Button
+                  variant="secondary"
+                  aria-label="Add person"
+                  disabled={isEditingMembers}
+                  className="h-11! w-11! rounded-full! p-0!"
+                  onClick={() => setShowAddPersonForm(true)}
+                >
+                  +
+                </Button>
               </li>
+            )}
+          </ul>
+
+          {group.people.length >= MEMBER_CAP ? (
+            <p className="mt-3 font-sans text-label text-ink-forest/70">
+              Group already has the maximum of {MEMBER_CAP} members.
+            </p>
+          ) : (
+            showAddPersonForm && (
+              <form
+                onSubmit={handleAddPerson}
+                className="mt-3 flex flex-col gap-3"
+              >
+                <Field
+                  id="add-person-name"
+                  label="Name"
+                  value={personName}
+                  onChange={(event) => setPersonName(event.target.value)}
+                  onBlur={() => touch("personName")}
+                  autoComplete="name"
+                  autoCorrect="off"
+                  autoCapitalize="words"
+                  error={
+                    isRequiredError("personName", personName)
+                      ? "Name is required."
+                      : undefined
+                  }
+                  required
+                />
+                {addPerson.isError && (
+                  <ErrorState message={addPerson.error.message} />
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={addPerson.isPending}
+                    className="flex-1"
+                  >
+                    {addPerson.isPending ? "Adding…" : "Add person"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowAddPersonForm(false);
+                      setPersonName("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
             )
           )}
-          {group.people.length < MEMBER_CAP && !showAddPersonForm && (
-            <li>
-              <Button
-                variant="secondary"
-                aria-label="Add person"
-                className="h-11! w-11! rounded-full! p-0!"
-                onClick={() => setShowAddPersonForm(true)}
-              >
-                +
-              </Button>
-            </li>
-          )}
-        </ul>
+        </section>
 
-        {group.people.length >= MEMBER_CAP ? (
-          <p className="mt-3 font-sans text-label text-ink-forest/70">
-            Group already has the maximum of {MEMBER_CAP} members.
-          </p>
-        ) : (
-          showAddPersonForm && (
-            <form onSubmit={handleAddPerson} className="mt-3 flex flex-col gap-3">
-              <Field
-                id="add-person-name"
-                label="Name"
-                value={personName}
-                onChange={(event) => setPersonName(event.target.value)}
-                onBlur={() => touch('personName')}
-                autoComplete="name"
-                autoCorrect="off"
-                autoCapitalize="words"
-                error={isRequiredError('personName', personName) ? 'Name is required.' : undefined}
-                required
-              />
-              {addPerson.isError && <ErrorState message={addPerson.error.message} />}
-              <div className="flex gap-3">
-                <Button type="submit" variant="secondary" disabled={addPerson.isPending} className="flex-1">
-                  {addPerson.isPending ? 'Adding…' : 'Add person'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="tertiary"
-                  className="flex-1"
-                  onClick={() => {
-                    setShowAddPersonForm(false);
-                    setPersonName('');
-                  }}
-                >
-                  Cancel
-                </Button>
+        <div className="mt-6 px-4 sm:px-6">
+          <Tabs
+            label="Group view"
+            items={[
+              { id: "expenses", label: "Expenses" },
+              { id: "balances", label: "Balances" },
+            ]}
+            activeId={tab}
+            onChange={(id) => setTab(id as Tab)}
+          />
+        </div>
+
+        {tab === "expenses" && (
+          <div
+            role="tabpanel"
+            id="panel-expenses"
+            aria-labelledby="tab-expenses"
+            className="mt-3 px-4 sm:px-6"
+          >
+            {group.expenses.length === 0 ? (
+              <EmptyState message="No expenses yet — add the first one." />
+            ) : (
+              <div>
+                {groupExpensesByDate(group.expenses).map((dateGroup) => (
+                  <div key={dateGroup.date} className="mt-5 first:mt-0">
+                    {/* Quiet organiser, not a headline — mono keeps it in the
+                        ledger's data voice and distinct from the sans cards. */}
+                    <h3 className="mb-2 font-mono text-label font-medium text-ink-forest/70">
+                      {formatDateGroupLabel(dateGroup.date)}
+                    </h3>
+                    <ul className="flex flex-col gap-2">
+                      {dateGroup.expenses.map((expense) => {
+                        const payer = group.people.find(
+                          (p) => p.id === expense.payerId,
+                        );
+                        return (
+                          <li
+                            key={expense.id}
+                            className={`entry-card entry-card-tappable ${pulsingIds.has(expense.id) ? "row-pulse" : ""}`}
+                          >
+                            <ExpenseRow
+                              title={expense.title}
+                              payerName={payer?.name ?? "someone removed"}
+                              payerIsViewer={expense.payerId === identityPersonId}
+                              amount={Number(expense.amount)}
+                              onClick={() => setViewingExpense(expense)}
+                            />
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
               </div>
-            </form>
-          )
+            )}
+          </div>
         )}
-      </section>
 
-      <div className="mt-6">
-        <Tabs
-          label="Group view"
-          items={[
-            { id: 'expenses', label: 'Expenses' },
-            { id: 'balances', label: 'Balances' }
-          ]}
-          activeId={tab}
-          onChange={(id) => setTab(id as Tab)}
-        />
-      </div>
+        {tab === "balances" && (
+          <div
+            role="tabpanel"
+            id="panel-balances"
+            aria-labelledby="tab-balances"
+            className="mt-3 px-4 sm:px-6"
+          >
+            {group.balances.length === 0 ? (
+              <EmptyState message="Balances appear here once an expense has been added." />
+            ) : (
+              <div>
+                <ul className="flex flex-col gap-2">
+                  {group.balances.map((balance) => {
+                    const from = group.people.find(
+                      (p) => p.id === balance.fromPersonId,
+                    );
+                    const to = group.people.find(
+                      (p) => p.id === balance.toPersonId,
+                    );
+                    const key = balanceKey(balance);
+                    return (
+                      <li
+                        key={key}
+                        className={`entry-card ${pulsingIds.has(key) ? "row-pulse" : ""}`}
+                      >
+                        <BalanceRow
+                          fromName={from?.name ?? "Someone"}
+                          toName={to?.name ?? "someone"}
+                          amount={Number(balance.amount)}
+                          direction={balanceDirection(balance)}
+                          fromIsViewer={
+                            balance.fromPersonId === identityPersonId
+                          }
+                          toIsViewer={balance.toPersonId === identityPersonId}
+                          onSettle={() => setSettlingBalance(balance)}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
-      {tab === 'expenses' && (
-        <div role="tabpanel" id="panel-expenses" aria-labelledby="tab-expenses" className="mt-3">
-          {group.expenses.length === 0 ? (
-            <EmptyState message="No expenses yet — add the first one." />
-          ) : (
-            <div className="overflow-hidden rounded-[10px] bg-paper-white">
-              <ul className="ledger-list">
-                {group.expenses.map((expense) => {
-                  const payer = group.people.find((p) => p.id === expense.payerId);
-                  return (
-                    <li key={expense.id} className={pulsingIds.has(expense.id) ? 'row-pulse' : undefined}>
-                      <ExpenseRow
-                        title={expense.title}
-                        payerName={payer?.name ?? 'someone removed'}
-                        amount={Number(expense.amount)}
-                        date={expense.date}
-                        onClick={() => setViewingExpense(expense)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
+        <div className="bottom-bar">
+          <Button onClick={() => setEditingExpense("new")}>Add Expense</Button>
         </div>
-      )}
-
-      {tab === 'balances' && (
-        <div role="tabpanel" id="panel-balances" aria-labelledby="tab-balances" className="mt-3">
-          {group.balances.length === 0 ? (
-            <EmptyState message="Balances appear here once an expense has been added." />
-          ) : (
-            <div className="overflow-hidden rounded-[10px] bg-paper-white">
-              <ul className="ledger-list">
-                {group.balances.map((balance) => {
-                  const from = group.people.find((p) => p.id === balance.fromPersonId);
-                  const to = group.people.find((p) => p.id === balance.toPersonId);
-                  const key = balanceKey(balance);
-                  return (
-                    <li key={key} className={pulsingIds.has(key) ? 'row-pulse' : undefined}>
-                      <BalanceRow
-                        fromName={from?.name ?? 'Someone'}
-                        toName={to?.name ?? 'someone'}
-                        amount={Number(balance.amount)}
-                        direction={balanceDirection(balance)}
-                        fromIsViewer={balance.fromPersonId === identityPersonId}
-                        toIsViewer={balance.toPersonId === identityPersonId}
-                        onSettle={() => setSettlingBalance(balance)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="bottom-bar">
-        <Button onClick={() => setEditingExpense('new')}>Add Expense</Button>
       </div>
 
       {viewingExpense && (
@@ -299,7 +437,7 @@ export function GroupPage() {
           code={code}
           people={group.people}
           identityPersonId={identityPersonId}
-          expense={editingExpense === 'new' ? undefined : editingExpense}
+          expense={editingExpense === "new" ? undefined : editingExpense}
           onClose={() => setEditingExpense(null)}
         />
       )}
@@ -313,7 +451,13 @@ export function GroupPage() {
         />
       )}
 
-      {shouldShowWhoAreYou && <WhoAreYouPrompt code={code} people={group.people} onClose={closeWhoAreYou} />}
+      {shouldShowWhoAreYou && (
+        <WhoAreYouPrompt
+          code={code}
+          people={group.people}
+          onClose={closeWhoAreYou}
+        />
+      )}
     </main>
   );
 }

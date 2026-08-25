@@ -1,6 +1,6 @@
 import { Button } from '../../components/Button';
 import { Overlay } from '../../shared/Overlay';
-import { formatCurrency, formatDate } from '../../shared/format';
+import { formatCurrency, formatDate, formatExpenseTitle } from '../../shared/format';
 import type { Expense, Person } from '../group/types';
 
 interface ExpenseDetailProps {
@@ -19,17 +19,17 @@ export function ExpenseDetail({ expense, people, identityPersonId, onClose, onEd
   const payer = people.find((person) => person.id === expense.payerId);
 
   return (
-    <Overlay title={expense.title} isDirty={false} onClose={onClose}>
+    <Overlay title={formatExpenseTitle(expense.title)} centerTitle isDirty={false} onClose={onClose}>
       <div className="flex flex-col gap-6">
-        <div>
+        <div className="expense-summary rounded-[10px] bg-ledger-paper px-4 py-5 text-center">
           <p className="font-mono text-hero-balance tabular-nums text-ink-forest">
             {formatCurrency(Number(expense.amount))}
           </p>
-          {expense.description && <p className="mt-2 font-sans text-body text-ink-forest/80">{expense.description}</p>}
           <p className="mt-2 font-sans text-label text-ink-forest/70">{formatDate(expense.date)}</p>
         </div>
+        {expense.description && <p className="font-sans text-body text-ink-forest/80">{expense.description}</p>}
 
-        <div>
+        <div className="rounded-[10px] bg-paper-white px-3.5 py-3">
           <p className="font-sans text-label font-medium text-ink-forest">Paid by</p>
           <p className="mt-1 font-sans text-body text-ink-forest">
             {payer ? (payer.id === identityPersonId ? `${payer.name} (you)` : payer.name) : 'someone removed'}

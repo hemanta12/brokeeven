@@ -13,7 +13,13 @@ const VARIANT_CLASSES: Record<Variant, string> = {
     'bg-ink-forest text-paper-white hover:bg-[color-mix(in_srgb,var(--color-ink-forest)_92%,black)] active:scale-[0.97]',
   secondary:
     'border border-ink-forest text-ink-forest bg-transparent hover:bg-ledger-paper active:scale-[0.97]',
-  tertiary: 'text-ink-forest bg-transparent hover:underline',
+  // hover:underline alone did nothing for icon-only tertiary buttons (the
+  // People-section edit toggle among them) — nothing to underline. The bg
+  // tint matches the app's other quiet-hover convention (.segment's 6% mix)
+  // and works regardless of whether the button holds text or just an icon.
+  // active:scale was missing entirely — primary/secondary both have it, so
+  // tertiary was the one variant with no mobile press feedback at all.
+  tertiary: 'text-ink-forest bg-transparent hover:underline hover:bg-ink-forest/8 active:scale-[0.97]',
 };
 
 export function Button({ variant = 'primary', className = '', ...props }: ButtonProps) {

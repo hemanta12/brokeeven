@@ -6,6 +6,7 @@ import { Overlay } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
+import { formatExpenseTitle } from '../../shared/format';
 import type { Expense, Person, SplitMethod } from '../group/types';
 import { useCreateExpense, useUpdateExpense } from './api';
 import { centsToDollars, dollarsToCents, equalSplitCents } from './splitPreview';
@@ -32,7 +33,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   const mutation = isEdit ? updateExpense : createExpense;
 
   const [touched, setTouched] = useState(false);
-  const [title, setTitle] = useState(expense?.title ?? '');
+  const [title, setTitle] = useState(expense ? formatExpenseTitle(expense.title) : '');
   const [description, setDescription] = useState(expense?.description ?? '');
   const [amount, setAmount] = useState(expense?.amount ?? '');
   const [date, setDate] = useState(expense?.date.slice(0, 10) ?? todayIsoDate());
@@ -137,7 +138,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
               onChange={(event) => touch(setPayerId)(event.target.value)}
               onBlur={() => markBlurred('payerId')}
               required
-              className={selectClassName}
+              className={`${selectClassName} min-w-0 max-w-full box-border`}
             >
               <option value="" disabled>
                 Select payer
@@ -160,7 +161,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
               value={date}
               onChange={(event) => touch(setDate)(event.target.value)}
               required
-              className={selectClassName}
+              className={`${selectClassName} min-w-0 max-w-full box-border`}
             />
           </div>
         </div>

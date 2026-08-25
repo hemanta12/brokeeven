@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiFetch } from '../../lib/apiClient';
+import { vibrateConfirm } from '../../shared/haptics';
 import type { Group, GroupWithPeople, Person } from './types';
 
 export function groupQueryKey(code: string | undefined) {
@@ -35,7 +36,10 @@ export function useRemovePerson(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (personId: string) => apiFetch<Person>(`/people/${personId}`, { method: 'PATCH' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
   });
 }
 
@@ -44,6 +48,9 @@ export function useRenamePerson(code: string | undefined) {
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       apiFetch<Person>(`/people/${id}/name`, { method: 'PATCH', body: JSON.stringify({ name }) }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
   });
 }

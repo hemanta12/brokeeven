@@ -111,8 +111,16 @@ export function CreateGroupPage() {
         {people.length > 0 && (
           <ul className="flex flex-wrap gap-2">
             {people.map((person) => (
-              <li key={person.id}>
-                <MemberChip name={person.name} onRemove={() => handleRemovePerson(person.id)} />
+              <li key={person.id} className="inline-flex items-center gap-1">
+                <MemberChip name={person.name} />
+                <button
+                  type="button"
+                  onClick={() => handleRemovePerson(person.id)}
+                  aria-label={`Remove ${person.name}`}
+                  className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-debt-red/10 text-debt-red hover:bg-debt-red/20 active:scale-90"
+                >
+                  ×
+                </button>
               </li>
             ))}
           </ul>

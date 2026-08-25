@@ -34,12 +34,16 @@ export function BalanceRow({
 }: BalanceRowProps) {
   const signed = direction === 'owed' ? `+${formatCurrency(amount)}` : formatCurrency(amount);
   return (
-    <div className="flex min-h-11 items-center justify-between gap-4 px-2 py-3">
-      <span className="font-sans text-body text-ink-forest">
+    <div className="flex min-h-11 items-center justify-between gap-4 px-4 py-3">
+      <span className="min-w-0 flex-1 truncate font-sans text-body text-ink-forest">
         {fromIsViewer ? 'You' : fromName} owes {toIsViewer ? 'you' : toName}
       </span>
       <span className="flex shrink-0 items-center gap-3">
-        <span className={`font-mono text-row-amount tabular-nums ${DIRECTION_CLASSES[direction]}`}>{signed}</span>
+        <span
+          className={`font-mono text-row-amount font-medium tabular-nums ${DIRECTION_CLASSES[direction]}`}
+        >
+          {signed}
+        </span>
         {onSettle && (
           <Button variant="secondary" onClick={onSettle} className="px-3.5! text-[0.8125rem]!">
             Settle

@@ -46,8 +46,15 @@ const baseGroup = {
   balances: [{ fromPersonId: 'p2', toPersonId: 'p1', amount: '10.00' }]
 };
 
+// A Response body can only be read once — mockResolvedValue would reuse the
+// same Response instance for every call, breaking any test whose mutation
+// triggers a refetch (invalidateQueries) on top of the initial GET.
+// mockImplementation constructs a fresh one per call instead.
 function stubGroupFetch(body: unknown = baseGroup) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(body), { status: 200 })));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify(body), { status: 200 })))
+  );
 }
 
 describe('GroupPage', () => {
@@ -122,14 +129,42 @@ describe('GroupPage', () => {
     expect(screen.getByRole('button', { name: 'Settle' })).toBeInTheDocument();
   });
 
+  it('groups expenses under a plain day heading, carrying no running total', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+
+    // Matched loosely on the day, not the full label — the heading drops the
+    // year while it's the current one, so pinning it would rot in January.
+    const dayHeading = screen.getByRole('heading', { level: 3, name: /Jan 5/ });
+    expect(dayHeading).not.toHaveTextContent('$');
+    expect(screen.getByText('Alice paid')).toBeInTheDocument();
+  });
+
   it('shows a copy confirmation after sharing the invite link', async () => {
     stubGroupFetch();
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share invite link' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
 
     expect(await screen.findByRole('button', { name: 'Copied!' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Trip' }).parentElement).toHaveClass(
+      'rounded-[12px]',
+      'border-ledger-green/20',
+      'bg-ledger-paper'
+    );
+    expect(screen.getByText(/Code:/).parentElement).toHaveClass('min-w-0');
+  });
+
+  it('keeps a long group title in its dedicated title band', async () => {
+    stubGroupFetch({ ...baseGroup, name: 'A very long weekend trip with friends' });
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+
+    const title = screen.getByRole('heading', { name: 'A very long weekend trip with friends' });
+    expect(title.parentElement).toHaveClass('rounded-[12px]', 'border-ledger-green/20', 'bg-ledger-paper');
+    expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
   });
 
   it('opens the Add Expense overlay', async () => {
@@ -148,6 +183,8 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
+    fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
+
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -159,7 +196,82 @@ describe('GroupPage', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove Alice' }));
+    expect(screen.getByText('Remove Alice?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
 
     expect(await screen.findByText(/Reassign this person's expenses/)).toBeInTheDocument();
+  });
+
+  it('keeps editing members and adding a person mutually exclusive', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
+    expect(screen.getByRole('button', { name: 'Add person' })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel editing members' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    expect(screen.getByRole('button', { name: 'Edit members' })).toBeDisabled();
+  });
+
+  it('does not show a spurious required error after successfully adding a person', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    const nameInput = screen.getByLabelText('Name');
+    fireEvent.change(nameInput, { target: { value: 'Charlie' } });
+    // A real submit click blurs the input on its way to the button, marking
+    // the field touched before the form ever clears it.
+    fireEvent.blur(nameInput);
+    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+
+    await waitFor(() => expect(nameInput).toHaveValue(''));
+    expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
+  });
+
+  it('shows a "Saved" confirmation after successfully renaming a person', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
+
+    const aliceInput = screen.getByLabelText('Edit Alice');
+    fireEvent.change(aliceInput, { target: { value: 'Alicia' } });
+    fireEvent.click(within(aliceInput.closest('form')!).getByRole('button', { name: 'Save name' }));
+
+    expect(await screen.findByText('✓ Saved')).toBeInTheDocument();
+  });
+
+  it('asks for inline confirmation before removing a person, and Cancel backs out without removing', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Alice' }));
+    expect(screen.getByText('Remove Alice?')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByText('Remove Alice?')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Edit Alice')).toBeInTheDocument();
+  });
+
+  it('toggles bulk member edit mode, editing every person at once, then cancels', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
+
+    expect(screen.getByLabelText('Edit Alice')).toBeInTheDocument();
+    expect(screen.getByLabelText('Edit Bob')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel editing members' }));
+
+    expect(screen.queryByLabelText('Edit Alice')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit members' })).toBeInTheDocument();
   });
 });
