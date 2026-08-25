@@ -10,9 +10,17 @@ export function useBlurValidation() {
     setBlurred((current) => ({ ...current, [field]: true }));
   }
 
+  // For a form that clears its own value programmatically (e.g. after a
+  // successful submit, ready for the next entry) without the field actually
+  // being re-touched — without this, the stale touched flag makes the fresh
+  // empty value immediately read as a validation error.
+  function untouch(field: string) {
+    setBlurred((current) => ({ ...current, [field]: false }));
+  }
+
   function isRequiredError(field: string, value: string) {
     return Boolean(blurred[field]) && value.trim().length === 0;
   }
 
-  return { touch, isRequiredError };
+  return { touch, untouch, isRequiredError };
 }
