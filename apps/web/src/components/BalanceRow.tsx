@@ -41,7 +41,7 @@ export function BalanceRow({
       <span className="flex shrink-0 items-center gap-3">
         <span className={`font-mono text-row-amount tabular-nums ${DIRECTION_CLASSES[direction]}`}>{signed}</span>
         {onSettle && (
-          <Button variant="secondary" onClick={onSettle} className="min-h-8! px-3.5! text-[0.8125rem]!">
+          <Button variant="secondary" onClick={onSettle} className="px-3.5! text-[0.8125rem]!">
             Settle
           </Button>
         )}

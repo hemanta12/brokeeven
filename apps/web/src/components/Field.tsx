@@ -20,7 +20,7 @@ export function Field({ label, id, error, helpText, className = '', ...inputProp
         id={id}
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy}
-        className={`focus-ring min-h-11 rounded-lg border border-ink-forest/30 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest ${className}`}
+        className={`focus-ring min-h-11 rounded-lg border border-ink-forest/55 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest ${className}`}
         {...inputProps}
       />
       {error ? (
@@ -28,7 +28,7 @@ export function Field({ label, id, error, helpText, className = '', ...inputProp
           {error}
         </p>
       ) : helpText ? (
-        <p id={`${id}-help`} className="text-label text-ink-forest/60">
+        <p id={`${id}-help`} className="text-label text-ink-forest/70">
           {helpText}
         </p>
       ) : null}

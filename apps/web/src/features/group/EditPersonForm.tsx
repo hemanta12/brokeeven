@@ -26,7 +26,11 @@ export function EditPersonForm({ code, person, onDone }: EditPersonFormProps) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <form onSubmit={handleSubmit} className="flex w-full items-center gap-1.5">
+      {/* ponytail: 36px buttons stay under the 44px touch-target ideal (DESIGN_SYSTEM.md
+          §10) to fit this inline row without growing it further. Upgrade path if this
+          proves too fiddly on a real device: stack save/cancel below the input instead
+          of beside it. */}
+      <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
         <input
           autoFocus
           value={name}
@@ -39,7 +43,7 @@ export function EditPersonForm({ code, person, onDone }: EditPersonFormProps) {
           type="submit"
           aria-label="Save name"
           disabled={renamePerson.isPending || !name.trim()}
-          className="h-7! w-7! shrink-0 rounded-full! p-0!"
+          className="h-9! w-9! shrink-0 rounded-full! p-0!"
         >
           ✓
         </Button>
@@ -48,7 +52,7 @@ export function EditPersonForm({ code, person, onDone }: EditPersonFormProps) {
           variant="tertiary"
           aria-label="Cancel edit"
           onClick={onDone}
-          className="h-7! w-7! shrink-0 rounded-full! p-0!"
+          className="h-9! w-9! shrink-0 rounded-full! p-0!"
         >
           ×
         </Button>

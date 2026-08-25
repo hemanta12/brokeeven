@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test-utils';
@@ -102,7 +102,9 @@ describe('GroupPage', () => {
     expect(await screen.findByRole('dialog', { name: 'Who are you?' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Just looking' }));
 
-    expect(screen.queryByRole('dialog', { name: 'Who are you?' })).not.toBeInTheDocument();
+    // The close button triggers Overlay's exit transition first; the dialog
+    // unmounts once that settles, not synchronously.
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Who are you?' })).not.toBeInTheDocument());
   });
 
   it('switches between the Expenses and Balances tabs', async () => {
@@ -118,6 +120,16 @@ describe('GroupPage', () => {
     expect(screen.getByText('Bob owes Alice')).toBeInTheDocument();
     expect(screen.getByText('$10.00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settle' })).toBeInTheDocument();
+  });
+
+  it('shows a copy confirmation after sharing the invite link', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share invite link' }));
+
+    expect(await screen.findByRole('button', { name: 'Copied!' })).toBeInTheDocument();
   });
 
   it('opens the Add Expense overlay', async () => {

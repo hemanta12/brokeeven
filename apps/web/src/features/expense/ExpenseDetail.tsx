@@ -26,7 +26,7 @@ export function ExpenseDetail({ expense, people, identityPersonId, onClose, onEd
             {formatCurrency(Number(expense.amount))}
           </p>
           {expense.description && <p className="mt-2 font-sans text-body text-ink-forest/80">{expense.description}</p>}
-          <p className="mt-2 font-sans text-label text-ink-forest/60">{formatDate(expense.date)}</p>
+          <p className="mt-2 font-sans text-label text-ink-forest/70">{formatDate(expense.date)}</p>
         </div>
 
         <div>

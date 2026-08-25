@@ -20,7 +20,7 @@ export function QuickOneOnOnePage() {
 
   return (
     <main>
-      <h1 className="font-display text-display font-semibold text-ink-forest">Split with One Person</h1>
+      <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Split with One Person</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
         <Field
           id="your-name"

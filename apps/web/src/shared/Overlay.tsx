@@ -1,6 +1,16 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+// Restrained timing per the app's existing motion principle (Sprint 4.1.5:
+// "100-300ms restrained transitions") — ease-out entering, ease-in exiting
+// (UIUX_rules.md Core §10), not spring/bounce physics.
+const EXIT_MS = 150;
+
+type Phase = 'entering' | 'visible' | 'exiting';
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
 
 interface OverlayProps {
   title: string;
@@ -17,11 +27,28 @@ interface OverlayProps {
 export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', children }: OverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestCloseRef = useRef<() => void>(() => {});
+  const exitingRef = useRef(false);
+  // Lazy initializer runs synchronously on first render, so a reduced-motion
+  // viewer never flashes through an invisible "entering" frame.
+  const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'visible' : 'entering'));
+
+  useEffect(() => {
+    if (phase !== 'entering') return;
+    const frame = requestAnimationFrame(() => setPhase('visible'));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
     requestCloseRef.current = () => {
       if (isDirty && !window.confirm('Discard unsaved changes?')) return;
-      onClose();
+      if (exitingRef.current) return;
+      if (prefersReducedMotion()) {
+        onClose();
+        return;
+      }
+      exitingRef.current = true;
+      setPhase('exiting');
+      setTimeout(onClose, EXIT_MS);
     };
   }, [isDirty, onClose]);
 
@@ -63,14 +90,14 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', childre
 
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-label={title} ref={containerRef}>
-      <div className="overlay-content bg-paper-white shadow-lg sm:rounded-lg">
+      <div className="overlay-content bg-paper-white shadow-lg sm:rounded-lg" data-phase={phase}>
         <div className="overlay-header mb-6">
-          <h2 className="font-display text-[1.375rem] font-semibold text-ink-forest">{title}</h2>
+          <h2 className="font-display text-[1.375rem] font-semibold tracking-[-0.02em] leading-[1.15] text-ink-forest">{title}</h2>
           <button
             type="button"
             aria-label={closeLabel}
             onClick={() => requestCloseRef.current()}
-            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-ledger-paper text-xl text-ink-forest"
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-ledger-paper text-xl text-ink-forest transition-transform duration-100 hover:bg-ink-forest/10 active:scale-90"
           >
             {closeLabel === 'Close' ? '×' : closeLabel}
           </button>

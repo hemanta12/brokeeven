@@ -6,7 +6,7 @@ export function HomePage() {
   return (
     <main className="flex flex-col items-center text-center">
       <div>
-        <h1 className="font-display text-display font-semibold text-ink-forest">BrokeEven</h1>
+        <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">BrokeEven</h1>
         <p className="mt-2 font-sans text-body text-ink-forest/70">
           Split bills with your people. No signup, no paywall.
         </p>
@@ -21,7 +21,7 @@ export function HomePage() {
         <Link to="/quick" className={`${linkBase} h-[52px] border border-ink-forest text-ink-forest hover:bg-ledger-paper`}>
           Split with one person
         </Link>
-        <Link to="/join" className={`${linkBase} h-10 text-brass-ui hover:underline`}>
+        <Link to="/join" className={`${linkBase} h-10 text-ink-forest hover:underline`}>
           Join with a code
         </Link>
       </nav>

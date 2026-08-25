@@ -83,6 +83,16 @@
     margin: 0;
     font-family: var(--font-sans);
   }
+
+  /* Browsers default <button> to cursor:default, not pointer (unlike <a
+     href>) — every button in the app needs this explicitly, one rule instead
+     of repeating it per component. */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
@@ -126,6 +136,32 @@ main {
   margin-inline: auto;
   padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
     max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+/* Entering starts from this offset state; the component flips to
+   data-phase="visible" a frame after mount so the transition above actually
+   animates in (UIUX_rules.md Core §10: ease-out entering, ease-in exiting). */
+.overlay-content[data-phase='entering'] {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.overlay-content[data-phase='exiting'] {
+  opacity: 0;
+  transform: translateY(8px);
+  transition-duration: 150ms;
+  transition-timing-function: ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay-content {
+    transition: none;
+  }
 }
 
 /* Segmented-pill control (DESIGN_SYSTEM.md §7-adjacent) — shared by Group
@@ -142,11 +178,27 @@ main {
   flex: 1;
   text-align: center;
   border-radius: 8px;
+  cursor: pointer;
+  transition: transform 100ms ease-out;
+}
+
+.segment:not([data-active='true']):hover {
+  background: color-mix(in srgb, var(--color-ink-forest) 6%, transparent);
+}
+
+.segment:active {
+  transform: scale(0.97);
 }
 
 .segment[data-active='true'] {
   background: var(--color-ink-forest);
   color: var(--color-paper-white);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment {
+    transition: none;
+  }
 }
 
 /* Member chip's edit/remove icons stay hidden until the viewer actually
@@ -157,7 +209,10 @@ main {
 .member-hover-reveal .member-chip-action {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 150ms ease-out;
+  transition:
+    opacity 150ms ease-out,
+    background-color 100ms ease-out,
+    transform 100ms ease-out;
 }
 
 @media (hover: hover) {
@@ -259,5 +314,9 @@ li.row-pulse {
 @media (prefers-reduced-motion: reduce) {
   li {
     transition: none;
+  }
+
+  .animate-pulse {
+    animation: none;
   }
 }

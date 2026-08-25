@@ -11,7 +11,7 @@ import type { Balance, Person } from '../group/types';
 import { useCreateSettlement } from './api';
 
 const selectClassName =
-  'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/30 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
+  'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/55 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
 
 interface SettleUpModalProps {
   code: string;

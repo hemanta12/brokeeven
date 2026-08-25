@@ -11,7 +11,7 @@ import { useCreateExpense, useUpdateExpense } from './api';
 import { centsToDollars, dollarsToCents, equalSplitCents } from './splitPreview';
 
 const selectClassName =
-  'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/30 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
+  'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/55 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -210,7 +210,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
             const participantIndex = participantIds.indexOf(person.id);
             return (
               <div key={person.id} className="flex min-h-11 items-center justify-between gap-3 py-1.5">
-                <label className="flex min-h-11 flex-1 items-center gap-2 font-sans text-body text-ink-forest">
+                <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-2 font-sans text-body text-ink-forest">
                   <input
                     type="checkbox"
                     checked={checked}
@@ -233,7 +233,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setPercentByPerson)({ ...percentByPerson, [person.id]: event.target.value })
                       }
-                      className="focus-ring h-11 w-16 rounded-lg border border-ink-forest/30 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
+                      className="focus-ring h-11 w-16 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
                     />
                     %
                   </label>
@@ -248,7 +248,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setCustomByPerson)({ ...customByPerson, [person.id]: event.target.value })
                       }
-                      className="focus-ring h-11 w-20 rounded-lg border border-ink-forest/30 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
+                      className="focus-ring h-11 w-20 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
                     />
                   </label>
                 )}
@@ -258,10 +258,10 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
           })}
           </div>
           {splitMethod === 'percent' && (
-            <p className="font-sans text-label text-ink-forest/60">Entered: {percentEntered} / 100</p>
+            <p className="font-sans text-label text-ink-forest/70">Entered: {percentEntered} / 100</p>
           )}
           {splitMethod === 'custom' && (
-            <p className="font-sans text-label text-ink-forest/60">
+            <p className="font-sans text-label text-ink-forest/70">
               Entered: {centsToDollars(customEnteredCents)} / {amount || '0.00'}
             </p>
           )}

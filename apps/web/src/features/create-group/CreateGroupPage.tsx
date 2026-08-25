@@ -42,7 +42,7 @@ export function CreateGroupPage() {
   if (!group) {
     return (
       <main>
-        <h1 className="font-display text-display font-semibold text-ink-forest">Create a Group</h1>
+        <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Create a Group</h1>
         <form onSubmit={handleCreateGroup} className="mt-6 flex flex-col gap-4">
           <Field
             id="group-name"
@@ -71,12 +71,12 @@ export function CreateGroupPage() {
       <button
         type="button"
         onClick={() => navigate('/create', { replace: true })}
-        className="focus-ring font-sans text-body font-medium text-brass-ui"
+        className="focus-ring font-sans text-body font-medium text-ink-forest hover:underline active:opacity-70"
       >
         ‹ Back
       </button>
 
-      <h1 className="mt-6 font-display text-display font-semibold text-ink-forest">Add people to {group.name}</h1>
+      <h1 className="mt-6 font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Add people to {group.name}</h1>
 
       <div className="mt-6 flex flex-col gap-4">
         <Field id="group-name-readonly" label="Group name" value={group.name} readOnly />
@@ -117,7 +117,7 @@ export function CreateGroupPage() {
             ))}
           </ul>
         )}
-        <p className="font-sans text-label text-ink-forest/50">{people.length} people added</p>
+        <p className="font-sans text-label text-ink-forest/70">{people.length} people added</p>
       </div>
 
       <Button className="mt-6 h-[52px] w-full" onClick={() => navigate(`/g/${group.joinCode}`)}>

@@ -20,7 +20,7 @@ export function Button({ variant = 'primary', className = '', ...props }: Button
   return (
     <button
       type="button"
-      className={`focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 font-sans font-semibold transition-transform duration-150 ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 font-sans font-semibold transition-transform duration-150 disabled:cursor-not-allowed disabled:opacity-45 ${VARIANT_CLASSES[variant]} ${className}`}
       {...props}
     />
   );

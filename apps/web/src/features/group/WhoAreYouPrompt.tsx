@@ -46,8 +46,10 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
               return (
                 <li key={person.id}>
                   <label
-                    className={`focus-ring flex min-h-11 items-center gap-3 rounded-lg border px-3.5 py-3 font-sans text-body font-medium text-ink-forest ${
-                      isSelected ? 'border-[1.5px] border-ink-forest bg-ledger-paper' : 'border-ink-forest/20'
+                    className={`focus-ring flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-3 font-sans text-body font-medium text-ink-forest transition-colors duration-100 ${
+                      isSelected
+                        ? 'border-[1.5px] border-ink-forest bg-ledger-paper'
+                        : 'border-ink-forest/20 hover:border-ink-forest/40 active:bg-ink-forest/5'
                     }`}
                   >
                     <input

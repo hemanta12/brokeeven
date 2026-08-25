@@ -16,7 +16,7 @@ export function ExpenseRow({ title, payerName, amount, date, onClick }: ExpenseR
     <button
       type="button"
       onClick={onClick}
-      className="focus-ring flex min-h-11 w-full items-center justify-between gap-4 px-2 py-3 text-left"
+      className="focus-ring flex min-h-11 w-full items-center justify-between gap-4 px-2 py-3 text-left transition-transform duration-100 hover:bg-ink-forest/5 active:scale-[0.98]"
     >
       <span className="font-sans text-body text-ink-forest">
         {title} <span className="text-label text-ink-forest/70">— {payerName}</span>

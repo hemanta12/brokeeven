@@ -8,7 +8,7 @@ import { Field } from '../../components/Field';
 import { MemberChip } from '../../components/MemberChip';
 import { Tabs } from '../../components/Tabs';
 import { ApiError } from '../../lib/apiClient';
-import { EmptyState, ErrorState, LoadingState, NotFoundState } from '../../shared/RouteStates';
+import { EmptyState, ErrorState, NotFoundState } from '../../shared/RouteStates';
 import { getIdentity } from '../../shared/identity';
 import { useBlurValidation } from '../../shared/useBlurValidation';
 import { ExpenseDetail } from '../expense/ExpenseDetail';
@@ -16,6 +16,7 @@ import { ExpenseModal } from '../expense/ExpenseModal';
 import { SettleUpModal } from '../settlement/SettleUpModal';
 import { useAddPerson, useGroupByCode, useRemovePerson } from './api';
 import { EditPersonForm } from './EditPersonForm';
+import { GroupPageSkeleton } from './GroupPageSkeleton';
 import type { Balance, Expense } from './types';
 import { useGroupRealtime } from './useGroupRealtime';
 import { WhoAreYouPrompt } from './WhoAreYouPrompt';
@@ -41,11 +42,18 @@ export function GroupPage() {
   const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | 'new' | null>(null);
   const [settlingBalance, setSettlingBalance] = useState<Balance | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);
   const { touch, isRequiredError } = useBlurValidation();
   const pulsingIds = useGroupRealtime(code, group?.id);
+
+  async function handleCopyInviteLink() {
+    await navigator.clipboard?.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
   function closeWhoAreYou() {
     setIdentityPersonId(code ? getIdentity(code) : null);
@@ -60,7 +68,7 @@ export function GroupPage() {
   }
 
   if (isLoading) {
-    return <LoadingState label="Loading group…" />;
+    return <GroupPageSkeleton />;
   }
 
   if (isError) {
@@ -101,18 +109,18 @@ export function GroupPage() {
     <main className="pb-28">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-display font-semibold text-ink-forest">{group.name}</h1>
+          <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">{group.name}</h1>
           {group.label && (
-            <span className="mt-1 inline-flex self-start rounded-full border border-brass-ui px-2.5 py-0.5 font-sans text-label text-brass-ui">
+            <span className="mt-1 inline-flex self-start rounded-full border border-brass-ui px-2.5 py-0.5 font-sans text-label text-ink-forest">
               {group.label}
             </span>
           )}
         </div>
-        <Button variant="tertiary" onClick={() => navigator.clipboard?.writeText(inviteLink)}>
-          Share invite link
+        <Button variant="tertiary" onClick={handleCopyInviteLink}>
+          <span aria-live="polite">{copied ? 'Copied!' : 'Share invite link'}</span>
         </Button>
       </header>
-      <p className="mt-1 font-sans text-label text-ink-forest/60">
+      <p className="mt-1 font-sans text-label text-ink-forest/70">
         Code: <span className="font-mono">{group.joinCode}</span>
       </p>
 
@@ -149,7 +157,7 @@ export function GroupPage() {
               <Button
                 variant="secondary"
                 aria-label="Add person"
-                className="h-8! w-8! rounded-full! p-0!"
+                className="h-11! w-11! rounded-full! p-0!"
                 onClick={() => setShowAddPersonForm(true)}
               >
                 +
@@ -159,7 +167,7 @@ export function GroupPage() {
         </ul>
 
         {group.people.length >= MEMBER_CAP ? (
-          <p className="mt-3 font-sans text-label text-ink-forest/60">
+          <p className="mt-3 font-sans text-label text-ink-forest/70">
             Group already has the maximum of {MEMBER_CAP} members.
           </p>
         ) : (

@@ -18,17 +18,21 @@ export function MemberChip({ name, isYou = false, onEdit, onRemove }: MemberChip
   const hasActions = Boolean(onEdit || onRemove);
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border border-ink-forest py-1 font-sans text-label font-medium text-ink-forest ${
+      className={`inline-flex items-center gap-1.5 rounded-full border border-ink-forest py-1 font-sans text-label font-medium text-ink-forest ${
         hasActions ? 'pl-3 pr-1' : 'px-3'
       } ${isYou ? 'border-b-2 border-b-brass' : ''}`}
     >
       {name}
+      {/* ponytail: 32px buttons stay under the 44px touch-target ideal (DESIGN_SYSTEM.md
+          §10) to keep the chip compact — glyph itself is unchanged, only the tap box
+          grew. Upgrade path if this proves too fiddly on a real device: collapse
+          edit+remove into a single overflow/kebab affordance sized to 44px. */}
       {onEdit && (
         <button
           type="button"
           onClick={stop(onEdit)}
           aria-label={`Edit ${name}`}
-          className="member-chip-action focus-ring flex h-6 w-6 items-center justify-center rounded-full text-ink-forest/50"
+          className="member-chip-action focus-ring flex h-8 w-8 items-center justify-center rounded-full text-ink-forest/60 hover:bg-ink-forest/10 active:scale-90"
         >
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5">
             <path
@@ -44,7 +48,7 @@ export function MemberChip({ name, isYou = false, onEdit, onRemove }: MemberChip
           type="button"
           onClick={stop(onRemove)}
           aria-label={`Remove ${name}`}
-          className="member-chip-action focus-ring flex h-6 w-6 items-center justify-center rounded-full text-ink-forest/50"
+          className="member-chip-action focus-ring flex h-8 w-8 items-center justify-center rounded-full text-ink-forest/60 hover:bg-ink-forest/10 active:scale-90"
         >
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5">
             <path
