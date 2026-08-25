@@ -26,6 +26,41 @@ beforeEach(() => {
   vi.mocked(prisma.expenseSplit.findMany).mockResolvedValue([]);
 });
 
+describe('PATCH /people/:id/name', () => {
+  it('renames an active person', async () => {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, name: 'Alise', removedAt: null } as never);
+    vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, groupId: 'g1', name: 'Alice' } as never);
+
+    const response = await request(app).patch(`/people/${VALID_ID}/name`).send({ name: 'Alice' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.person.update).toHaveBeenCalledWith({ where: { id: VALID_ID }, data: { name: 'Alice' } });
+  });
+
+  it('rejects an empty name', async () => {
+    const response = await request(app).patch(`/people/${VALID_ID}/name`).send({ name: '  ' });
+
+    expect(response.status).toBe(400);
+    expect(prisma.person.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for a malformed id', async () => {
+    const response = await request(app).patch('/people/not-a-uuid/name').send({ name: 'Alice' });
+
+    expect(response.status).toBe(400);
+    expect(prisma.person.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 for a person that does not exist or was removed', async () => {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue(null);
+
+    const response = await request(app).patch(`/people/${VALID_ID}/name`).send({ name: 'Alice' });
+
+    expect(response.status).toBe(404);
+    expect(prisma.person.update).not.toHaveBeenCalled();
+  });
+});
+
 describe('PATCH /people/:id', () => {
   it('soft-deletes a person with no expenses as payer', async () => {
     vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);

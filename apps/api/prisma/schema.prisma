@@ -19,6 +19,7 @@ enum ActivityAction {
   expense_delete
   person_add
   person_remove
+  person_rename
   settlement
 }
 
