@@ -1,11 +1,104 @@
-:root {
-  color: #1e2e23;
-  background: #e6f1e2;
-  font-family: Arial, sans-serif;
+@import 'tailwindcss';
+
+/* Self-hosted fonts (DESIGN_SYSTEM.md §3). Latin subset only — app is
+   English-only, so the other Google-served unicode-range subsets
+   (cyrillic, greek, vietnamese, etc.) are dead weight. */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/fraunces-600.woff2') format('woff2');
 }
 
-body {
-  margin: 0;
+/* IBM Plex Sans ships as a single variable file; three @font-face blocks
+   pinned to different font-weight values each resolve their own instance
+   from it (standard modern practice, mirrors Google Fonts' own css2 API). */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/plexsans-variable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/plexsans-variable.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/plexsans-variable.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/plexmono-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/plexmono-500.woff2') format('woff2');
+}
+
+/* Tailwind token mapping — DESIGN_SYSTEM.md §11 */
+@theme {
+  --color-ledger-paper: #e6f1e2;
+  --color-paper-white: #f8fbf5;
+  --color-ink-forest: #1e2e23;
+  --color-ledger-green: #2f6b4f;
+  --color-debt-red: #a8402b;
+  --color-brass: #b8912b;
+  --color-brass-ui: #96762a;
+
+  --font-display: 'Fraunces', serif;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  --text-display: 2rem;
+  --text-section: 1.125rem;
+  --text-body: 1rem;
+  --text-label: 0.875rem;
+  --text-hero-balance: 1.75rem;
+  --text-row-amount: 1rem;
+}
+
+@layer base {
+  :root {
+    color: var(--color-ink-forest);
+    background: var(--color-ledger-paper);
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+  }
+}
+
+@layer components {
+  /* Contrast-safe double focus ring (DESIGN_SYSTEM.md §10): outer ring
+     (brass-ui) reads against both app backgrounds, inner ring (paper-white)
+     reads against dark control fills. Hand-written box-shadow, not
+     Tailwind's ring+ring-offset utilities, since ring-offset assumes a
+     solid matching background color and this app has two. */
+  .focus-ring {
+    outline: none;
+  }
+  .focus-ring:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--color-paper-white),
+      0 0 0 4px var(--color-brass-ui);
+  }
 }
 
 main {
@@ -16,13 +109,74 @@ main {
   padding: 3rem 1.5rem;
 }
 
+/* Fixed full-viewport scroll region. Width itself is capped one level in,
+   on .overlay-content, so the modal matches <main>'s column width instead
+   of spanning edge-to-edge on desktop while every other screen doesn't. */
 .overlay {
+  --field-bg: var(--color-ledger-paper);
   position: fixed;
   inset: 0;
   overflow-y: auto;
-  background: #e6f1e2;
+}
+
+.overlay-content {
+  box-sizing: border-box;
+  min-height: 100%;
+  max-width: 32.5rem;
+  margin-inline: auto;
   padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
     max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
+}
+
+/* Segmented-pill control (DESIGN_SYSTEM.md §7-adjacent) — shared by Group
+   View tabs and the Add Expense split-method control. */
+.segmented {
+  display: flex;
+  gap: 0;
+  border-radius: 10px;
+  padding: 4px;
+  background: var(--field-bg, var(--color-paper-white));
+}
+
+.segment {
+  flex: 1;
+  text-align: center;
+  border-radius: 8px;
+}
+
+.segment[data-active='true'] {
+  background: var(--color-ink-forest);
+  color: var(--color-paper-white);
+}
+
+/* Member chip's edit/remove icons stay hidden until the viewer actually
+   means to reach them: real mouse hover on pointer-capable devices, or a tap
+   (tracked as data-revealed) on touch devices — never permanently-visible
+   icons or a floating text-label panel. Keyboard focus always reveals them
+   too, since the buttons themselves stay in the DOM and tabbable regardless. */
+.member-hover-reveal .member-chip-action {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+@media (hover: hover) {
+  .member-hover-reveal:hover .member-chip-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.member-hover-reveal[data-revealed='true'] .member-chip-action,
+.member-hover-reveal:focus-within .member-chip-action {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-chip-action {
+    transition: none;
+  }
 }
 
 .overlay-header {
@@ -39,6 +193,10 @@ main {
 
 .paid-by-date > div {
   flex: 1 1 160px;
+  /* Flex items default to min-width:auto, which floors their width at
+     content size — a long payer name in the <select> was overflowing its
+     160px basis and forcing the pair to wrap even on normal-width screens. */
+  min-width: 0;
 }
 
 @media (max-width: 360px) {
@@ -47,16 +205,55 @@ main {
   }
 }
 
-/* One-shot real-time update cue (Design System §6): a transition, not a
+/* Green-bar ledger rows (DESIGN_SYSTEM.md §4): hairline between rows, faint
+   alternating tint. Shared by the member/expense/balance lists. */
+.ledger-list > li {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-ink-forest) 10%, transparent);
+}
+
+.ledger-list > li:last-child {
+  border-bottom: none;
+}
+
+.ledger-list > li:nth-child(odd) {
+  background-color: var(--color-ledger-paper);
+}
+
+/* Persistent bottom-anchored Add Expense action (DESIGN_SYSTEM.md §10) —
+   thumb-reachable on small mobile widths, safe-area aware. */
+.bottom-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, var(--color-ledger-paper) 65%, transparent);
+}
+
+.bottom-bar > button {
+  width: 100%;
+  max-width: 32.5rem;
+}
+
+/* One-shot real-time update cue (DESIGN_SYSTEM.md §6): a transition, not a
    keyframe, so a second update arriving mid-fade retargets smoothly instead
-   of restarting. Color is a functional placeholder — Phase 4 (Sprint 4.1)
-   swaps this for the actual Ledger Green/Brass token. */
+   of restarting. */
 li {
   transition: background-color 250ms ease-out;
 }
 
 li.row-pulse {
-  background-color: #b9dfae;
+  /* Tinted, not solid — a full-strength Ledger Green fill drops text
+     contrast below the readable floor against Ink Forest copy. */
+  background-color: color-mix(in srgb, var(--color-ledger-green) 25%, transparent);
+}
+
+/* Same rule, scoped one level more specifically than `.ledger-list >
+   li:nth-child(odd)` above, so a pulsing odd row isn't masked by its own
+   alternating tint. */
+.ledger-list > li.row-pulse {
+  background-color: color-mix(in srgb, var(--color-ledger-green) 25%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

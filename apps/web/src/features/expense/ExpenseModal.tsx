@@ -1,11 +1,17 @@
 import { useState, type FormEvent } from 'react';
 
-import { ErrorState } from '../../shared/RouteStates';
+import { Button } from '../../components/Button';
+import { Field } from '../../components/Field';
 import { Overlay } from '../../shared/Overlay';
+import { ErrorState } from '../../shared/RouteStates';
+import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
 import type { Expense, Person, SplitMethod } from '../group/types';
 import { useCreateExpense, useUpdateExpense } from './api';
 import { centsToDollars, dollarsToCents, equalSplitCents } from './splitPreview';
+
+const selectClassName =
+  'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/30 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -26,6 +32,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   const mutation = isEdit ? updateExpense : createExpense;
 
   const [touched, setTouched] = useState(false);
+  const [title, setTitle] = useState(expense?.title ?? '');
   const [description, setDescription] = useState(expense?.description ?? '');
   const [amount, setAmount] = useState(expense?.amount ?? '');
   const [date, setDate] = useState(expense?.date.slice(0, 10) ?? todayIsoDate());
@@ -79,7 +86,8 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
           : participantIds.map((personId) => ({ personId, amount: Number(customByPerson[personId]) || 0 }));
 
     const input = {
-      description,
+      title,
+      description: description.trim() || undefined,
       amount: Number(amount),
       date,
       payerId,
@@ -92,103 +100,132 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
     } else {
       await createExpense.mutateAsync(input);
     }
+    vibrateConfirm();
     onClose();
   }
 
   return (
     <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} isDirty={touched} onClose={onClose}>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Description
-          <input
-            value={description}
-            onChange={(event) => touch(setDescription)(event.target.value)}
-            onBlur={() => markBlurred('description')}
-            required
-            maxLength={200}
-          />
-        </label>
-        {isRequiredError('description', description) && <span role="alert">Description is required.</span>}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <Field
+          id="expense-title"
+          label="Title"
+          value={title}
+          onChange={(event) => touch(setTitle)(event.target.value)}
+          onBlur={() => markBlurred('title')}
+          error={isRequiredError('title', title) ? 'Title is required.' : undefined}
+          required
+          maxLength={200}
+        />
+
+        <Field
+          id="expense-description"
+          label="Description (optional)"
+          value={description}
+          onChange={(event) => touch(setDescription)(event.target.value)}
+          maxLength={1000}
+        />
 
         <div className="paid-by-date">
-          <div>
-            <label>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="expense-payer" className="font-sans text-label font-medium text-ink-forest">
               Paid by
-              <select
-                value={payerId}
-                onChange={(event) => touch(setPayerId)(event.target.value)}
-                onBlur={() => markBlurred('payerId')}
-                required
-              >
-                <option value="" disabled>
-                  Select payer
+            </label>
+            <select
+              id="expense-payer"
+              value={payerId}
+              onChange={(event) => touch(setPayerId)(event.target.value)}
+              onBlur={() => markBlurred('payerId')}
+              required
+              className={selectClassName}
+            >
+              <option value="" disabled>
+                Select payer
+              </option>
+              {people.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.id === identityPersonId ? `${person.name} (you)` : person.name}
                 </option>
-                {people.map((person) => (
-                  <option key={person.id} value={person.id}>
-                    {person.id === identityPersonId ? `${person.name} (you)` : person.name}
-                  </option>
-                ))}
-              </select>
-              {isRequiredError('payerId', payerId) && <span role="alert">Payer is required.</span>}
-            </label>
+              ))}
+            </select>
+            {isRequiredError('payerId', payerId) && <p className="text-label text-debt-red">Payer is required.</p>}
           </div>
-          <div>
-            <label>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="expense-date" className="font-sans text-label font-medium text-ink-forest">
               Date
-              <input type="date" value={date} onChange={(event) => touch(setDate)(event.target.value)} required />
             </label>
+            <input
+              id="expense-date"
+              type="date"
+              value={date}
+              onChange={(event) => touch(setDate)(event.target.value)}
+              required
+              className={selectClassName}
+            />
           </div>
         </div>
 
-        <label>
-          Amount
-          <input
-            type="text"
-            inputMode="decimal"
-            value={amount}
-            onChange={(event) => touch(setAmount)(event.target.value)}
-            onBlur={() => markBlurred('amount')}
-            required
-          />
-        </label>
-        {isRequiredError('amount', amount) && <span role="alert">Amount is required.</span>}
+        <Field
+          id="expense-amount"
+          label="Amount"
+          type="text"
+          inputMode="decimal"
+          value={amount}
+          onChange={(event) => touch(setAmount)(event.target.value)}
+          onBlur={() => markBlurred('amount')}
+          error={isRequiredError('amount', amount) ? 'Amount is required.' : undefined}
+          required
+        />
 
-        <fieldset>
-          <legend>Split method</legend>
-          {(['equal', 'percent', 'custom'] as const).map((method) => (
-            <label key={method}>
-              <input
-                type="radio"
-                name="splitMethod"
-                checked={splitMethod === method}
-                onChange={() => touch(setSplitMethod)(method)}
-              />
-              {method === 'equal' ? 'Equal' : method === 'percent' ? 'Percent' : 'Custom'}
-            </label>
-          ))}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="font-sans text-label font-medium text-ink-forest">Split method</legend>
+          <div className="segmented" role="radiogroup">
+            {(['equal', 'percent', 'custom'] as const).map((method) => {
+              const isActive = splitMethod === method;
+              return (
+                <label
+                  key={method}
+                  data-active={isActive}
+                  className="segment flex min-h-9 items-center justify-center py-2 font-sans text-label font-semibold text-ink-forest has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brass-ui"
+                >
+                  <input
+                    type="radio"
+                    name="splitMethod"
+                    checked={isActive}
+                    onChange={() => touch(setSplitMethod)(method)}
+                    className="sr-only"
+                  />
+                  {method === 'equal' ? 'Equal' : method === 'percent' ? 'Percent' : 'Custom'}
+                </label>
+              );
+            })}
+          </div>
         </fieldset>
 
-        <fieldset>
-          <legend>Participants</legend>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="font-sans text-label font-medium text-ink-forest">Split between</legend>
+          <div className="flex flex-col divide-y divide-ink-forest/10 rounded-[10px] bg-[var(--field-bg,var(--color-paper-white))] px-3.5">
           {people.map((person) => {
             const checked = participantIds.includes(person.id);
             const participantIndex = participantIds.indexOf(person.id);
             return (
-              <div key={person.id}>
-                <label>
-                  <input type="checkbox" checked={checked} onChange={() => toggleParticipant(person.id)} />
+              <div key={person.id} className="flex min-h-11 items-center justify-between gap-3 py-1.5">
+                <label className="flex min-h-11 flex-1 items-center gap-2 font-sans text-body text-ink-forest">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleParticipant(person.id)}
+                    className="focus-ring h-5 w-5 shrink-0 accent-ink-forest"
+                  />
                   {person.name}
                 </label>
                 {checked && splitMethod === 'equal' && (
-                  <span>
-                    {' '}
+                  <span className="font-mono text-row-amount tabular-nums text-ink-forest">
                     {centsToDollars(equalPreview[participantIndex] ?? 0)}
                   </span>
                 )}
                 {checked && splitMethod === 'percent' && (
-                  <label>
-                    {' '}
-                    %
+                  <label className="flex items-center gap-1 font-sans text-body text-ink-forest">
                     <input
                       type="text"
                       inputMode="decimal"
@@ -196,12 +233,13 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setPercentByPerson)({ ...percentByPerson, [person.id]: event.target.value })
                       }
+                      className="focus-ring h-11 w-16 rounded-lg border border-ink-forest/30 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
                     />
+                    %
                   </label>
                 )}
                 {checked && splitMethod === 'custom' && (
-                  <label>
-                    {' '}
+                  <label className="flex items-center gap-1 font-sans text-body text-ink-forest">
                     $
                     <input
                       type="text"
@@ -210,25 +248,29 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setCustomByPerson)({ ...customByPerson, [person.id]: event.target.value })
                       }
+                      className="focus-ring h-11 w-20 rounded-lg border border-ink-forest/30 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
                     />
                   </label>
                 )}
-                {!checked && splitMethod !== 'equal' && <span> —</span>}
+                {!checked && splitMethod !== 'equal' && <span className="text-ink-forest/40">—</span>}
               </div>
             );
           })}
-          {splitMethod === 'percent' && <p>Entered: {percentEntered} / 100</p>}
+          </div>
+          {splitMethod === 'percent' && (
+            <p className="font-sans text-label text-ink-forest/60">Entered: {percentEntered} / 100</p>
+          )}
           {splitMethod === 'custom' && (
-            <p>
+            <p className="font-sans text-label text-ink-forest/60">
               Entered: {centsToDollars(customEnteredCents)} / {amount || '0.00'}
             </p>
           )}
         </fieldset>
 
         {mutation.isError && <ErrorState message={mutation.error.message} />}
-        <button type="submit" disabled={mutation.isPending || participantIds.length === 0}>
+        <Button type="submit" disabled={mutation.isPending || participantIds.length === 0}>
           {mutation.isPending ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
       </form>
     </Overlay>
   );

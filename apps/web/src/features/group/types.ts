@@ -28,7 +28,8 @@ export interface ExpenseSplit {
 export interface Expense {
   id: string;
   groupId: string;
-  description: string;
+  title: string;
+  description: string | null;
   amount: string;
   date: string;
   payerId: string;

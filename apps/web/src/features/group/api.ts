@@ -38,3 +38,12 @@ export function useRemovePerson(code: string | undefined) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
   });
 }
+
+export function useRenamePerson(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      apiFetch<Person>(`/people/${id}/name`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+  });
+}

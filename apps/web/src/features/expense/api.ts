@@ -5,7 +5,8 @@ import { groupQueryKey } from '../group/api';
 import type { Expense, SplitMethod } from '../group/types';
 
 export interface ExpenseInput {
-  description: string;
+  title: string;
+  description?: string;
   amount: number;
   date: string;
   payerId: string;

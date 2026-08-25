@@ -30,7 +30,8 @@ const baseGroup = {
     {
       id: 'e1',
       groupId: 'g1',
-      description: 'Dinner',
+      title: 'Dinner',
+      description: null,
       amount: '20.00',
       date: '2026-01-05',
       payerId: 'p1',
@@ -114,8 +115,9 @@ describe('GroupPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Balances' }));
 
-    expect(screen.getByText('Bob owes Alice $10.00')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Settle Up' })).toBeInTheDocument();
+    expect(screen.getByText('Bob owes Alice')).toBeInTheDocument();
+    expect(screen.getByText('$10.00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settle' })).toBeInTheDocument();
   });
 
   it('opens the Add Expense overlay', async () => {
@@ -126,7 +128,7 @@ describe('GroupPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add Expense' }));
 
     const dialog = screen.getByRole('dialog', { name: 'Add expense' });
-    expect(within(dialog).getByLabelText('Description')).toBeInTheDocument();
+    expect(within(dialog).getByLabelText('Title')).toBeInTheDocument();
   });
 
   it('blocks removing a person who is a payer, showing the server message', async () => {
@@ -144,8 +146,7 @@ describe('GroupPage', () => {
       )
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Alice' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Remove from group' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Alice' }));
 
     expect(await screen.findByText(/Reassign this person's expenses/)).toBeInTheDocument();
   });

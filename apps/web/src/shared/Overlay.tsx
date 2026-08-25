@@ -62,20 +62,21 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', childre
   }, []);
 
   return (
-    <div
-      className="overlay"
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      ref={containerRef}
-    >
-      <div className="overlay-header">
-        <h2>{title}</h2>
-        <button type="button" aria-label={closeLabel} onClick={() => requestCloseRef.current()}>
-          {closeLabel === 'Close' ? '×' : closeLabel}
-        </button>
+    <div className="overlay" role="dialog" aria-modal="true" aria-label={title} ref={containerRef}>
+      <div className="overlay-content bg-paper-white shadow-lg sm:rounded-lg">
+        <div className="overlay-header mb-6">
+          <h2 className="font-display text-[1.375rem] font-semibold text-ink-forest">{title}</h2>
+          <button
+            type="button"
+            aria-label={closeLabel}
+            onClick={() => requestCloseRef.current()}
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-ledger-paper text-xl text-ink-forest"
+          >
+            {closeLabel === 'Close' ? '×' : closeLabel}
+          </button>
+        </div>
+        {children}
       </div>
-      {children}
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import { Button } from '../../components/Button';
+import { Field } from '../../components/Field';
+
 export function JoinPage() {
   const navigate = useNavigate();
   const [code, setCode] = useState('');
@@ -14,13 +17,21 @@ export function JoinPage() {
 
   return (
     <main>
-      <h1>Join a Group</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Group code
-          <input value={code} onChange={(event) => setCode(event.target.value)} required />
-        </label>
-        <button type="submit">Join</button>
+      <h1 className="font-display text-display font-semibold text-ink-forest">Join a Group</h1>
+      <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
+        <Field
+          id="join-code"
+          label="Group code"
+          value={code}
+          onChange={(event) => setCode(event.target.value)}
+          autoComplete="off"
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="characters"
+          inputMode="text"
+          required
+        />
+        <Button type="submit">Join</Button>
       </form>
     </main>
   );
