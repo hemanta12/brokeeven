@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'node:http';
 
 import { Server } from 'socket.io';
 
-import { getGroupStateById } from './groupState.js';
+import { getGroupStateById } from './group/groupState.js';
 
 let io: Server | undefined;
 

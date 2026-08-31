@@ -2,12 +2,13 @@ import type { Prisma } from '@prisma/client';
 import type { Request } from 'express';
 import { Router } from 'express';
 
-import { logActivity } from '../activityLog.js';
-import { centsToAmount, toCents } from '../money.js';
+import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { requireActor } from '../auth/middleware.js';
+import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
-import { redistributeAmounts } from '../redistribution.js';
+import { redistributeAmounts } from '../split/redistribution.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NAME_MAX_LENGTH = 60;
@@ -71,7 +72,7 @@ async function redistributeSplitsForRemoval(tx: Prisma.TransactionClient, person
 
 // Separate route from the soft-delete PATCH below so the two actions can
 // never be confused by a missing/extra body field.
-peopleRouter.patch('/people/:id/name', writeRateLimit, async (request: Request<{ id: string }>, response) => {
+peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid person id' });
     return;
@@ -91,7 +92,13 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, async (request: Request<{
 
   const updated = await prisma.$transaction(async (tx) => {
     const renamed = await tx.person.update({ where: { id: person.id }, data: { name: name.trim() } });
-    await logActivity(tx, renamed.groupId, 'person_rename', `${person.name} renamed to ${renamed.name}`);
+    await logActivity(
+      tx,
+      renamed.groupId,
+      'person_rename',
+      `${person.name} renamed to ${renamed.name}`,
+      await actorNameInGroup(tx, renamed.groupId, request.actorId)
+    );
     return renamed;
   });
   response.status(200).json(updated);
@@ -99,7 +106,7 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, async (request: Request<{
 });
 
 // Soft-delete. Renaming is the separate /people/:id/name route above.
-peopleRouter.patch('/people/:id', async (request, response) => {
+peopleRouter.patch('/people/:id', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid person id' });
     return;
@@ -127,9 +134,50 @@ peopleRouter.patch('/people/:id', async (request, response) => {
   const updated = await prisma.$transaction(async (tx) => {
     await redistributeSplitsForRemoval(tx, person.id);
     const removed = await tx.person.update({ where: { id: person.id }, data: { removedAt: new Date() } });
-    await logActivity(tx, removed.groupId, 'person_remove', `${removed.name} removed`);
+    await logActivity(
+      tx,
+      removed.groupId,
+      'person_remove',
+      `${removed.name} removed`,
+      await actorNameInGroup(tx, removed.groupId, request.actorId)
+    );
     return removed;
   });
   response.status(200).json(updated);
   void broadcastGroupUpdate(updated.groupId);
+});
+
+// "Who are you?" identifying itself to the server. Links this person to the
+// caller -- guest or signed-in -- which is what makes My Groups possible and
+// what an account inherits when the guest is promoted at sign-in.
+peopleRouter.post('/people/:id/claim', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
+  if (!UUID_PATTERN.test(request.params.id)) {
+    response.status(400).json({ error: 'Invalid person id' });
+    return;
+  }
+
+  const person = await prisma.person.findUnique({ where: { id: request.params.id } });
+  if (!person) {
+    response.status(404).json({ error: 'Person not found' });
+    return;
+  }
+
+  const actorId = request.actorId!;
+  if (person.userId === actorId) {
+    response.status(200).json(person);
+    return;
+  }
+  if (person.userId !== null) {
+    response.status(409).json({ error: 'Someone else is already identified as this person' });
+    return;
+  }
+
+  const existing = await prisma.person.findFirst({ where: { groupId: person.groupId, userId: actorId } });
+  if (existing) {
+    response.status(409).json({ error: `You are already identified as ${existing.name} in this group` });
+    return;
+  }
+
+  const claimed = await prisma.person.update({ where: { id: person.id }, data: { userId: actorId } });
+  response.status(200).json(claimed);
 });

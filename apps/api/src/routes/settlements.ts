@@ -1,8 +1,10 @@
 import { Router } from 'express';
 
-import { logActivity } from '../activityLog.js';
-import { centsToAmount, toCents } from '../money.js';
+import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { requireActor } from '../auth/middleware.js';
+import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
+import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
 
 const NOTE_MAX_LENGTH = 200;
@@ -20,7 +22,7 @@ export const settlementsRouter = Router();
 
 // PRD §6.4: record-keeping only — no money actually moves. A required note
 // (e.g. "Venmo", "cash") says how it was settled outside the app.
-settlementsRouter.post('/groups/:code/settlements', async (request, response) => {
+settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor, async (request, response) => {
   const { fromPersonId, toPersonId, amount, note } = request.body as Record<string, unknown>;
 
   if (!isNonEmptyString(fromPersonId, 100) || !isNonEmptyString(toPersonId, 100)) {
@@ -63,12 +65,19 @@ settlementsRouter.post('/groups/:code/settlements', async (request, response) =>
         fromPersonId,
         toPersonId,
         amount: centsToAmount(amountCents),
-        note: trimmedNote
+        note: trimmedNote,
+        createdByUserId: request.actorId ?? null
       }
     });
     const fromName = memberById.get(fromPersonId)!.name;
     const toName = memberById.get(toPersonId)!.name;
-    await logActivity(tx, group.id, 'settlement', `${fromName} paid ${toName} $${created.amount.toString()} (${trimmedNote})`);
+    await logActivity(
+      tx,
+      group.id,
+      'settlement',
+      `${fromName} paid ${toName} $${created.amount.toString()} (${trimmedNote})`,
+      await actorNameInGroup(tx, group.id, request.actorId)
+    );
     return created;
   });
   response.status(201).json(settlement);

@@ -8,16 +8,19 @@ import { prisma } from '../prisma.js';
 vi.mock('../prisma.js', () => {
   const prismaMock = {
     group: { findUnique: vi.fn() },
-    person: { findMany: vi.fn() },
+    person: { findFirst: vi.fn(), findMany: vi.fn() },
     expense: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
     expenseSplit: { deleteMany: vi.fn() },
     activityLog: { create: vi.fn() },
+    user: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof prismaMock) => unknown) => Promise.resolve(fn(prismaMock)))
   };
   return { prisma: prismaMock };
 });
 
 const app = createApp();
+// requireActor mints this for every unauthenticated write.
+const GUEST_ID = '99999999-9999-9999-9999-999999999999';
 const GROUP_ID = 'g1';
 const EXPENSE_ID = '11111111-1111-1111-1111-111111111111';
 const ALICE = 'aaaaaaaa-1111-1111-1111-111111111111';
@@ -25,6 +28,9 @@ const BOB = 'bbbbbbbb-1111-1111-1111-111111111111';
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(prisma.user.create).mockResolvedValue({ id: GUEST_ID } as never);
+  // actorNameInGroup: nobody has said who they are unless a test says so.
+  vi.mocked(prisma.person.findFirst).mockResolvedValue(null as never);
   vi.mocked(prisma.$transaction).mockImplementation((fn) =>
     Promise.resolve((fn as (tx: typeof prisma) => unknown)(prisma))
   );
@@ -184,7 +190,11 @@ describe('POST /groups/:code/expenses', () => {
 
 describe('PATCH /expenses/:id', () => {
   it('replaces the title, amount, payer, and splits', async () => {
-    vi.mocked(prisma.expense.findUnique).mockResolvedValue({ id: EXPENSE_ID, groupId: GROUP_ID } as never);
+    vi.mocked(prisma.expense.findUnique).mockResolvedValue({
+      id: EXPENSE_ID,
+      groupId: GROUP_ID,
+      createdByUserId: null
+    } as never);
     vi.mocked(prisma.expense.update).mockResolvedValue({
       id: EXPENSE_ID,
       title: 'Dinner (updated)',
@@ -233,7 +243,8 @@ describe('DELETE /expenses/:id', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
-      title: 'Dinner'
+      title: 'Dinner',
+      createdByUserId: null
     } as never);
 
     const response = await request(app).delete(`/expenses/${EXPENSE_ID}`);
@@ -280,5 +291,59 @@ describe('POST /groups/:code/expenses — idempotency race', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(EXPENSE_ID);
+  });
+});
+
+describe('expense ownership', () => {
+  // The session cookie is the only thing that proves an actor is who they
+  // claim, so ownership is enforced from it, never from the request body.
+  async function sessionCookie(): Promise<string[]> {
+    vi.mocked(prisma.expense.findUnique).mockResolvedValue(null as never);
+    const seed = await request(app).delete(`/expenses/${EXPENSE_ID}`);
+    return seed.headers['set-cookie'] as unknown as string[];
+  }
+
+  it('lets the creator edit their own expense', async () => {
+    const cookies = await sessionCookie();
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: GUEST_ID } as never);
+    vi.mocked(prisma.expense.findUnique).mockResolvedValue({
+      id: EXPENSE_ID,
+      groupId: GROUP_ID,
+      title: 'Dinner',
+      createdByUserId: GUEST_ID
+    } as never);
+
+    const response = await request(app).delete(`/expenses/${EXPENSE_ID}`).set('Cookie', cookies);
+
+    expect(response.status).toBe(204);
+  });
+
+  it("refuses to delete someone else's expense", async () => {
+    const cookies = await sessionCookie();
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: GUEST_ID } as never);
+    vi.mocked(prisma.expense.findUnique).mockResolvedValue({
+      id: EXPENSE_ID,
+      groupId: GROUP_ID,
+      title: 'Dinner',
+      createdByUserId: 'someone-else'
+    } as never);
+
+    const response = await request(app).delete(`/expenses/${EXPENSE_ID}`).set('Cookie', cookies);
+
+    expect(response.status).toBe(403);
+    expect(prisma.expense.delete).not.toHaveBeenCalled();
+  });
+
+  it('leaves pre-ownership expenses editable by anyone', async () => {
+    vi.mocked(prisma.expense.findUnique).mockResolvedValue({
+      id: EXPENSE_ID,
+      groupId: GROUP_ID,
+      title: 'Dinner',
+      createdByUserId: null
+    } as never);
+
+    const response = await request(app).delete(`/expenses/${EXPENSE_ID}`);
+
+    expect(response.status).toBe(204);
   });
 });

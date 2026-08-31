@@ -1,13 +1,16 @@
 import { Prisma } from '@prisma/client';
+import type { Request } from 'express';
 import { Router } from 'express';
 
-import { logActivity } from '../activityLog.js';
-import { centsToAmount, toCents } from '../money.js';
+import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { requireActor } from '../auth/middleware.js';
+import { rejectIfNotOwner } from '../auth/ownership.js';
+import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
-import type { SplitInput } from '../splitResolution.js';
-import { resolveSplits } from '../splitResolution.js';
+import type { SplitInput } from '../split/splitResolution.js';
+import { resolveSplits } from '../split/splitResolution.js';
 
 const TITLE_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 1000;
@@ -80,7 +83,7 @@ function participantIdsOf(splitInput: SplitInput): string[] {
 
 export const expensesRouter = Router();
 
-expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, response) => {
+expensesRouter.post('/groups/:code/expenses', writeRateLimit, requireActor, async (request, response) => {
   const body = request.body as Record<string, unknown>;
   const { title, description, amount, date, payerId, splitMethod, splits } = body;
   const idempotencyKey = (request.header('Idempotency-Key') ?? body.idempotencyKey) as string | undefined;
@@ -156,6 +159,7 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, re
           payerId,
           splitMethod: splitInput.method,
           idempotencyKey: idempotencyKey ?? null,
+          createdByUserId: request.actorId ?? null,
           splits: {
             create: resolved.map((s) => ({
               personId: s.personId,
@@ -166,7 +170,13 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, re
         },
         include: { splits: true }
       });
-      await logActivity(tx, group.id, 'expense_add', `${created.title} — $${created.amount.toString()}`);
+      await logActivity(
+        tx,
+        group.id,
+        'expense_add',
+        `${created.title} — $${created.amount.toString()}`,
+        await actorNameInGroup(tx, group.id, request.actorId)
+      );
       return created;
     });
     response.status(201).json(expense);
@@ -181,7 +191,7 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, async (request, re
   }
 });
 
-expensesRouter.patch('/expenses/:id', async (request, response) => {
+expensesRouter.patch('/expenses/:id', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid expense id' });
     return;
@@ -192,6 +202,8 @@ expensesRouter.patch('/expenses/:id', async (request, response) => {
     response.status(404).json({ error: 'Expense not found' });
     return;
   }
+
+  if (rejectIfNotOwner(response, existing.createdByUserId, request.actorId)) return;
 
   const body = request.body as Record<string, unknown>;
   const { title, description, amount, date, payerId, splitMethod, splits } = body;
@@ -262,14 +274,20 @@ expensesRouter.patch('/expenses/:id', async (request, response) => {
       },
       include: { splits: true }
     });
-    await logActivity(tx, existing.groupId, 'expense_edit', `${expense.title} edited`);
+    await logActivity(
+      tx,
+      existing.groupId,
+      'expense_edit',
+      `${expense.title} edited`,
+      await actorNameInGroup(tx, existing.groupId, request.actorId)
+    );
     return expense;
   });
   response.status(200).json(updated);
   void broadcastGroupUpdate(existing.groupId);
 });
 
-expensesRouter.delete('/expenses/:id', async (request, response) => {
+expensesRouter.delete('/expenses/:id', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid expense id' });
     return;
@@ -281,9 +299,17 @@ expensesRouter.delete('/expenses/:id', async (request, response) => {
     return;
   }
 
+  if (rejectIfNotOwner(response, existing.createdByUserId, request.actorId)) return;
+
   await prisma.$transaction(async (tx) => {
     await tx.expense.delete({ where: { id: existing.id } });
-    await logActivity(tx, existing.groupId, 'expense_delete', `${existing.title} deleted`);
+    await logActivity(
+      tx,
+      existing.groupId,
+      'expense_delete',
+      `${existing.title} deleted`,
+      await actorNameInGroup(tx, existing.groupId, request.actorId)
+    );
   });
   response.status(204).send();
   void broadcastGroupUpdate(existing.groupId);

@@ -1,9 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { Router } from 'express';
 
-import { logActivity } from '../activityLog.js';
-import { getGroupStateByCode } from '../groupState.js';
-import { generateJoinCode } from '../joinCode.js';
+import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { requireActor } from '../auth/middleware.js';
+import { getGroupStateByCode } from '../group/groupState.js';
+import { generateJoinCode } from '../group/joinCode.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
@@ -22,7 +23,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 export const groupsRouter = Router();
 
-groupsRouter.post('/groups', writeRateLimit, async (request, response) => {
+groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, response) => {
   const { name, label } = request.body as { name?: unknown; label?: unknown };
 
   if (!isNonEmptyString(name, NAME_MAX_LENGTH)) {
@@ -57,10 +58,12 @@ groupsRouter.get('/groups/:code', async (request, response) => {
     response.status(404).json({ error: 'Group not found' });
     return;
   }
-  response.status(200).json(state);
+  // Per-viewer, so it rides on this response only — never on the realtime
+  // broadcast, which goes to the whole room from one shared payload.
+  response.status(200).json({ ...state, viewerUserId: request.actorId ?? null });
 });
 
-groupsRouter.post('/groups/:code/people', writeRateLimit, async (request, response) => {
+groupsRouter.post('/groups/:code/people', writeRateLimit, requireActor, async (request, response) => {
   const { name } = request.body as { name?: unknown };
 
   if (!isNonEmptyString(name, NAME_MAX_LENGTH)) {
@@ -86,7 +89,7 @@ groupsRouter.post('/groups/:code/people', writeRateLimit, async (request, respon
 
   const person = await prisma.$transaction(async (tx) => {
     const created = await tx.person.create({ data: { groupId: group.id, name: name.trim() } });
-    await logActivity(tx, group.id, 'person_add', `${created.name} added`);
+    await logActivity(tx, group.id, 'person_add', `${created.name} added`, await actorNameInGroup(tx, group.id, request.actorId));
     return created;
   });
   response.status(201).json(person);

@@ -8,17 +8,23 @@ import { prisma } from '../prisma.js';
 vi.mock('../prisma.js', () => {
   const prismaMock = {
     group: { create: vi.fn(), findUnique: vi.fn() },
-    person: { count: vi.fn(), create: vi.fn() },
+    person: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn() },
     activityLog: { create: vi.fn() },
+    user: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock))
   };
   return { prisma: prismaMock };
 });
 
 const app = createApp();
+// requireActor mints this for every unauthenticated write.
+const GUEST_ID = '99999999-9999-9999-9999-999999999999';
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(prisma.user.create).mockResolvedValue({ id: GUEST_ID } as never);
+  // actorNameInGroup: nobody has said who they are unless a test says so.
+  vi.mocked(prisma.person.findFirst).mockResolvedValue(null as never);
   vi.mocked(prisma.$transaction).mockImplementation((fn) =>
     Promise.resolve((fn as (tx: typeof prisma) => unknown)(prisma))
   );

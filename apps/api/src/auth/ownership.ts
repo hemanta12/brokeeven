@@ -1,0 +1,17 @@
+import type { Response } from 'express';
+
+export const NOT_OWNER_MESSAGE = 'Only the person who added this can edit it';
+
+// A null owner means the row predates ownership, or was created by a client
+// whose cookie never stuck. Either way nobody can prove it is theirs, so it
+// stays editable by anyone in the group rather than stranded.
+export function canMutate(ownerId: string | null, actorId: string | undefined): boolean {
+  return ownerId === null || (actorId !== undefined && ownerId === actorId);
+}
+
+// Returns true when the caller may not proceed, having already sent the 403.
+export function rejectIfNotOwner(response: Response, ownerId: string | null, actorId: string | undefined): boolean {
+  if (canMutate(ownerId, actorId)) return false;
+  response.status(403).json({ error: NOT_OWNER_MESSAGE });
+  return true;
+}

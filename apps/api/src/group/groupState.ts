@@ -1,8 +1,8 @@
 import type { Prisma } from '@prisma/client';
 
-import { computeBalances } from './balances.js';
-import { centsToAmount, toCents } from './money.js';
-import { prisma } from './prisma.js';
+import { computeBalances } from '../split/balances.js';
+import { centsToAmount, toCents } from '../split/money.js';
+import { prisma } from '../prisma.js';
 
 const groupInclude = {
   people: { where: { removedAt: null }, orderBy: { createdAt: 'asc' } },

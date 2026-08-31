@@ -4,10 +4,10 @@ import type { AddressInfo } from 'node:net';
 import { type Socket as ClientSocket, io as ioClient } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getGroupStateById } from './groupState.js';
+import { getGroupStateById } from './group/groupState.js';
 import { broadcastGroupUpdate, initRealtime } from './realtime.js';
 
-vi.mock('./groupState.js', () => ({ getGroupStateById: vi.fn() }));
+vi.mock('./group/groupState.js', () => ({ getGroupStateById: vi.fn() }));
 
 let httpServer: ReturnType<typeof createServer>;
 let baseUrl: string;
