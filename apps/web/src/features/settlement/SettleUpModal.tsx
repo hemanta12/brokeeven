@@ -7,8 +7,10 @@ import { Overlay } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
+import { formatCurrency } from '../../shared/format';
 import type { Balance, Person } from '../group/types';
 import { useCreateSettlement } from './api';
+import { checkOverpayment } from './overpayment';
 
 const selectClassName =
   'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/55 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
@@ -17,13 +19,16 @@ interface SettleUpModalProps {
   code: string;
   people: Person[];
   balance: Balance;
+  // Every balance in the group, not just the row this was opened from: From
+  // and To stay editable, so the amount owed has to be re-derived per pair.
+  balances: Balance[];
   onClose: () => void;
 }
 
 // Settling a specific balance row (DESIGN_SYSTEM.md §7 — each Balance row
 // owns its own Settle button) prefills From/To/Amount from that pair; all
 // three stay editable per APP_FLOW §2.9.
-export function SettleUpModal({ code, people, balance, onClose }: SettleUpModalProps) {
+export function SettleUpModal({ code, people, balance, balances, onClose }: SettleUpModalProps) {
   const createSettlement = useCreateSettlement(code);
 
   const [touched, setTouched] = useState(false);
@@ -32,17 +37,29 @@ export function SettleUpModal({ code, people, balance, onClose }: SettleUpModalP
   const [amount, setAmount] = useState(balance.amount);
   const [note, setNote] = useState('');
   const [settled, setSettled] = useState(false);
+  const [confirmedOverpayment, setConfirmedOverpayment] = useState(false);
   const { touch: markBlurred, isRequiredError } = useBlurValidation();
+
+  const nameOf = (id: string) => people.find((person) => person.id === id)?.name ?? 'they';
+  const fromPersonName = nameOf(fromPersonId);
+  const toPersonName = nameOf(toPersonId);
+
+  const overpayment = checkOverpayment(balances, fromPersonId, toPersonId, amount);
+  // Re-arm on every change: confirming $6,667 shouldn't silently pre-approve
+  // whatever the next typo is.
+  const blockedByOverpayment = overpayment !== null && !confirmedOverpayment;
 
   function touch<T>(setter: (value: T) => void) {
     return (value: T) => {
       setTouched(true);
+      setConfirmedOverpayment(false);
       setter(value);
     };
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+    if (blockedByOverpayment) return;
     await createSettlement.mutateAsync({ fromPersonId, toPersonId, amount: Number(amount), note });
     vibrateConfirm();
     setSettled(true);
@@ -137,8 +154,37 @@ export function SettleUpModal({ code, people, balance, onClose }: SettleUpModalP
           required
         />
 
+        {/* Warn and let them through, rather than capping at the balance:
+            paying a round number or paying ahead are both real. Naming the
+            reverse debt in currency is what makes a typo obvious. */}
+        {overpayment && (
+          <div
+            role="status"
+            className="rounded-[10px] border border-brass-ui/40 bg-brass/10 px-3.5 py-3 font-sans text-label text-ink-forest"
+          >
+            <p className="font-medium">
+              That&rsquo;s {formatCurrency(overpayment.excess)} more than the {formatCurrency(overpayment.owed)} owed.
+            </p>
+            <p className="mt-1 text-ink-forest/75">
+              Recording it leaves {toPersonName} owing {fromPersonName} {formatCurrency(overpayment.excess)}.
+            </p>
+            <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 text-ink-forest">
+              <input
+                type="checkbox"
+                checked={confirmedOverpayment}
+                onChange={(event) => setConfirmedOverpayment(event.target.checked)}
+                className="focus-ring h-5 w-5 shrink-0 accent-ink-forest"
+              />
+              Record it anyway
+            </label>
+          </div>
+        )}
+
         {createSettlement.isError && <ErrorState message={createSettlement.error.message} />}
-        <Button type="submit" disabled={createSettlement.isPending || fromPersonId === toPersonId}>
+        <Button
+          type="submit"
+          disabled={createSettlement.isPending || fromPersonId === toPersonId || blockedByOverpayment}
+        >
           {createSettlement.isPending ? 'Saving…' : 'Confirm'}
         </Button>
       </form>
