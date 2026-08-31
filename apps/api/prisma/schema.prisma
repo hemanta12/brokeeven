@@ -21,6 +21,7 @@ enum ActivityAction {
   person_remove
   person_rename
   settlement
+  settlement_delete
 }
 
 // One row per actor, signed in or not. A guest is simply a User with

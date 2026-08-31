@@ -1,3 +1,4 @@
+import type { Request } from 'express';
 import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
@@ -83,3 +84,54 @@ settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor
   response.status(201).json(settlement);
   void broadcastGroupUpdate(group.id);
 });
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Undo. Balances are derived on read (expenses minus settlements, netted per
+// pair), so removing the row is the whole reversal -- no compensating entry,
+// and it stays correct even when expenses were added after the settlement.
+//
+// Deliberately no rejectIfNotOwner, unlike DELETE /expenses/:id. A settlement
+// is usually recorded by whoever received the money, but the person who paid
+// is just as likely to spot a wrong amount, and a guest who loses their
+// cookie could otherwise never undo their own mistake. The log records who
+// recorded it and who undid it, so this is accountable rather than anonymous.
+settlementsRouter.delete(
+  '/settlements/:id',
+  writeRateLimit,
+  requireActor,
+  async (request: Request<{ id: string }>, response) => {
+    if (!UUID_PATTERN.test(request.params.id)) {
+      response.status(400).json({ error: 'Invalid settlement id' });
+      return;
+    }
+
+    const existing = await prisma.settlement.findUnique({ where: { id: request.params.id } });
+    if (!existing) {
+      response.status(404).json({ error: 'Settlement not found' });
+      return;
+    }
+
+    const people = await prisma.person.findMany({
+      where: { id: { in: [existing.fromPersonId, existing.toPersonId] } },
+      select: { id: true, name: true }
+    });
+    const nameById = new Map(people.map((person) => [person.id, person.name]));
+
+    await prisma.$transaction(async (tx) => {
+      await tx.settlement.delete({ where: { id: existing.id } });
+      await logActivity(
+        tx,
+        existing.groupId,
+        'settlement_delete',
+        `undid ${nameById.get(existing.fromPersonId) ?? 'someone'} paying ${
+          nameById.get(existing.toPersonId) ?? 'someone'
+        } $${existing.amount.toString()}`,
+        await actorNameInGroup(tx, existing.groupId, request.actorId)
+      );
+    });
+
+    response.status(204).send();
+    void broadcastGroupUpdate(existing.groupId);
+  }
+);

@@ -8,7 +8,7 @@ vi.mock('../prisma.js', () => {
   const prismaMock = {
     group: { findUnique: vi.fn() },
     person: { findFirst: vi.fn(), findMany: vi.fn() },
-    settlement: { create: vi.fn() },
+    settlement: { create: vi.fn(), findUnique: vi.fn(), delete: vi.fn() },
     activityLog: { create: vi.fn() },
     user: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof prismaMock) => unknown) => Promise.resolve(fn(prismaMock)))
@@ -118,5 +118,61 @@ describe('POST /groups/:code/settlements', () => {
     });
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe('DELETE /settlements/:id', () => {
+  const SETTLEMENT_ID = 'ffffffff-1111-1111-1111-111111111111';
+
+  function existingSettlement() {
+    return {
+      id: SETTLEMENT_ID,
+      groupId: GROUP_ID,
+      fromPersonId: BOB,
+      toPersonId: ALICE,
+      amount: { toString: () => '20.00' },
+      note: 'Venmo',
+      createdByUserId: 'someone-else'
+    };
+  }
+
+  it('undoes a settlement recorded by somebody else', async () => {
+    vi.mocked(prisma.settlement.findUnique).mockResolvedValue(existingSettlement() as never);
+
+    const response = await request(app).delete(`/settlements/${SETTLEMENT_ID}`);
+
+    expect(response.status).toBe(204);
+    expect(prisma.settlement.delete).toHaveBeenCalledWith({ where: { id: SETTLEMENT_ID } });
+  });
+
+  it('logs the undo as its own action, not as another settlement', async () => {
+    vi.mocked(prisma.settlement.findUnique).mockResolvedValue(existingSettlement() as never);
+
+    await request(app).delete(`/settlements/${SETTLEMENT_ID}`);
+
+    expect(prisma.activityLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'settlement_delete',
+          detail: 'undid Bob paying Alice $20.00'
+        })
+      })
+    );
+  });
+
+  it('returns 404 for a settlement that is not there', async () => {
+    vi.mocked(prisma.settlement.findUnique).mockResolvedValue(null as never);
+
+    const response = await request(app).delete(`/settlements/${SETTLEMENT_ID}`);
+
+    expect(response.status).toBe(404);
+    expect(prisma.settlement.delete).not.toHaveBeenCalled();
+  });
+
+  it('rejects an id that is not a uuid', async () => {
+    const response = await request(app).delete('/settlements/not-a-uuid');
+
+    expect(response.status).toBe(400);
+    expect(prisma.settlement.findUnique).not.toHaveBeenCalled();
   });
 });
