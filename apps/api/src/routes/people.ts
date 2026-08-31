@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { normalizePersonName } from '../group/personName.js';
 import { requireActor } from '../auth/middleware.js';
 import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
@@ -91,7 +92,7 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (requ
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    const renamed = await tx.person.update({ where: { id: person.id }, data: { name: name.trim() } });
+    const renamed = await tx.person.update({ where: { id: person.id }, data: { name: normalizePersonName(name) } });
     await logActivity(
       tx,
       renamed.groupId,

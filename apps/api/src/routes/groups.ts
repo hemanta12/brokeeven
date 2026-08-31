@@ -5,6 +5,7 @@ import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
 import { getGroupStateByCode } from '../group/groupState.js';
 import { generateJoinCode } from '../group/joinCode.js';
+import { normalizePersonName } from '../group/personName.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
@@ -63,6 +64,32 @@ groupsRouter.get('/groups/:code', async (request, response) => {
   response.status(200).json({ ...state, viewerUserId: request.actorId ?? null });
 });
 
+// The audit trail has been written on every mutation since the beginning and
+// read by nobody. It stays off the main group fetch: it grows without bound
+// while the rest of the payload doesn't, and it's only wanted when someone
+// opens the Activity tab.
+const ACTIVITY_PAGE_SIZE = 100;
+
+groupsRouter.get('/groups/:code/activity', async (request, response) => {
+  const group = await prisma.group.findUnique({
+    where: { joinCode: String(request.params.code).toUpperCase() },
+    select: { id: true }
+  });
+  if (!group) {
+    response.status(404).json({ error: 'Group not found' });
+    return;
+  }
+
+  const entries = await prisma.activityLog.findMany({
+    where: { groupId: group.id },
+    orderBy: { createdAt: 'desc' },
+    take: ACTIVITY_PAGE_SIZE,
+    select: { id: true, action: true, actorName: true, detail: true, createdAt: true }
+  });
+
+  response.status(200).json({ entries });
+});
+
 groupsRouter.post('/groups/:code/people', writeRateLimit, requireActor, async (request, response) => {
   const { name } = request.body as { name?: unknown };
 
@@ -88,7 +115,7 @@ groupsRouter.post('/groups/:code/people', writeRateLimit, requireActor, async (r
   }
 
   const person = await prisma.$transaction(async (tx) => {
-    const created = await tx.person.create({ data: { groupId: group.id, name: name.trim() } });
+    const created = await tx.person.create({ data: { groupId: group.id, name: normalizePersonName(name) } });
     await logActivity(tx, group.id, 'person_add', `${created.name} added`, await actorNameInGroup(tx, group.id, request.actorId));
     return created;
   });
