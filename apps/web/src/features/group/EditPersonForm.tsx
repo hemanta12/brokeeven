@@ -82,7 +82,7 @@ export function EditPersonForm({ code, person, onRemove, removePending, removeEr
           onChange={(event) => setName(event.target.value)}
           maxLength={60}
           aria-label={`Edit ${person.name}`}
-          className="focus-ring h-9 min-w-0 flex-1 rounded-full border border-ink-forest bg-paper-white px-3 font-sans text-body font-medium text-ink-forest"
+          className="focus-ring h-9 min-w-0 flex-1 rounded-[10px] border border-ink-forest bg-paper-white px-3 font-sans text-body font-medium text-ink-forest"
         />
         <button
           type="submit"

@@ -13,10 +13,36 @@ describe('App routing', () => {
     vi.unstubAllGlobals();
   });
 
-  it('renders the homepage at /', () => {
+  // "/" now branches on the session, so it renders nothing until /auth/me
+  // answers — the landing is what a signed-out visitor gets, the group list
+  // is what a signed-in one gets.
+  it('renders the signed-out landing at /', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ user: null }), { status: 200 }))
+    );
+
     renderAt('/');
 
-    expect(screen.getByRole('heading', { name: 'BrokeEven' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'BrokeEven' })).toBeInTheDocument();
+  });
+
+  it('renders the group list at / when signed in', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        const body = url.includes('/auth/me')
+          ? { user: { id: 'u1', email: 'a@b.co', name: 'A', avatarUrl: null, isGuest: false } }
+          : { groups: [] };
+        return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
+      })
+    );
+
+    renderAt('/');
+
+    expect(await screen.findByRole('heading', { name: 'My groups' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /New group/ })).toBeInTheDocument();
   });
 
   it('renders the create group page at /create', () => {

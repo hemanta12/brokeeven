@@ -13,6 +13,7 @@ import {
   ErrorState,
   NotFoundState,
 } from "../../shared/RouteStates";
+import { Overlay } from "../../shared/Overlay";
 import { formatDateGroupLabel } from "../../shared/format";
 import { getIdentity } from "../../shared/identity";
 import { resolveIdentityPersonId } from "./ownership";
@@ -24,12 +25,15 @@ import { useAddPerson, useGroupByCode, useRemovePerson } from "./api";
 import { EditPersonForm } from "./EditPersonForm";
 import { groupExpensesByDate } from "./expenseGroups";
 import { GroupPageSkeleton } from "./GroupPageSkeleton";
+import { GroupSummary } from "./GroupSummary";
+import { SettlementHistory } from "./SettlementHistory";
+import { ActivityFeed } from "./ActivityFeed";
 import type { Balance, Expense } from "./types";
 import { useGroupRealtime } from "./useGroupRealtime";
 import { WhoAreYouPrompt } from "./WhoAreYouPrompt";
 
 const MEMBER_CAP = 20;
-type Tab = "expenses" | "balances";
+type Tab = "expenses" | "balances" | "activity";
 
 function balanceKey(
   balance: Pick<Balance, "fromPersonId" | "toPersonId">,
@@ -52,6 +56,8 @@ export function GroupPage() {
     code ? getIdentity(code) : null,
   );
   const [dismissedWhoAreYou, setDismissedWhoAreYou] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [showPeople, setShowPeople] = useState(false);
   const [isEditingMembers, setIsEditingMembers] = useState(false);
   const [showAddPersonForm, setShowAddPersonForm] = useState(false);
   const [personName, setPersonName] = useState("");
@@ -60,22 +66,29 @@ export function GroupPage() {
     null,
   );
   const [settlingBalance, setSettlingBalance] = useState<Balance | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
 
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);
   const { touch, untouch, isRequiredError } = useBlurValidation();
   const pulsingIds = useGroupRealtime(code, group?.id);
 
-  async function handleCopyInviteLink() {
-    await navigator.clipboard?.writeText(inviteLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  async function copyText(field: "code" | "link", text: string) {
+    await navigator.clipboard?.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   }
 
   function closeWhoAreYou() {
     setIdentityPersonId(code ? getIdentity(code) : null);
     setDismissedWhoAreYou(true);
+  }
+
+  function closePeople() {
+    setShowPeople(false);
+    setIsEditingMembers(false);
+    setShowAddPersonForm(false);
+    setPersonName("");
   }
 
   async function handleAddPerson(event: FormEvent) {
@@ -145,196 +158,80 @@ export function GroupPage() {
   }
 
   return (
-    <main className="bottom-bar-clearance flex flex-col pt-4">
+    <main className="flex flex-col pt-2">
       {cookiesBlocked && (
         <p role="status" className="mx-4 mb-3 rounded-[10px] bg-ledger-paper px-3.5 py-2.5 font-sans text-label text-ink-forest/75">
           Your browser is blocking cookies, so entries you add here can&apos;t be edited later.
         </p>
       )}
-      <div className="group-surface flex-1 rounded-[14px] bg-paper-white pb-6">
-        <header className="px-4 pt-4 text-center sm:px-6">
-          <div className="relative flex min-w-0 flex-col items-center rounded-[12px] border border-ledger-green/20 bg-ledger-paper px-4 pb-4 pt-10">
-            <div className="absolute inset-x-3 top-2 flex min-w-0 items-center justify-between gap-3">
-              <p className="min-w-0 truncate font-sans text-label text-ink-forest/65">
-                Code:{" "}
-                <span className="font-mono tracking-[0.06em]">
-                  {group.joinCode}
-                </span>
-              </p>
-              <Button
-                variant="tertiary"
-                onClick={handleCopyInviteLink}
-                className="h-8! min-h-8! shrink-0 rounded-full! border border-ink-forest/20 bg-paper-white px-3! text-label hover:bg-paper-white"
-              >
-                <span aria-live="polite">
-                  {copied ? "Copied!" : "Share link"}
-                </span>
-              </Button>
-            </div>
-            <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">
-              {group.name}
-            </h1>
-            {group.label && (
-              <span className="mt-2 inline-flex rounded-full border border-brass-ui px-2.5 py-0.5 font-sans text-label text-brass-ui">
+      <div className="group-surface flex flex-1 flex-col rounded-[14px] bg-paper-white">
+        <header className="px-4 pt-3 sm:px-6">
+          <div className="flex items-center justify-between gap-3">
+            {group.label ? (
+              <span className="inline-flex shrink-0 rounded-full border border-brass-ui px-2.5 py-0.5 font-sans text-label text-brass-ui">
                 {group.label}
               </span>
+            ) : (
+              <span aria-hidden="true" />
             )}
+            <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowPeople(true)}
+              aria-haspopup="dialog"
+              aria-label={`People (${group.people.length})`}
+              className="focus-ring flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-ink-forest/20 bg-paper-white px-3 font-sans text-label font-medium text-ink-forest transition-transform duration-100 hover:bg-ledger-paper active:scale-95"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+                className="h-4 w-4"
+              >
+                <circle cx="7.5" cy="7" r="2.75" />
+                <path d="M2.5 16c.5-2.6 2.5-4 5-4s4.5 1.4 5 4" strokeLinecap="round" />
+                <path d="M13.5 5.2a2.5 2.5 0 0 1 0 4.6M14.8 12.2c1.7.5 2.9 1.8 3.4 3.8" strokeLinecap="round" />
+              </svg>
+              {group.people.length}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowInfo(true)}
+              aria-haspopup="dialog"
+              aria-label="Group info"
+              className="focus-ring flex h-11 w-11 min-h-11 shrink-0 items-center justify-center rounded-full border border-ink-forest/20 bg-paper-white text-ink-forest transition-transform duration-100 hover:bg-ledger-paper active:scale-95"
+            >
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                aria-hidden="true"
+                className="h-[18px] w-[18px]"
+              >
+                <circle cx="10" cy="10" r="7.5" />
+                <path d="M10 9.25v4.25" strokeLinecap="round" />
+                <circle cx="10" cy="6.25" r="0.75" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+            </div>
           </div>
+          <h1 className="mt-2 heading text-display">
+            {group.name}
+          </h1>
         </header>
 
-        <section
-          aria-label="Members"
-          className="mx-4 mt-5 rounded-[12px] border border-ledger-green/10 bg-ledger-paper/40 px-3 py-3 sm:mx-6 sm:px-4"
-        >
-          {/* text-section (1.125rem Semibold) is DESIGN_SYSTEM.md §3's
-              documented scale for section headers like this one — it just
-              wasn't wired up anywhere yet; "People" was sitting at the
-              smallest, most muted label scale in the whole type system. */}
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h2 className="font-sans text-section font-semibold text-ink-forest">
-              People
-            </h2>
-            <Button
-              variant={isEditingMembers ? "primary" : "tertiary"}
-              aria-label={
-                isEditingMembers ? "Cancel editing members" : "Edit members"
-              }
-              onClick={() => setIsEditingMembers((current) => !current)}
-              disabled={showAddPersonForm}
-              className="h-11! w-11! shrink-0 rounded-full! p-0!"
-            >
-              {isEditingMembers ? (
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  className="h-3.5 w-3.5"
-                >
-                  <path
-                    d="M5 5l10 10M15 5 5 15"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  className="h-3.5 w-3.5"
-                >
-                  <path
-                    d="M13.3 3.7a1.6 1.6 0 0 1 2.3 2.3L6.4 15.2l-3 .9.9-3 9-9.4Z"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            </Button>
-          </div>
-          <ul className="flex flex-wrap items-center gap-2">
-            {group.people.map((person) =>
-              isEditingMembers ? (
-                <li key={person.id} className="w-full">
-                  <EditPersonForm
-                    code={code}
-                    person={person}
-                    onRemove={() => removePerson.mutate(person.id)}
-                    removePending={
-                      removePerson.isPending &&
-                      removePerson.variables === person.id
-                    }
-                    removeError={
-                      removePerson.isError &&
-                      removePerson.variables === person.id
-                        ? removePerson.error.message
-                        : undefined
-                    }
-                  />
-                </li>
-              ) : (
-                <li
-                  key={person.id}
-                  className={`flex min-h-11 items-center rounded-full ${pulsingIds.has(person.id) ? "row-pulse" : ""}`}
-                >
-                  <MemberChip
-                    name={person.name}
-                    isYou={person.id === resolvedIdentityPersonId}
-                  />
-                </li>
-              ),
-            )}
-            {group.people.length < MEMBER_CAP && !showAddPersonForm && (
-              <li>
-                <Button
-                  variant="secondary"
-                  aria-label="Add person"
-                  disabled={isEditingMembers}
-                  className="h-11! w-11! rounded-full! p-0!"
-                  onClick={() => setShowAddPersonForm(true)}
-                >
-                  +
-                </Button>
-              </li>
-            )}
-          </ul>
-
-          {group.people.length >= MEMBER_CAP ? (
-            <p className="mt-3 font-sans text-label text-ink-forest/70">
-              This group is full ({MEMBER_CAP} members max).
-            </p>
-          ) : (
-            showAddPersonForm && (
-              <form
-                onSubmit={handleAddPerson}
-                className="mt-3 flex flex-col gap-3"
-              >
-                <Field
-                  id="add-person-name"
-                  label="Name"
-                  value={personName}
-                  onChange={(event) => setPersonName(event.target.value)}
-                  onBlur={() => touch("personName")}
-                  autoComplete="name"
-                  autoCorrect="off"
-                  autoCapitalize="words"
-                  error={
-                    isRequiredError("personName", personName)
-                      ? "Name is required."
-                      : undefined
-                  }
-                  required
-                />
-                {addPerson.isError && (
-                  <ErrorState message={addPerson.error.message} />
-                )}
-                <div className="flex gap-3">
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    disabled={addPerson.isPending}
-                    className="flex-1"
-                  >
-                    {addPerson.isPending ? "Adding…" : "Add person"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="tertiary"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowAddPersonForm(false);
-                      setPersonName("");
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            )
-          )}
-        </section>
+        {/* Only meaningful once the viewer has said which person they are —
+            without that, none of these figures are "yours". */}
+        {resolvedIdentityPersonId && (
+          <GroupSummary
+            balances={group.balances}
+            expenses={group.expenses}
+            personId={resolvedIdentityPersonId}
+          />
+        )}
 
         <div className="mt-6 px-4 sm:px-6">
           <Tabs
@@ -342,6 +239,7 @@ export function GroupPage() {
             items={[
               { id: "expenses", label: "Expenses" },
               { id: "balances", label: "Balances" },
+              { id: "activity", label: "Activity" },
             ]}
             activeId={tab}
             onChange={(id) => setTab(id as Tab)}
@@ -360,13 +258,13 @@ export function GroupPage() {
             ) : (
               <div>
                 {groupExpensesByDate(group.expenses).map((dateGroup) => (
-                  <div key={dateGroup.date} className="mt-5 first:mt-0">
+                  <div key={dateGroup.date} className="mt-4 first:mt-0">
                     {/* Quiet organiser, not a headline — mono keeps it in the
                         ledger's data voice and distinct from the sans cards. */}
-                    <h3 className="mb-2 font-mono text-label font-medium text-ink-forest/70">
+                    <h3 className="mb-1.5 font-sans text-label font-medium text-ink-forest/70">
                       {formatDateGroupLabel(dateGroup.date)}
                     </h3>
-                    <ul className="flex flex-col gap-2">
+                    <ul className="flex flex-col gap-1.5">
                       {dateGroup.expenses.map((expense) => {
                         const payer = group.people.find(
                           (p) => p.id === expense.payerId,
@@ -402,6 +300,8 @@ export function GroupPage() {
             className="mt-3 px-4 sm:px-6"
           >
             {group.balances.length === 0 ? (
+              /* A fully settled group has no balances but may well have a
+                 settlement to undo, so the history renders either way. */
               <EmptyState message="No balances yet — add an expense to get started." />
             ) : (
               <div>
@@ -436,11 +336,41 @@ export function GroupPage() {
                 </ul>
               </div>
             )}
+
+            <SettlementHistory
+              code={code}
+              settlements={group.settlements}
+              people={group.people}
+              identityPersonId={resolvedIdentityPersonId}
+            />
           </div>
         )}
 
-        <div className="bottom-bar">
-          <Button onClick={() => setEditingExpense("new")}>Add Expense</Button>
+        {tab === "activity" && (
+          <div
+            role="tabpanel"
+            id="panel-activity"
+            aria-labelledby="tab-activity"
+            className="mt-3 px-4 sm:px-6"
+          >
+            <ActivityFeed code={code} isActive={tab === "activity"} />
+          </div>
+        )}
+
+        <div className="bottom-bar mt-auto">
+          <Button onClick={() => setEditingExpense("new")}>
+            <svg
+              viewBox="0 0 20 20"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+              className="h-4 w-4"
+            >
+              <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+            </svg>
+            Add Expense
+          </Button>
         </div>
       </div>
 
@@ -473,8 +403,202 @@ export function GroupPage() {
           code={code}
           people={group.people}
           balance={settlingBalance}
+          balances={group.balances}
           onClose={() => setSettlingBalance(null)}
         />
+      )}
+
+      {showInfo && (
+        <Overlay title="Group info" isDirty={false} compact onClose={() => setShowInfo(false)}>
+          <div className="flex flex-1 flex-col gap-3">
+            <div className="rounded-[12px] bg-ledger-paper px-4 py-3.5">
+              <p className="font-sans text-label text-ink-forest/65">Join code</p>
+              <div className="mt-1 flex items-center justify-between gap-3">
+                <p className="font-mono text-section font-medium tracking-[0.08em] text-ink-forest">
+                  {group.joinCode}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => copyText("code", group.joinCode)}
+                  aria-label={
+                    copiedField === "code" ? "Join code copied" : "Copy join code"
+                  }
+                  className={`focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-transform duration-100 active:scale-90 ${
+                    copiedField === "code"
+                      ? "border-ledger-green/40 text-ledger-green"
+                      : "border-ink-forest/20 text-ink-forest hover:bg-paper-white"
+                  }`}
+                >
+                  {copiedField === "code" ? (
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      aria-hidden="true"
+                      className="h-4 w-4"
+                    >
+                      <path
+                        d="M4.5 10.5l3.5 3.5 7.5-8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      aria-hidden="true"
+                      className="h-4 w-4"
+                    >
+                      <rect x="7" y="7" width="9.5" height="9.5" rx="2" />
+                      <path
+                        d="M13 7V5.5A2.5 2.5 0 0 0 10.5 3h-5A2.5 2.5 0 0 0 3 5.5v5A2.5 2.5 0 0 0 5.5 13H7"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+            <div className="rounded-[12px] bg-brass/10 px-4 py-3.5">
+              <p className="font-sans text-label text-ink-forest/65">Invite link</p>
+              <p className="mt-1 break-all font-mono text-label text-ink-forest/80">
+                {inviteLink}
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() => copyText("link", inviteLink)}
+                className="mt-3"
+              >
+                <span aria-live="polite">
+                  {copiedField === "link" ? "Copied!" : "Copy link"}
+                </span>
+              </Button>
+            </div>
+            <p className="mt-auto border-t border-ink-forest/10 pt-4 font-sans text-label text-ink-forest/60">
+              Anyone with the code or link can join. Email invites are coming later.
+            </p>
+          </div>
+        </Overlay>
+      )}
+
+      {showPeople && (
+        <Overlay title="People" isDirty={false} compact onClose={closePeople}>
+          <div className="flex flex-1 flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="font-sans text-label text-ink-forest/65">
+                {group.people.length} in this group
+              </p>
+              <Button
+                variant={isEditingMembers ? "primary" : "tertiary"}
+                aria-label={
+                  isEditingMembers ? "Cancel editing members" : "Edit members"
+                }
+                onClick={() => setIsEditingMembers((current) => !current)}
+                disabled={showAddPersonForm}
+                className="h-9! min-h-9! shrink-0 px-3! text-label"
+              >
+                {isEditingMembers ? "Done" : "Edit"}
+              </Button>
+            </div>
+            <ul className="flex flex-wrap items-center gap-2">
+              {group.people.map((person) =>
+                isEditingMembers ? (
+                  <li key={person.id} className="w-full">
+                    <EditPersonForm
+                      code={code}
+                      person={person}
+                      onRemove={() => removePerson.mutate(person.id)}
+                      removePending={
+                        removePerson.isPending &&
+                        removePerson.variables === person.id
+                      }
+                      removeError={
+                        removePerson.isError &&
+                        removePerson.variables === person.id
+                          ? removePerson.error.message
+                          : undefined
+                      }
+                    />
+                  </li>
+                ) : (
+                  <li
+                    key={person.id}
+                    className={`flex min-h-11 items-center rounded-full ${pulsingIds.has(person.id) ? "row-pulse" : ""}`}
+                  >
+                    <MemberChip
+                      name={person.name}
+                      isYou={person.id === resolvedIdentityPersonId}
+                    />
+                  </li>
+                ),
+              )}
+            </ul>
+
+            {showAddPersonForm ? (
+              <form onSubmit={handleAddPerson} className="flex flex-col gap-3">
+                <Field
+                  id="add-person-name"
+                  label="Name"
+                  value={personName}
+                  onChange={(event) => setPersonName(event.target.value)}
+                  onBlur={() => touch("personName")}
+                  autoComplete="name"
+                  autoCorrect="off"
+                  autoCapitalize="words"
+                  error={
+                    isRequiredError("personName", personName)
+                      ? "Name is required."
+                      : undefined
+                  }
+                  required
+                />
+                {addPerson.isError && (
+                  <ErrorState message={addPerson.error.message} />
+                )}
+                <div className="flex gap-3">
+                  <Button
+                    type="submit"
+                    variant="secondary"
+                    disabled={addPerson.isPending}
+                    className="flex-1"
+                  >
+                    {addPerson.isPending ? "Saving…" : "Save"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="tertiary"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowAddPersonForm(false);
+                      setPersonName("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            ) : group.people.length >= MEMBER_CAP ? (
+              <p className="font-sans text-label text-ink-forest/70">
+                This group is full ({MEMBER_CAP} members max).
+              </p>
+            ) : (
+              !isEditingMembers && (
+                <div className="mt-auto flex justify-center pt-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setShowAddPersonForm(true)}
+                  >
+                    Add new member
+                  </Button>
+                </div>
+              )
+            )}
+          </div>
+        </Overlay>
       )}
 
       {shouldShowWhoAreYou && (

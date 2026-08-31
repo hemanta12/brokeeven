@@ -58,12 +58,17 @@ export function SignInButton() {
           client_id: clientId,
           callback: ({ credential }) => signIn.mutate(credential)
         });
+        // GSI only exposes theme/shape/size/text/width — no custom fill or
+        // font. `outline` + `pill` is the closest fit to the app's own
+        // buttons; the multicolour Google mark is Google's and stays as-is.
         window.google.accounts.id.renderButton(containerRef.current, {
           type: 'standard',
           theme: 'outline',
+          shape: 'pill',
           size: 'large',
-          text: 'signin_with',
-          width: 260
+          text: 'continue_with',
+          logo_alignment: 'center',
+          width: 300
         });
       })
       .catch((error: Error) => {
@@ -82,10 +87,12 @@ export function SignInButton() {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div ref={containerRef} />
+    <div className="flex flex-col items-center gap-2">
+      {/* min-height reserves the button's row so the card doesn't jump when
+          GSI finishes loading and injects its iframe. */}
+      <div ref={containerRef} className="flex min-h-11 items-center justify-center" />
       {loadError && <ErrorState message={loadError} />}
-      {signIn.isPending && <p className="font-sans text-label text-ink-forest/60">Signing in…</p>}
+      {signIn.isPending && <p className="font-sans text-label text-ink-forest/70">Signing in…</p>}
       {signIn.isError && <ErrorState message={signIn.error.message} />}
     </div>
   );

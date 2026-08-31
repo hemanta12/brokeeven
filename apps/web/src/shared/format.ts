@@ -36,6 +36,13 @@ export function formatExpenseTitle(title: string): string {
   return `${title.charAt(0).toUpperCase()}${title.slice(1).toLowerCase()}`;
 }
 
+// First letter only. For person names and name-initial sentences (the activity
+// log), where a lowercase start looks like a bug. Unlike formatExpenseTitle it
+// leaves the rest alone so "McKay" and "de Souza" survive.
+export function capitalizeFirst(text: string): string {
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : text;
+}
+
 export function formatDate(date: string | Date): string {
   return dateFormatter.format(typeof date === 'string' ? parseCalendarDate(date) : date);
 }

@@ -19,3 +19,13 @@ export function useCreateSettlement(code: string | undefined) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
   });
 }
+
+// Undo. Deleting the row is the whole reversal — balances are recomputed from
+// expenses minus settlements on every read, so nothing needs unwinding.
+export function useDeleteSettlement(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/settlements/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+  });
+}

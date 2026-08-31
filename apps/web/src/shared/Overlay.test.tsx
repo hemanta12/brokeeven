@@ -36,9 +36,8 @@ describe('Overlay', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('confirms discard before closing a dirty form, and respects cancel', () => {
+  it('shows an in-app discard prompt for a dirty form; Keep editing returns without closing', () => {
     const onClose = vi.fn();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(
       <Overlay title="Test" isDirty onClose={onClose}>
         <input />
@@ -47,13 +46,18 @@ describe('Overlay', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
-    expect(confirmSpy).toHaveBeenCalled();
+    // No window.confirm — an in-panel prompt.
+    expect(screen.getByRole('button', { name: 'Discard changes' })).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep editing' }));
+
+    expect(screen.queryByRole('button', { name: 'Discard changes' })).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('closes a dirty form once discard is confirmed', async () => {
+  it('closes a dirty form once Discard changes is chosen', async () => {
     const onClose = vi.fn();
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(
       <Overlay title="Test" isDirty onClose={onClose}>
         <input />
@@ -61,6 +65,7 @@ describe('Overlay', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   });

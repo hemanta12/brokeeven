@@ -26,7 +26,7 @@ export function ErrorState({ message = 'Something broke — try again.', onRetry
 export function NotFoundState({ message = 'Page not found — check the link and try again.' }: { message?: string }) {
   return (
     <div>
-      <h1 className="font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Not found</h1>
+      <h1 className="heading text-display">Not found</h1>
       <p className="mt-2 font-sans text-body text-ink-forest/70">{message}</p>
     </div>
   );

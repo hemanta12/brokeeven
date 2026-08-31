@@ -147,25 +147,22 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Share link' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Group info' }));
+    const dialog = screen.getByRole('dialog', { name: 'Group info' });
+    expect(within(dialog).getByText('ABC123')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy link' }));
 
     expect(await screen.findByRole('button', { name: 'Copied!' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Trip' }).parentElement).toHaveClass(
-      'rounded-[12px]',
-      'border-ledger-green/20',
-      'bg-ledger-paper'
-    );
-    expect(screen.getByText(/Code:/).parentElement).toHaveClass('min-w-0');
   });
 
-  it('keeps a long group title in its dedicated title band', async () => {
+  it('shows a long group title in full, not truncated, below the header controls', async () => {
     stubGroupFetch({ ...baseGroup, name: 'A very long weekend trip with friends' });
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
     const title = screen.getByRole('heading', { name: 'A very long weekend trip with friends' });
-    expect(title.parentElement).toHaveClass('rounded-[12px]', 'border-ledger-green/20', 'bg-ledger-paper');
-    expect(screen.getByRole('button', { name: 'Share link' })).toBeInTheDocument();
+    expect(title).not.toHaveClass('truncate');
+    expect(screen.getByRole('button', { name: 'Group info' })).toBeInTheDocument();
   });
 
   it('opens the Add Expense overlay', async () => {
@@ -184,6 +181,7 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
 
     vi.stubGlobal(
@@ -208,11 +206,13 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
-    expect(screen.getByRole('button', { name: 'Add person' })).toBeDisabled();
+    // In edit mode the add trigger is removed entirely, not just disabled.
+    expect(screen.queryByRole('button', { name: 'Add new member' })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel editing members' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add new member' }));
     expect(screen.getByRole('button', { name: 'Edit members' })).toBeDisabled();
   });
 
@@ -221,13 +221,14 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add new member' }));
     const nameInput = screen.getByLabelText('Name');
     fireEvent.change(nameInput, { target: { value: 'Charlie' } });
     // A real submit click blurs the input on its way to the button, marking
     // the field touched before the form ever clears it.
     fireEvent.blur(nameInput);
-    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(nameInput).toHaveValue(''));
     expect(screen.queryByText('Name is required.')).not.toBeInTheDocument();
@@ -237,6 +238,7 @@ describe('GroupPage', () => {
     stubGroupFetch();
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
 
     const aliceInput = screen.getByLabelText('Edit Alice');
@@ -250,6 +252,7 @@ describe('GroupPage', () => {
     stubGroupFetch();
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove Alice' }));
@@ -265,6 +268,7 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
 
     expect(screen.getByLabelText('Edit Alice')).toBeInTheDocument();

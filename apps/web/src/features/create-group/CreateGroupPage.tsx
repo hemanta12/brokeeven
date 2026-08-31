@@ -60,7 +60,7 @@ export function CreateGroupPage() {
           ‹ Back
         </Link>
 
-        <h1 className="mt-6 font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Create a Group</h1>
+        <h1 className="mt-6 heading text-display">Create a Group</h1>
         <form onSubmit={handleCreateGroup} className="mt-6 flex flex-col gap-4">
           <Field
             id="group-name"
@@ -94,7 +94,7 @@ export function CreateGroupPage() {
         ‹ Back
       </button>
 
-      <h1 className="mt-6 font-display text-display font-semibold tracking-[-0.025em] leading-[1.15] text-ink-forest">Add people to {group.name}</h1>
+      <h1 className="mt-6 heading text-display">Add people to {group.name}</h1>
 
       <div className="mt-6 flex flex-col gap-4">
         <Field id="group-name-readonly" label="Group name" value={group.name} readOnly />

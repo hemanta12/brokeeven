@@ -32,7 +32,7 @@ export function ExpenseDetail({
     <Overlay title={formatExpenseTitle(expense.title)} centerTitle isDirty={false} onClose={onClose}>
       <div className="flex flex-col gap-6">
         <div className="expense-summary rounded-[10px] bg-ledger-paper px-4 py-5 text-center">
-          <p className="font-mono text-hero-balance tabular-nums text-ink-forest">
+          <p className="font-sans text-hero-balance tabular-nums text-ink-forest">
             {formatCurrency(Number(expense.amount))}
           </p>
           <p className="mt-2 font-sans text-label text-ink-forest/70">{formatDate(expense.date)}</p>
@@ -54,7 +54,7 @@ export function ExpenseDetail({
               return (
                 <div key={split.id} className="flex items-center justify-between gap-3 py-2.5">
                   <span className="font-sans text-body text-ink-forest">{person?.name ?? 'someone removed'}</span>
-                  <span className="font-mono text-row-amount tabular-nums text-ink-forest">
+                  <span className="font-sans text-row-amount tabular-nums text-ink-forest">
                     {formatCurrency(Number(split.amount))}
                   </span>
                 </div>

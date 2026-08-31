@@ -1,54 +1,29 @@
 @import "tailwindcss";
 
-/* Self-hosted fonts (DESIGN_SYSTEM.md §3). Latin subset only — app is
-   English-only, so the other Google-served unicode-range subsets
-   (cyrillic, greek, vietnamese, etc.) are dead weight. */
-@font-face {
-  font-family: "Fraunces";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/fraunces-600.woff2") format("woff2");
-}
+/* Self-hosted fonts, Latin subset only (app is English-only, so Google's
+   cyrillic/greek/vietnamese subsets would be dead weight).
 
-/* IBM Plex Sans ships as a single variable file; three @font-face blocks
-   pinned to different font-weight values each resolve their own instance
-   from it (standard modern practice, mirrors Google Fonts' own css2 API). */
+   Newsreader (Production Type) for display — a screen-first text serif with a
+   press/financial cadence, not the indie-SaaS editorial serif. Libre Franklin
+   for everything else including money: a faithful Franklin Gothic revival
+   (Benton, 1912 — American newspaper/advertising), so numbers set with its
+   tabular figures read as printed record, not terminal output. No monospace
+   webfont; the system mono stack is kept only for literal codes/URLs. Both
+   files are variable; the `font-weight` range lets one file serve every
+   weight (Google's own css2 API does the same). */
 @font-face {
-  font-family: "IBM Plex Sans";
+  font-family: "Newsreader";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 400 600;
   font-display: swap;
-  src: url("/fonts/plexsans-variable.woff2") format("woff2");
+  src: url("/fonts/newsreader-variable.woff2") format("woff2");
 }
 @font-face {
-  font-family: "IBM Plex Sans";
+  font-family: "Libre Franklin";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 400 700;
   font-display: swap;
-  src: url("/fonts/plexsans-variable.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Sans";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/plexsans-variable.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/plexmono-400.woff2") format("woff2");
-}
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: url("/fonts/plexmono-500.woff2") format("woff2");
+  src: url("/fonts/librefranklin-variable.woff2") format("woff2");
 }
 
 /* Tailwind token mapping — DESIGN_SYSTEM.md §11 */
@@ -61,9 +36,9 @@
   --color-brass: #b8912b;
   --color-brass-ui: #96762a;
 
-  --font-display: "Fraunces", serif;
-  --font-sans: "IBM Plex Sans", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Libre Franklin", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 
   --text-display: 2rem;
   --text-section: 1.125rem;
@@ -77,6 +52,11 @@
   :root {
     color: var(--color-ink-forest);
     background: var(--color-ledger-paper);
+    /* Opening a modal sets body{overflow:hidden}, which removes the page
+       scrollbar and widens the viewport by its width — the navbar and the
+       centered sheet visibly jumped right on open and back on close.
+       Reserving the gutter permanently means nothing reflows. */
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -94,11 +74,14 @@
     cursor: not-allowed;
   }
 
+  /* Fill the space left under the sticky navbar, not the whole viewport —
+     100vh here pushed the card a full navbar-height past the fold, which read
+     as "the card never ends" once the card got a visible fill (desktop). */
   main {
     box-sizing: border-box;
     margin: 0 auto;
     max-width: 32.5rem;
-    min-height: 100vh;
+    min-height: calc(100vh - var(--navbar-height));
     padding: 1rem 1rem;
   }
 }
@@ -110,15 +93,26 @@
    than intentional, so the page gets a visible "desk" surrounding a raised
    paper sheet instead. */
 @media (min-width: 640px) {
-  body {
-    background: color-mix(in srgb, var(--color-ledger-green) 12%, var(--color-ledger-paper));
+  /* The desk color goes on :root, not body. :root already carries a
+     background, so body's own only paints its box — leaving the lighter root
+     green showing below it as a second band. One surface, one color. */
+  :root {
+    background: color-mix(
+      in srgb,
+      var(--color-ledger-green) 12%,
+      var(--color-ledger-paper)
+    );
   }
 
   main {
+    /* Account for the 2rem top+bottom margins so the sheet stops at the fold
+       rather than overflowing by 4rem. */
+    min-height: calc(100vh - var(--navbar-height) - 4rem);
     margin-block: 2rem;
     border-radius: 16px;
     background: var(--color-paper-white);
-    box-shadow: 0 12px 32px -8px color-mix(in srgb, var(--color-ink-forest) 25%, transparent);
+    box-shadow: 0 12px 32px -8px
+      color-mix(in srgb, var(--color-ink-forest) 25%, transparent);
   }
 }
 
@@ -135,6 +129,19 @@
     box-shadow:
       0 0 0 2px var(--color-paper-white),
       0 0 0 4px var(--color-brass-ui);
+  }
+
+  /* One place for the display-heading treatment (family, weight, leading,
+     tracking, colour). Size stays a per-use utility (text-display, etc.).
+     Newsreader is a text serif with optical sizing — it wants normal
+     tracking, not the negative tracking a geometric display face takes. */
+  .heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: normal;
+    color: var(--color-ink-forest);
+    text-wrap: balance;
   }
 }
 
@@ -158,6 +165,8 @@
 
 .overlay-content {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
   max-width: 32.5rem;
   margin-inline: auto;
@@ -170,6 +179,91 @@
   transition:
     opacity 200ms ease-out,
     transform 200ms ease-out;
+}
+
+/* A modal with a sticky footer hands its bottom padding to .modal-footer, so
+   the footer's own fade runs to the sheet's bottom edge instead of stopping
+   short of it against a bare white strip. */
+.overlay-content:has(.modal-footer) {
+  padding-bottom: 0;
+}
+
+/* Desktop: the modal becomes a paper sheet on the desk, matching <main>'s
+   width, radius, and breathing room, rather than a full-bleed white column
+   running edge to edge from the top of the viewport to the bottom. Scrolling
+   moves from .overlay to the sheet itself so long forms scroll *inside* the
+   card and the sticky footer pins to the card's bottom, not the viewport's. */
+@media (min-width: 640px) {
+  .overlay {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: color-mix(
+      in srgb,
+      var(--color-ledger-green) 12%,
+      var(--color-ledger-paper)
+    );
+  }
+
+  .overlay-content {
+    width: 100%;
+    min-height: 0;
+    height: calc(100vh - 4rem);
+    overflow-y: auto;
+    border-radius: 16px;
+    background: var(--color-paper-white);
+    box-shadow: 0 12px 32px -8px
+      color-mix(in srgb, var(--color-ink-forest) 25%, transparent);
+  }
+}
+
+/* Compact variant (Group info, People): these panels are short content, not
+   forms, so the sheet sizes to its content and floats on a scrim at every
+   width rather than running a full-height paper column. */
+.overlay-compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1.5rem;
+  background: color-mix(in srgb, var(--color-ink-forest) 45%, transparent);
+}
+
+.overlay-compact .overlay-content {
+  min-height: 21rem;
+  width: 100%;
+  max-width: 26rem;
+  max-height: calc(100vh - 3rem);
+  height: auto;
+  margin: auto;
+  border-radius: 16px;
+  background: var(--color-paper-white);
+  box-shadow: 0 12px 32px -8px
+    color-mix(in srgb, var(--color-ink-forest) 35%, transparent);
+}
+
+/* Sticky form action, same behaviour as GroupPage's .bottom-bar: margin-top
+   auto parks it at the sheet's bottom edge when the form is short, sticky
+   keeps it there while a long form scrolls underneath. */
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  margin-top: auto;
+  padding-top: 1.5rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  background: linear-gradient(
+    to top,
+    var(--color-paper-white) 0%,
+    var(--color-paper-white) 55%,
+    color-mix(in srgb, var(--color-paper-white) 0%, transparent) 100%
+  );
+}
+
+.modal-footer > button {
+  width: 100%;
 }
 
 /* Entering starts from this offset state; the component flips to
@@ -267,10 +361,12 @@
 
 .paid-by-date {
   display: grid;
-  /* Date's content (mm/dd/yyyy + picker icon) doesn't shrink below a native
-     minimum on mobile browsers the way a plain 1fr track assumes — capping
-     its track keeps Paid by's longer names from forcing the row to overflow. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 110px);
+  /* Near-even split rather than a fixed 110px date track: capped that tight,
+     Paid by took ~70% of the row and the date field looked starved next to
+     it. Proportional tracks with minmax(0, …) still let both shrink past
+     their content on narrow screens (the sub-360px rule below stacks them
+     before that matters). */
+  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
   gap: 1rem;
 }
 
@@ -324,41 +420,66 @@
   transform: scale(0.98);
 }
 
-/* Persistent bottom-anchored Add Expense action (DESIGN_SYSTEM.md §10) —
-   thumb-reachable on small mobile widths, safe-area aware. */
-/* Kept in sync with .bottom-bar's own box model below (padding + border +
-   button min-height) so content clearance always lands exactly at its top
-   edge, plus an 8px reveal so the card visibly ends instead of blending into
-   the bar underneath it. */
 :root {
-  --bottom-bar-height: calc(
-    1rem + 2.75rem + max(1rem, env(safe-area-inset-bottom)) + 1px
-  );
   /* Navbar's own box model (py-2 + h-11 content + border-b) — kept in sync
      the same way, so a page can center within the space actually left under
      it instead of within the full 100vh main{} sets by default. */
   --navbar-height: calc(0.5rem + 2.75rem + 0.5rem + 1px);
 }
 
-.bottom-bar-clearance {
-  padding-bottom: calc(var(--bottom-bar-height) + 8px);
-}
-
+/* Persistent Add Expense action (DESIGN_SYSTEM.md §10) — thumb-reachable on
+   small mobile widths, safe-area aware. Sticky, not fixed: fixed pulled the
+   button out of the sheet and left it floating on the desk below the paper.
+   Sticky keeps it in the card's own flow (mt-auto parks it at the bottom
+   edge) while still riding along as rows scroll past underneath. The paper
+   fades up behind it so scrolled content dissolves instead of hitting a hard
+   edge, and the strip is click-through apart from the button itself. */
 .bottom-bar {
-  position: fixed;
-  inset-inline: 0;
+  position: sticky;
   bottom: 0;
+  z-index: 1;
+  /* Column so a screen can stack quieter alternatives above its one primary
+     action (My groups puts "split with one person / join with a code" there);
+     a single-child bar like GroupPage's is unaffected. */
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
   justify-content: center;
-  padding: 1rem 1.5rem max(1rem, env(safe-area-inset-bottom));
-  background: var(--color-paper-white);
-  border-top: 1px solid
-    color-mix(in srgb, var(--color-ink-forest) 8%, transparent);
+  padding: 2rem 1.5rem max(1rem, env(safe-area-inset-bottom));
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    var(--color-paper-white) 0%,
+    var(--color-paper-white) 55%,
+    color-mix(in srgb, var(--color-paper-white) 0%, transparent) 100%
+  );
 }
 
-.bottom-bar > button {
-  width: 100%;
-  max-width: 32.5rem;
+/* A floating pill, not a full-width slab. Edge-to-edge with an 8px radius,
+   this button was the same shape and width as the Expenses/Balances
+   segmented control directly above it and read as another tab. Shrunk to its
+   own label and fully rounded, it reads as what it is: the one action that
+   sits above the page rather than inside it. */
+/* The bar itself is click-through so the faded strip doesn't eat taps meant
+   for the rows scrolling under it — its actual children are not. */
+.bottom-bar > * {
+  pointer-events: auto;
+}
+
+.bottom-bar > button,
+.bottom-bar > a {
+  width: auto;
+  border-radius: 999px;
+  padding-inline: 1.5rem;
+  box-shadow: 0 8px 24px -6px
+    color-mix(in srgb, var(--color-ink-forest) 50%, transparent);
+}
+
+.bottom-bar > button:active,
+.bottom-bar > a:active {
+  box-shadow: 0 4px 12px -4px
+    color-mix(in srgb, var(--color-ink-forest) 50%, transparent);
 }
 
 /* One-shot real-time update cue (DESIGN_SYSTEM.md §6): a transition, not a

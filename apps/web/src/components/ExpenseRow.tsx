@@ -19,7 +19,7 @@ export function ExpenseRow({ title, payerName, payerIsViewer = false, amount, on
     <button
       type="button"
       onClick={onClick}
-      className="focus-ring flex min-h-11 w-full items-center justify-between gap-4 rounded-[10px] px-4 py-3 text-left"
+      className="focus-ring flex min-h-11 w-full items-center justify-between gap-4 rounded-[10px] px-4 py-2 text-left"
     >
       {/* min-w-0 lets the truncation below actually engage — without it the
           flex item refuses to shrink past its content's intrinsic width. */}
@@ -33,7 +33,7 @@ export function ExpenseRow({ title, payerName, payerIsViewer = false, amount, on
           {payerIsViewer ? 'You' : payerName} paid
         </span>
       </span>
-      <span className="shrink-0 font-mono text-row-amount font-medium tabular-nums text-ink-forest">
+      <span className="shrink-0 font-sans text-row-amount font-medium tabular-nums text-ink-forest">
         {formatCurrency(amount)}
       </span>
     </button>

@@ -114,8 +114,8 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   }
 
   return (
-    <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} isDirty={touched} onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
         <Field
           id="expense-title"
           label="Title"
@@ -229,7 +229,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                   {person.name}
                 </label>
                 {checked && splitMethod === 'equal' && (
-                  <span className="font-mono text-row-amount tabular-nums text-ink-forest">
+                  <span className="font-sans text-row-amount tabular-nums text-ink-forest">
                     {formatCurrency((equalPreview[participantIndex] ?? 0) / 100)}
                   </span>
                 )}
@@ -242,7 +242,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setPercentByPerson)({ ...percentByPerson, [person.id]: event.target.value })
                       }
-                      className="focus-ring h-11 w-16 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
+                      className="focus-ring h-11 w-16 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-sans text-body tabular-nums text-ink-forest"
                     />
                     %
                   </label>
@@ -257,7 +257,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setCustomByPerson)({ ...customByPerson, [person.id]: event.target.value })
                       }
-                      className="focus-ring h-11 w-20 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-mono text-body tabular-nums text-ink-forest"
+                      className="focus-ring h-11 w-20 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-sans text-body tabular-nums text-ink-forest"
                     />
                   </label>
                 )}
@@ -280,9 +280,11 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
         </fieldset>
 
         {mutation.isError && <ErrorState message={mutation.error.message} />}
-        <Button type="submit" disabled={mutation.isPending || participantIds.length === 0}>
-          {mutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Add expense'}
-        </Button>
+        <div className="modal-footer">
+          <Button type="submit" disabled={mutation.isPending || participantIds.length === 0}>
+            {mutation.isPending ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
       </form>
     </Overlay>
   );

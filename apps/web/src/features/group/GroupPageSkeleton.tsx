@@ -9,39 +9,25 @@ function Block({ className }: { className: string }) {
 
 export function GroupPageSkeleton() {
   return (
-    <main className="bottom-bar-clearance flex flex-col pt-8 animate-pulse">
+    <main className="flex flex-col pt-2 animate-pulse">
       <span role="status" className="sr-only">
         Loading group…
       </span>
 
       <div aria-hidden="true" className="flex flex-1 flex-col">
-        <div className="group-surface flex-1 rounded-[14px] bg-paper-white pb-6">
-        <div className="px-4 pt-4 sm:px-6">
-          <div className="relative flex flex-col items-center gap-2 rounded-[12px] border border-ledger-green/20 bg-ledger-paper px-4 pb-4 pt-10">
-            <div className="absolute inset-x-3 top-2 flex items-center justify-between gap-3">
-              <Block className="h-4 w-24" />
-              <Block className="h-8 w-24 rounded-full" />
-            </div>
-            <Block className="h-8 w-40" />
+        <div className="group-surface flex flex-1 flex-col rounded-[14px] bg-paper-white">
+        <div className="px-4 pt-3 sm:px-6">
+          <div className="flex items-center justify-between gap-3">
             <Block className="h-5 w-20 rounded-full" />
+            <div className="flex shrink-0 gap-2">
+              <Block className="h-11 w-16 rounded-full" />
+              <Block className="h-11 w-11 rounded-full" />
+            </div>
           </div>
-        </div>
-        <div className="flex items-center justify-between gap-3 px-4 pt-4 sm:px-6">
-          <Block className="h-4 w-24" />
-          <Block className="h-9 w-32" />
+          <Block className="mt-2 h-8 w-48" />
         </div>
 
-        <div className="mx-4 mt-5 rounded-[12px] border border-ledger-green/10 bg-ledger-paper/40 px-3 py-3 sm:mx-6 sm:px-4">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <Block className="h-4 w-12" />
-            <Block className="h-11 w-11 rounded-full" />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Block className="h-11 w-24 rounded-full" />
-            <Block className="h-11 w-28 rounded-full" />
-            <Block className="h-11 w-20 rounded-full" />
-          </div>
-        </div>
+        <div className="mx-4 mt-4 h-[3.75rem] rounded-[12px] bg-ink-forest/10 sm:mx-6" />
 
         <div className="mt-6 px-4 sm:px-6">
           <Block className="h-11 w-full rounded-[10px]" />
@@ -57,8 +43,8 @@ export function GroupPageSkeleton() {
             ))}
           </ul>
         </div>
-        <div className="bottom-bar">
-          <Block className="h-11 w-full rounded-lg" />
+        <div className="bottom-bar mt-auto">
+          <Block className="h-11 w-44 rounded-full" />
         </div>
         </div>
       </div>
