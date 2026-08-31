@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { apiFetch } from '../../lib/apiClient';
 import type { Group, Person } from '../group/types';
 import { setIdentity } from '../../shared/identity';
+import { claimPerson } from '../auth/api';
 
 interface QuickOneOnOneInput {
   yourName: string;
@@ -25,6 +26,7 @@ export function useCreateQuickGroup() {
         body: JSON.stringify({ name: theirName })
       });
       setIdentity(group.joinCode, you.id);
+      await claimPerson(you.id);
       return group;
     }
   });

@@ -5,6 +5,7 @@ import { CreateGroupPage } from './features/create-group/CreateGroupPage';
 import { GroupPage } from './features/group/GroupPage';
 import { HomePage } from './features/home/HomePage';
 import { JoinPage } from './features/join/JoinPage';
+import { MyGroupsPage } from './features/my-groups/MyGroupsPage';
 import { QuickOneOnOnePage } from './features/quick/QuickOneOnOnePage';
 import { queryClient } from './lib/queryClient';
 import { Navbar } from './components/Navbar';
@@ -21,6 +22,7 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/create" element={<CreateGroupPage />} />
             <Route path="/join" element={<JoinPage />} />
+            <Route path="/groups" element={<MyGroupsPage />} />
             <Route path="/quick" element={<QuickOneOnOnePage />} />
             <Route path="/g/:code" element={<GroupPage />} />
             <Route

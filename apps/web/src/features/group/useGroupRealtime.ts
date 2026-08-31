@@ -62,7 +62,12 @@ export function useGroupRealtime(code: string | undefined, groupId: string | und
 
     function applyUpdate(next: GroupWithPeople) {
       const previous = queryClient.getQueryData<GroupWithPeople>(groupQueryKey(code));
-      queryClient.setQueryData(groupQueryKey(code), next);
+      // The broadcast is viewer-agnostic by design, so keep the viewer id the
+      // REST fetch established -- dropping it would hide every edit control.
+      queryClient.setQueryData(groupQueryKey(code), {
+        ...next,
+        viewerUserId: previous?.viewerUserId ?? null
+      });
       if (previous) pulse(changedRowIds(previous, next));
     }
 

@@ -33,10 +33,24 @@
 - A manual "Join a group" code-entry form still exists on the homepage as a **fallback** — for the rare case someone is told the code out loud, or a link doesn't render as clickable text.
 - This is **not** the "secret personal link = your login" pattern ruled out earlier. The link doesn't identify a person or grant any access beyond what the code already grants — it's a delivery mechanism for the code, not an authentication credential. That's why it doesn't reopen the decision against accounts/email for MVP.
 - This is obscurity-level protection, not cryptographic security — appropriate for the stated scale (known circle, low traffic), not for anything more sensitive than a personal expense split.
-- **Permissions inside a group are fully flat, by design (confirmed)** — anyone with the code has the same power as the creator, including deleting others' expenses or removing people. No per-editor restriction, since there's no reliable identity to restrict by. To keep this accountable without adding accounts, every mutation is written to an append-only `ActivityLog` (see §3) — action type, actor name if one was set via "Who are you?", timestamp. Not a permission system, just a trail.
-- This mechanism doesn't get replaced later. When the deferred email magic-link feature ships, it solves a *different* problem (finding groups you're already a named member of, from a new device) — it doesn't change how a group is created or joined in the first place.
+- **Permissions are creator-owned as of 2026-08-30.** This bullet previously read "fully flat, by design... since there's no reliable identity to restrict by." There now is one, so: you may edit or delete only the expenses and settlements *you* created. Adding and viewing stay open to anyone with the code, and rows with no recorded creator (everything from before this change) stay editable by anyone. Renaming/removing people stays open to all — removing a departed member is an action nobody else can take. The append-only `ActivityLog` (§3) remains, and now actually carries `actorName`.
+- **Sessions.** Every actor — signed in or not — is one `User` row plus one HMAC-signed `httpOnly` cookie (`be_session`, via `cookie-parser`, no JWT library). A guest is a `User` with `googleSub = null`. There is no `Session` table and no refresh token: the cookie carries a user id, and promotion preserves that id, so nothing is invalidated by signing in.
+- **Optional Google sign-in.** Google Identity Services hands the browser an ID token, which `POST /auth/google` verifies with `google-auth-library`. No redirect URI, callback route, or state parameter — Google Cloud Console needs only the origin under "Authorized JavaScript origins". Signing in **promotes the guest row in place**, so everything created anonymously keeps its owner id with no data migration. If that Google account already has a row (an earlier sign-in on another device), the guest is merged into it and deleted.
+- **CSRF.** Without `COOKIE_DOMAIN`, the session is `SameSite=None` and therefore sent cross-site. Two things close it: `WEB_ORIGIN` is a required explicit allowlist in production (credentialed CORS must never reflect an arbitrary origin), and writes must be `application/json` — a cross-site `<form>` cannot produce that, and anything that can must clear a preflight the allowlist blocks. No token store needed.
+- **Known ceiling:** with no `COOKIE_DOMAIN`, Safari/Brave may cap the third-party cookie to ~7 days. A guest who loses it *before ever signing in* loses edit rights on their older entries. Accepted deliberately — it is the reason to sign in, and setting `COOKIE_DOMAIN` to a shared parent domain makes the cookie first-party `SameSite=Lax` and removes it entirely.
+- This mechanism doesn't get replaced. Sign-in solves a *different* problem (finding groups you're already a named member of, from a new device); it doesn't change how a group is created or joined.
 
 ## 3. Data Model
+
+### `User`
+Added 2026-08-30. One row per actor, signed in or not.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | uuid (PK) | The owner id stamped on expenses and settlements |
+| googleSub | string, unique, nullable | Google's stable subject id. **Null means this is a guest** — the same table serves both, which is what lets sign-in promote a row in place rather than migrate data |
+| email / name / avatarUrl | string, nullable | From the verified Google ID token. All null for a guest |
+| createdAt / lastSeenAt | timestamp | |
 
 ### `Group`
 | Field | Type | Notes |
@@ -53,7 +67,8 @@
 | id | uuid (PK) | |
 | groupId | uuid (FK → Group) | People are scoped per group, no cross-group identity in MVP |
 | name | string | |
-| email | string, nullable | **Unused in MVP** — reserved now so the deferred magic-link feature doesn't require a schema migration later |
+| email | string, nullable | **Still unused.** Google sign-in keeps the address on `User`; left in place because dropping it buys nothing |
+| userId | uuid (FK → User), nullable | Set when someone identifies as this person via "Who are you?". Unique per `(groupId, userId)`: one account claims at most one person per group. Null = unclaimed, which is every pre-existing row |
 | removedAt | timestamp, nullable | **Soft delete.** Removing someone sets this instead of deleting the row, so historical expenses/splits that reference them stay intact. A non-null `removedAt` hides them from "current members" and blocks adding them to new expenses. |
 | createdAt | timestamp | |
 
@@ -68,6 +83,7 @@
 | payerId | uuid (FK → Person) | Freely reassignable via edit; removal of a payer is blocked until reassigned (per PRD §6.2) |
 | splitMethod | enum (`equal`, `percent`, `custom`) | Kept for display/edit purposes — see `ExpenseSplit` for how it's actually resolved |
 | idempotencyKey | string, nullable, unique | Client-generated per submit attempt (see below); a repeat POST with the same key returns the original expense instead of creating a duplicate |
+| createdByUserId | uuid, nullable | Who may edit this row (§2). Deliberately a plain column, not an FK relation — **null means unowned and editable by anyone**, which is the correct state for every row predating this column, and for a client whose cookie never stuck |
 | createdAt / updatedAt | timestamp | |
 
 **Server-side split validation (confirmed, dev council review):** `POST /groups/:code/expenses` and `PATCH /expenses/:id` re-check that resolved `ExpenseSplit` amounts sum to `Expense.amount` (after rounding) **before writing**. Client-side validation (APP_FLOW §4) is a UX nicety, not the enforcement point — a mismatch is rejected with `400` and nothing is written. This is what actually guarantees the `ExpenseSplit` invariant below, not just the rounding rule.
@@ -100,6 +116,7 @@
 | toPersonId | uuid (FK → Person) | |
 | amount | decimal | |
 | note | text | Required — how it was settled (e.g. "Venmo", "cash") |
+| createdByUserId | uuid, nullable | Same ownership rule as `Expense` |
 | settledAt | timestamp | |
 
 **Balances are never stored** — they're computed on read from `ExpenseSplit` (what each person owes) minus `Settlement` (what's already been paid) between each pair of people in a group. This keeps the data an append-only ledger, the same principle real accounting systems use, and means there's no running-total field that can ever drift out of sync with reality.
@@ -131,5 +148,9 @@ Write-only audit trail for the flat-permissions model (§2) — not read for bal
 - Database: Railway-managed Postgres, same project as backend for simplicity.
 - Environment variables (DB connection string, CORS origin, etc.) managed per-platform; no secrets committed to the repo. Frontend build-time vars use Vite's `VITE_` prefix (e.g. `VITE_API_URL`), declared in `vite-env.d.ts` for type safety — not Next's `NEXT_PUBLIC_` convention.
 - **CORS (confirmed):** allow the production Vercel domain plus a pattern for this project's Vercel preview URLs (`*.vercel.app` scoped to the project, not a global wildcard) — lets preview deploys work without opening CORS to arbitrary origins.
-- **Rate limiting (confirmed):** basic per-IP throttling (`express-rate-limit` or equivalent) on `POST /groups`, `POST /groups/:code/people`, and `POST /groups/:code/expenses` — these are unauthenticated write endpoints on a public URL. A few lines, closes off casual spam.
+- **Rate limiting.** `express-rate-limit` on **every** write route (9 of them; four were previously unthrottled). **Keyed on the session, not the IP** — revised 2026-08-30 after a 429 during ordinary onboarding.
+  - Per-IP was the wrong key for this app: the people splitting a dinner are on one WiFi, so they share a public IP and eat each other's budget, and behind carrier-grade NAT strangers would too. Every write mints a session, so only a caller's *first* write is IP-keyed; after that each actor has its own budget.
+  - The IP fallback still does its original job: a client that drops cookies stays IP-limited and cannot mint unbounded guest `User` rows. This is also why `requireActor` is mounted **after** the limiter on every route — order matters.
+  - Ceiling raised 20 → 120 per 15 min. Onboarding is write-heavy (a group plus eight people is nine writes before a single expense), so 20 was hit during the flow it was least acceptable to fail. Sign-in has a separate 30/15min budget so a burst of edits can't lock someone out of signing in.
+  - **Known limit:** the store is in-memory, so counters reset on deploy and each instance counts separately. Fine at one instance; needs a shared store if that changes.
 - **Error tracking:** deferred to post-MVP. `ActivityLog` (§3) already covers app-level audit trail; exception/crash tracking (e.g. Sentry) can be added once the app is live and there's real traffic to watch.

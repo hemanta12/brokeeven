@@ -13,6 +13,7 @@ function expense(id: string, date: string, amount: string): Expense {
     date,
     payerId: 'p1',
     splitMethod: 'equal',
+    createdByUserId: null,
     splits: []
   } as Expense;
 }

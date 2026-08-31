@@ -3,6 +3,7 @@ export interface Person {
   groupId: string;
   name: string;
   email: string | null;
+  userId: string | null;
   removedAt: string | null;
   createdAt: string;
 }
@@ -34,6 +35,7 @@ export interface Expense {
   date: string;
   payerId: string;
   splitMethod: SplitMethod;
+  createdByUserId: string | null;
   splits: ExpenseSplit[];
 }
 
@@ -44,6 +46,7 @@ export interface Settlement {
   toPersonId: string;
   amount: string;
   note: string;
+  createdByUserId: string | null;
   settledAt: string;
 }
 
@@ -58,4 +61,8 @@ export interface GroupWithPeople extends Group {
   expenses: Expense[];
   settlements: Settlement[];
   balances: Balance[];
+  // Who the API thinks is asking. Present on the REST fetch only -- the
+  // realtime broadcast is one shared payload for the whole room, so
+  // useGroupRealtime carries this value forward itself.
+  viewerUserId: string | null;
 }

@@ -15,12 +15,13 @@ describe('ExpenseModal', () => {
       <ExpenseModal
         code="ABC123"
         people={[
-          { id: 'p1', groupId: 'g1', name: 'A very long payer name', email: null, removedAt: null, createdAt: '2026-01-01' }
+          { id: 'p1', groupId: 'g1', name: 'A very long payer name', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
         ]}
         identityPersonId="p1"
         expense={{
           id: 'e1', groupId: 'g1', title: 'DINNER', description: null, amount: '20.00', date: '2026-01-05',
           payerId: 'p1', splitMethod: 'equal',
+          createdByUserId: null,
           splits: [{ id: 's1', expenseId: 'e1', personId: 'p1', amount: '20.00', percentAtEntry: null }]
         }}
         onClose={vi.fn()}

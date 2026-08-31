@@ -7,7 +7,7 @@ import { ExpenseRow } from "../../components/ExpenseRow";
 import { Field } from "../../components/Field";
 import { MemberChip } from "../../components/MemberChip";
 import { Tabs } from "../../components/Tabs";
-import { ApiError } from "../../lib/apiClient";
+import { ApiError, hasCompletedWrite } from "../../lib/apiClient";
 import {
   EmptyState,
   ErrorState,
@@ -15,6 +15,7 @@ import {
 } from "../../shared/RouteStates";
 import { formatDateGroupLabel } from "../../shared/format";
 import { getIdentity } from "../../shared/identity";
+import { resolveIdentityPersonId } from "./ownership";
 import { useBlurValidation } from "../../shared/useBlurValidation";
 import { ExpenseDetail } from "../expense/ExpenseDetail";
 import { ExpenseModal } from "../expense/ExpenseModal";
@@ -80,9 +81,13 @@ export function GroupPage() {
   async function handleAddPerson(event: FormEvent) {
     event.preventDefault();
     if (!code || !personName.trim()) return;
-    await addPerson.mutateAsync({ code, name: personName });
-    setPersonName("");
-    untouch("personName");
+    try {
+      await addPerson.mutateAsync({ code, name: personName });
+      setPersonName("");
+      untouch("personName");
+    } catch {
+      // Rendered from addPerson.isError; the typed name stays for a retry.
+    }
   }
 
   if (isLoading) {
@@ -114,18 +119,38 @@ export function GroupPage() {
     return null;
   }
 
+  // The account's claim outranks this browser's local hint. Derived per
+  // render rather than written back: the claim arrives with every group
+  // fetch, so mirroring it into localStorage would add a write and a way for
+  // the two to drift, and buy nothing.
+  const resolvedIdentityPersonId = resolveIdentityPersonId(
+    group.people,
+    group.viewerUserId,
+    identityPersonId,
+  );
+
+  // A write always mints a session, so a still-empty viewer id here means the
+  // cookie never stuck (private mode, blocked third-party cookies, an
+  // extension). Their entries will be uneditable, so say so plainly.
+  const cookiesBlocked = hasCompletedWrite() && group.viewerUserId === null;
+
   const shouldShowWhoAreYou =
-    !identityPersonId && group.people.length > 0 && !dismissedWhoAreYou;
+    !resolvedIdentityPersonId && group.people.length > 0 && !dismissedWhoAreYou;
   const inviteLink = `${window.location.origin}/g/${code}`;
 
   function balanceDirection(balance: Balance): "owe" | "owed" | "neutral" {
-    if (balance.fromPersonId === identityPersonId) return "owe";
-    if (balance.toPersonId === identityPersonId) return "owed";
+    if (balance.fromPersonId === resolvedIdentityPersonId) return "owe";
+    if (balance.toPersonId === resolvedIdentityPersonId) return "owed";
     return "neutral";
   }
 
   return (
     <main className="bottom-bar-clearance flex flex-col pt-4">
+      {cookiesBlocked && (
+        <p role="status" className="mx-4 mb-3 rounded-[10px] bg-ledger-paper px-3.5 py-2.5 font-sans text-label text-ink-forest/75">
+          Your browser is blocking cookies, so entries you add here can&apos;t be edited later.
+        </p>
+      )}
       <div className="group-surface flex-1 rounded-[14px] bg-paper-white pb-6">
         <header className="px-4 pt-4 text-center sm:px-6">
           <div className="relative flex min-w-0 flex-col items-center rounded-[12px] border border-ledger-green/20 bg-ledger-paper px-4 pb-4 pt-10">
@@ -236,7 +261,7 @@ export function GroupPage() {
                 >
                   <MemberChip
                     name={person.name}
-                    isYou={person.id === identityPersonId}
+                    isYou={person.id === resolvedIdentityPersonId}
                   />
                 </li>
               ),
@@ -354,7 +379,7 @@ export function GroupPage() {
                             <ExpenseRow
                               title={expense.title}
                               payerName={payer?.name ?? "someone removed"}
-                              payerIsViewer={expense.payerId === identityPersonId}
+                              payerIsViewer={expense.payerId === resolvedIdentityPersonId}
                               amount={Number(expense.amount)}
                               onClick={() => setViewingExpense(expense)}
                             />
@@ -400,9 +425,9 @@ export function GroupPage() {
                           amount={Number(balance.amount)}
                           direction={balanceDirection(balance)}
                           fromIsViewer={
-                            balance.fromPersonId === identityPersonId
+                            balance.fromPersonId === resolvedIdentityPersonId
                           }
-                          toIsViewer={balance.toPersonId === identityPersonId}
+                          toIsViewer={balance.toPersonId === resolvedIdentityPersonId}
                           onSettle={() => setSettlingBalance(balance)}
                         />
                       </li>
@@ -423,7 +448,8 @@ export function GroupPage() {
         <ExpenseDetail
           expense={viewingExpense}
           people={group.people}
-          identityPersonId={identityPersonId}
+          identityPersonId={resolvedIdentityPersonId}
+          viewerUserId={group.viewerUserId}
           onClose={() => setViewingExpense(null)}
           onEdit={() => {
             setEditingExpense(viewingExpense);
@@ -436,7 +462,7 @@ export function GroupPage() {
         <ExpenseModal
           code={code}
           people={group.people}
-          identityPersonId={identityPersonId}
+          identityPersonId={resolvedIdentityPersonId}
           expense={editingExpense === "new" ? undefined : editingExpense}
           onClose={() => setEditingExpense(null)}
         />

@@ -20,23 +20,37 @@ export function CreateGroupPage() {
   const [label, setLabel] = useState('');
   const [personName, setPersonName] = useState('');
 
+  // mutateAsync rejects on failure; without catching, a 4xx surfaces as an
+  // unhandled rejection in the console instead of the ErrorState already
+  // rendered below from the mutation's own isError.
   async function handleCreateGroup(event: FormEvent) {
     event.preventDefault();
-    const created = await createGroup.mutateAsync({ name, label: label.trim() || undefined });
-    setGroup(created);
+    try {
+      setGroup(await createGroup.mutateAsync({ name, label: label.trim() || undefined }));
+    } catch {
+      // Rendered from createGroup.isError.
+    }
   }
 
   async function handleAddPerson(event: FormEvent) {
     event.preventDefault();
     if (!group || !personName.trim()) return;
-    const person = await addPerson.mutateAsync({ code: group.joinCode, name: personName });
-    setPeople((current) => [...current, person]);
-    setPersonName('');
+    try {
+      const person = await addPerson.mutateAsync({ code: group.joinCode, name: personName });
+      setPeople((current) => [...current, person]);
+      setPersonName('');
+    } catch {
+      // Rendered from addPerson.isError; the name stays in the field to retry.
+    }
   }
 
   async function handleRemovePerson(personId: string) {
-    await removePerson.mutateAsync(personId);
-    setPeople((current) => current.filter((person) => person.id !== personId));
+    try {
+      await removePerson.mutateAsync(personId);
+      setPeople((current) => current.filter((person) => person.id !== personId));
+    } catch {
+      // Rendered from removePerson.isError.
+    }
   }
 
   if (!group) {

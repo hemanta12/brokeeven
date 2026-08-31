@@ -6,6 +6,7 @@ import { Overlay } from '../../shared/Overlay';
 import { setIdentity } from '../../shared/identity';
 import { ErrorState } from '../../shared/RouteStates';
 import { useBlurValidation } from '../../shared/useBlurValidation';
+import { claimPerson } from '../auth/api';
 import { useAddPerson } from './api';
 import type { Person } from './types';
 
@@ -26,6 +27,10 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
 
   function pickExisting(personId: string) {
     setIdentity(code, personId);
+    // Links this person to the session too, so the choice survives a new
+    // device once signed in. Deliberately not awaited: the overlay should
+    // close instantly, and a failed claim costs nothing locally.
+    void claimPerson(personId);
     onClose();
   }
 
@@ -33,6 +38,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
     event.preventDefault();
     const person = await addPerson.mutateAsync({ code, name });
     setIdentity(code, person.id);
+    void claimPerson(person.id);
     onClose();
   }
 

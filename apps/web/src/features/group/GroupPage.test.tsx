@@ -23,8 +23,8 @@ const baseGroup = {
   joinCode: 'ABC123',
   createdAt: '2026-01-01',
   people: [
-    { id: 'p1', groupId: 'g1', name: 'Alice', email: null, removedAt: null, createdAt: '2026-01-01' },
-    { id: 'p2', groupId: 'g1', name: 'Bob', email: null, removedAt: null, createdAt: '2026-01-01' }
+    { id: 'p1', groupId: 'g1', name: 'Alice', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' },
+    { id: 'p2', groupId: 'g1', name: 'Bob', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
   ],
   expenses: [
     {
@@ -36,6 +36,7 @@ const baseGroup = {
       date: '2026-01-05',
       payerId: 'p1',
       splitMethod: 'equal',
+      createdByUserId: null,
       splits: [
         { id: 's1', expenseId: 'e1', personId: 'p1', amount: '10.00', percentAtEntry: null },
         { id: 's2', expenseId: 'e1', personId: 'p2', amount: '10.00', percentAtEntry: null }
@@ -74,7 +75,7 @@ describe('GroupPage', () => {
             label: null,
             joinCode: 'ABC123',
             createdAt: '2026-01-01',
-            people: [{ id: 'p1', groupId: 'g1', name: 'Alice', email: null, removedAt: null, createdAt: '2026-01-01' }],
+            people: [{ id: 'p1', groupId: 'g1', name: 'Alice', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }],
             expenses: [],
             settlements: [],
             balances: []

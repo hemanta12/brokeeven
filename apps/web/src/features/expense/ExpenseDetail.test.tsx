@@ -4,8 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { ExpenseDetail } from './ExpenseDetail';
 
 const people = [
-  { id: 'p1', groupId: 'g1', name: 'Alice', email: null, removedAt: null, createdAt: '2026-01-01' },
-  { id: 'p2', groupId: 'g1', name: 'Bob', email: null, removedAt: null, createdAt: '2026-01-01' }
+  { id: 'p1', groupId: 'g1', name: 'Alice', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' },
+  { id: 'p2', groupId: 'g1', name: 'Bob', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
 ];
 
 describe('ExpenseDetail', () => {
@@ -15,6 +15,7 @@ describe('ExpenseDetail', () => {
         expense={{
           id: 'e1', groupId: 'g1', title: 'DINNER', description: 'Shared meal', amount: '20.00', date: '2026-01-05',
           payerId: 'p1', splitMethod: 'equal',
+          createdByUserId: null,
           splits: [
             { id: 's1', expenseId: 'e1', personId: 'p1', amount: '10.00', percentAtEntry: null },
             { id: 's2', expenseId: 'e1', personId: 'p2', amount: '10.00', percentAtEntry: null }
@@ -22,6 +23,7 @@ describe('ExpenseDetail', () => {
         }}
         people={people}
         identityPersonId="p1"
+        viewerUserId={null}
         onClose={vi.fn()}
         onEdit={vi.fn()}
       />
@@ -32,5 +34,26 @@ describe('ExpenseDetail', () => {
     expect(screen.getByText('Mon, Jan 5, 2026')).toBeInTheDocument();
     expect(screen.getByText('Alice (you)')).toBeInTheDocument();
     expect(screen.getAllByText('$10.00')).toHaveLength(2);
+  });
+
+  it("offers no Edit button on an expense someone else created", () => {
+    render(
+      <ExpenseDetail
+        expense={{
+          id: 'e1', groupId: 'g1', title: 'Dinner', description: null, amount: '20.00', date: '2026-01-05',
+          payerId: 'p1', splitMethod: 'equal',
+          createdByUserId: 'someone-else',
+          splits: [{ id: 's1', expenseId: 'e1', personId: 'p1', amount: '20.00', percentAtEntry: null }]
+        }}
+        people={people}
+        identityPersonId="p1"
+        viewerUserId="me"
+        onClose={vi.fn()}
+        onEdit={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.getByText('Only the person who added this can edit it.')).toBeInTheDocument();
   });
 });

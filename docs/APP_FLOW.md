@@ -61,11 +61,24 @@
 - **Fallback path:** `/join` — a plain code-entry form, for cases where the code was read aloud or a link didn't render as tappable text.
 - Invalid/unknown code → "Group not found" message with a retry field and a "Create a new group" option.
 
+### 2.4b Sign In (optional, anywhere) — added 2026-08-30
+- Reached from the Profile control in the navbar, or from `/groups` when signed out. Nothing else in the app links to it, and nothing requires it.
+- One Google button. The script is fetched only when the button actually renders, so anonymous visitors never pay for it.
+- On success the browser's remembered group identities are silently claimed for the account, so "My Groups" is populated immediately rather than empty.
+- Signing out is spelled out: entries stay with the account, and are editable again on signing back in.
+
+### 2.4c My Groups (`/groups`) — added 2026-08-30
+- Every group the signed-in account has a live person in, newest activity first: name, member and expense counts, last activity, and your net balance with direction.
+- A plain list, not a card grid — these are records, and the balance column is the useful comparison between rows.
+- Signed out, the page explains what signing in buys and offers the button; it does not redirect or block.
+- A group you were removed from drops off the list, even though the expenses you added to it remain in that group.
+
 ### 2.5 "Who Are You?" (first visit to a group, per browser) — CONFIRMED
 - On first landing in a given group from a given browser, show the current member list and ask the person to pick which name is theirs (or add themselves if not listed yet).
 - **Fully skippable** — the single top-right X is labeled "Just looking" and continues straight to Group View with no identity picked.
 - This prompt is a full-page overlay with focus trapping, background scroll locking, safe-area padding, focus restoration, and Escape support.
-- Stored only in that browser's local storage, scoped to that one group. Not sent anywhere, not an account, doesn't gate any action.
+- Stored in that browser's local storage, scoped to that one group. **Also sent to the server as of 2026-08-30** (`POST /people/:id/claim`), which links that person to your session — that is what makes "My Groups" possible and what carries your identity to a new device once you sign in. Still not an account, still gates nothing.
+- When the two disagree — local storage says one person, your account claims another — **the account's claim wins**, since it is the one that followed you here from another device.
 - Effect when set: defaults the payer field to "you" on new expenses, and highlights your row in the balance summary. Nothing else changes — someone who skips this can still add expenses and pick any payer manually every time.
 - Returning to the same group on the same browser skips this prompt (already known).
 - Not shown for groups created via §2.2 Quick 1:1 — already answered during creation.

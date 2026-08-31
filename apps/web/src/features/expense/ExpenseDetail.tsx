@@ -1,12 +1,14 @@
 import { Button } from '../../components/Button';
 import { Overlay } from '../../shared/Overlay';
 import { formatCurrency, formatDate, formatExpenseTitle } from '../../shared/format';
+import { canEdit } from '../group/ownership';
 import type { Expense, Person } from '../group/types';
 
 interface ExpenseDetailProps {
   expense: Expense;
   people: Person[];
   identityPersonId: string | null;
+  viewerUserId: string | null;
   onClose: () => void;
   onEdit: () => void;
 }
@@ -15,8 +17,16 @@ interface ExpenseDetailProps {
 // second step via the Edit button, not the default. Mirrors the Add/Edit
 // Expense field order (title/description/date, then payer, then splits) so
 // the two screens read as the same information, just view vs. edit.
-export function ExpenseDetail({ expense, people, identityPersonId, onClose, onEdit }: ExpenseDetailProps) {
+export function ExpenseDetail({
+  expense,
+  people,
+  identityPersonId,
+  viewerUserId,
+  onClose,
+  onEdit
+}: ExpenseDetailProps) {
   const payer = people.find((person) => person.id === expense.payerId);
+  const editable = canEdit(expense.createdByUserId, viewerUserId);
 
   return (
     <Overlay title={formatExpenseTitle(expense.title)} centerTitle isDirty={false} onClose={onClose}>
@@ -53,9 +63,17 @@ export function ExpenseDetail({ expense, people, identityPersonId, onClose, onEd
           </div>
         </div>
 
-        <Button onClick={onEdit} className="h-[52px] w-full">
-          Edit
-        </Button>
+        {editable ? (
+          <Button onClick={onEdit} className="h-[52px] w-full">
+            Edit
+          </Button>
+        ) : (
+          // No disabled button: an affordance that only ever 403s is worse
+          // than none. Say why instead.
+          <p className="text-center font-sans text-label text-ink-forest/60">
+            Only the person who added this can edit it.
+          </p>
+        )}
       </div>
     </Overlay>
   );

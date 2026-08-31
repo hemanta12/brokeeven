@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { getIdentity, setIdentity } from './identity';
+import { getIdentity, listLocalIdentities, setIdentity } from './identity';
 
 describe('identity', () => {
   beforeEach(() => {
@@ -34,5 +34,37 @@ describe('identity', () => {
 
       expect(getIdentity('ABC123')).toBeNull();
     });
+  });
+});
+
+describe('listLocalIdentities', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('collects every remembered group, ignoring unrelated keys', () => {
+    setIdentity('ABC123', 'person-1');
+    setIdentity('XYZ789', 'person-2');
+    localStorage.setItem('some-other-app', 'noise');
+
+    expect(listLocalIdentities()).toEqual(
+      expect.arrayContaining([
+        { code: 'ABC123', personId: 'person-1' },
+        { code: 'XYZ789', personId: 'person-2' }
+      ])
+    );
+    expect(listLocalIdentities()).toHaveLength(2);
+  });
+
+  it('returns nothing rather than throwing when storage is unavailable', () => {
+    vi.spyOn(Storage.prototype, 'key').mockImplementation(() => {
+      throw new Error('storage disabled');
+    });
+
+    expect(listLocalIdentities()).toEqual([]);
   });
 });

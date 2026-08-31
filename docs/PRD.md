@@ -67,11 +67,18 @@ Hemanta and a known circle of friends/housemates. Public-facing, but not designe
 - No payment integration — settling is record-keeping only; no money moves through the app.
 
 ### 6.5 Access Model
-- No accounts, no login, no email required.
+- **No account required.** Creating a group, joining by code, and adding expenses all work with no sign-in, exactly as before.
+- **Optional Google sign-in** (added 2026-08-30) buys two things and nothing else: your groups listed on one screen across devices, and your entries staying editable if this browser forgets you. It never gates joining or creating a group.
 - Every group gets a system-generated join code at creation (see Tech Stack doc §2). Anyone with the code can view and add to that group, from any device.
 - The group and its full expense history live on the server — clearing a browser's cache does **not** delete or lock anyone out of a group, as long as the join code is still known (e.g. saved in a text thread).
 - What cache-clearing *does* lose: the browser's local shortcut list of "groups I've recently opened," and any memory of "which member name is me" in a given group — both are one extra click to restore (re-enter the code, pick your name), not data loss.
-- **Permissions are fully flat — confirmed.** Anyone with the join code has the same power as the group's creator: add/edit/delete any expense, remove any person, reassign any payer. No per-editor restrictions (e.g. "only the logger can delete their expense") — that would require tracking identity more reliably than the no-accounts model supports. To keep this accountable, every mutation is recorded to an append-only activity log (see TECH_STACK.md §3 `ActivityLog`) so "what happened and who did it" stays traceable even without accounts.
+- **Permissions are creator-owned. Superseded 2026-08-30** — this section previously specified fully flat permissions, on the grounds that per-editor restrictions "would require tracking identity more reliably than the no-accounts model supports." A real session cookie now does track it reliably, so that objection no longer holds.
+  - **You may edit or delete only the expenses and settlements you created.** Everyone else's are read-only to you; the UI hides the affordance rather than showing a button that 403s.
+  - **Adding is still open to anyone with the code**, as is viewing. Only editing *existing* rows is restricted.
+  - **Rows created before this change have no recorded creator and stay editable by anyone**, so no existing data is stranded.
+  - **People are not creator-owned.** Renaming and removing a member stay open to any group member — removing someone who has left is a group-admin action nobody else can perform.
+  - Ownership is recorded against the *account or guest session*, not the `Person` row, so it survives a rename or a removal and works across groups.
+  - Every mutation is still recorded to an append-only activity log (TECH_STACK.md §3 `ActivityLog`), which now finally carries `actorName` for anyone who has said who they are.
 
 ### 6.6 Platform
 - Responsive web app, installable as a PWA (optional — not required to use the app).
@@ -82,7 +89,7 @@ Hemanta and a known circle of friends/housemates. Public-facing, but not designe
 
 | Feature | Why deferred |
 |---|---|
-| Email magic-link identity + "My Groups" dashboard | Solves cross-device/cache-clear persistence; explicitly pushed to a fast-follow |
+| ~~Email magic-link identity + "My Groups" dashboard~~ | **Shipped 2026-08-30 as Google sign-in instead** — same problem (cross-device persistence), one fewer auth path to maintain and no mail delivery to operate. |
 | Debt simplification (minimize # of settle-up transactions) | Nice-to-have, not core to daily use |
 | Consolidated cross-group balance view | Per-group is enough for now |
 | Notifications (new expense, added to group, unsettled reminders) | Adds complexity, not needed at this scale |
@@ -94,14 +101,14 @@ Hemanta and a known circle of friends/housemates. Public-facing, but not designe
 | Sub-categories within a group | Flat list is sufficient |
 | Split-by-shares | Not part of current workflow |
 
-**Priority for first post-MVP addition:** email magic-link identity ("My Groups" dashboard) — confirmed as the next feature to build once MVP is running end-to-end, before any of the other deferred items above.
+**Priority for first post-MVP addition:** ~~email magic-link identity~~ — **done 2026-08-30**, delivered as optional Google sign-in with a "My Groups" screen. Magic-link auth is dropped rather than deferred: it solved the same problem, and shipping both would mean two auth paths for one need.
 
 ## 8. Constraints & Known Limitations
 
 - **Hosting:** Vercel (frontend) + Railway (backend/DB as needed). Free tier, low-traffic assumption.
-- **Currency:** USD only.
+- **Currency:** USD only. *(MVP limitation. Superseded by §11 — Sprint 6.1 adds a per-group base currency. Per-expense currency and rate conversion remain out of scope.)*
 - **Group size cap:** 20 members per group, enforced.
-- **Groups-per-session cap:** 20 groups tracked per browser (via local storage), enforced. This is a per-browser-session cap, not a true per-person cap — since MVP has no login, "session" and "person" are treated as equivalent by design. The same person on a different browser or device gets a separate session with its own 20-group allowance; this is expected, not a bug. This is a local-storage list limit, not a server-side limit — creating/joining a 21st group still works normally; the oldest entry is silently evicted from the local shortcut list (LRU), no warning shown.
+- **Groups-per-session cap:** 20 groups tracked per browser (via local storage). *Never implemented, and now partly moot: signed-in users get a server-side "My Groups" list with no such cap.* For anonymous users the local list is still per-browser rather than per-person. The same person on a different browser or device gets a separate session with its own 20-group allowance; this is expected, not a bug. This is a local-storage list limit, not a server-side limit — creating/joining a 21st group still works normally; the oldest entry is silently evicted from the local shortcut list (LRU), no warning shown.
 - **Cache clearing** loses only the browser's local shortcut list and "which name is me" memory — not the group or its history, which live server-side and stay reachable via the join code (see §6.5).
 
 ## 9. Naming
@@ -113,3 +120,49 @@ Hemanta and a known circle of friends/housemates. Public-facing, but not designe
 - Everyone currently using Splitwise/alternatives in your circle switches to this within a few weeks of launch.
 - Zero "it's missing X so we worked around it" complaints — the exact problem this project exists to fix.
 - Live, deployed, and linkable from your resume/portfolio.
+
+---
+
+## 11. Post-MVP Scope — Differentiation (added 2026-08-25)
+
+**§6 and §7 above describe the MVP and are left intact as the historical record.** This section supplements them; where the two conflict, this section governs from 2026-08-25 onward.
+
+### Why
+
+The MVP is feature-complete but has no reason-to-exist next to Splitwise beyond being free. Two research passes were commissioned (`Features-Research.md` = V1, `Features-Research-2.md` = V2) to find evidence-backed gaps. They contradict each other on most findings; **V2 governs** — it cites named, dated primary sources from Splitwise's own feedback forum and separates primary evidence from news-aggregator paraphrase, while V1's quote tables have no source links. Rationale recorded in `decision-log.md`, 2026-08-25.
+
+**Rejected on evidence** — do not revisit without new data:
+
+| Idea | Why rejected |
+|---|---|
+| "Whose turn to pay next" | Already shipped by Splitwise, WhoPays, and Split.rest. Commoditized |
+| Non-cash contribution credit (driving, cooking, hosting) | No user demand found. V1 mistook road-trip gas-etiquette arguments for demand for software. A founder hypothesis, not a need |
+| Multi-currency conversion | Splid and Tricount already do it free and offline. Table stakes, not differentiation, and an external rate API would break the PWA offline story |
+
+### What this adds to §6
+
+- **§6.3 Expenses** — the split methods become **equal / percentage / custom dollar amount / weighted**. Weighted is the deferred "split-by-shares" item from §7, promoted. Its value is *persistence*: `Person.weight` lives on the person and `Group.defaultSplitMethod` on the group, so a group configures its ratio once instead of re-entering it per expense. It is deliberately a named method rather than a redefinition of "equal" — a UI that says "equal" while producing unequal numbers is a lie, and this is a money app. Amount stays single-currency **per group**, no longer USD-hardcoded.
+- **§6.4 Balances & Settling** — adds **closing a ledger**: a group-level forgiveness threshold, a one-tap close that forgives sub-threshold balances and presents a minimum-transaction settle-up, and a reversible closed state. Forgiven balances are materialized as `Settlement` rows, so **the record is preserved and nothing is deleted**.
+  - "No debt-simplification algorithm" in §6.4 **still holds for the Balances tab**, which continues to show raw pairwise amounts. Simplification happens *only* inside the close-out view.
+  - "No payment integration" in §6.4 **is unchanged**. Sprint 6.4 adds a per-person payment *handle* — free text, surfaced at settle time with copy and a QR. No money moves through the app; it remains record-keeping.
+  - Closing is reversible by anyone with the join code, consistent with §6.5's flat permissions and the activity log as the accountability substitute.
+
+### What this changes in §7
+
+| §7 deferred row | New status |
+|---|---|
+| Debt simplification | Partially promoted — close-out only |
+| Multi-currency support | Partially promoted — per-group base currency only; per-expense currency and conversion stay deferred |
+| Split-by-shares | Promoted, as `weighted` |
+| Payment integration | **Unchanged — still out of scope.** A handle is not an integration |
+| Recurring expenses | Still deferred, but it was the best-evidenced finding not picked up (Spliit GitHub #114, 27 👍). Held back as an audience call — it serves roommates, not travelers. Revisit if household use dominates |
+
+**Superseded priority:** §7 names email magic-link identity as "priority for first post-MVP addition." That ordering is superseded — the above precedes it. Magic-link identity remains the next item after.
+
+### Sequencing
+
+Phase 5 gets the MVP deployed and smoke-tested. Phase 6 builds the differentiation. Phase 7 puts it in front of people — and is deliberately gated: Sprint 7.1 (real usage with a known circle) must precede Sprint 7.2 (public launch), because the story `MARKETING.md` tells is the close-the-ledger story, and a launch post landing while the app has never been used burns its one shot.
+
+An earlier draft wedged this work between hardening and launch, which would have shipped four features before any real user touched the app — inverting V2's own recommendation that usage data should gate the close-out investment. The phase split resolves that: the app is live from Phase 5, and 7.1 provides the usage signal before anything goes wide. Watch specifically whether anyone closes a trip or sets a weight; those two are the bet, and if nobody touches them the differentiation didn't land.
+
+Tasks: `ROADMAP.md` Phase 6 (Sprints 6.1–6.5). Launch and feedback: Phase 7. Launch angle: `MARKETING.md`.
