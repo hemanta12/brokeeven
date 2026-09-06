@@ -1,12 +1,12 @@
 CLAUDE.md
+.claude/
 docs/ROADMAP.md
-docs/UIUX_rules.md
-docs/memory.md
-docs/decision-log.md
 docs/RUNBOOK.md
-docs/MARKETING.md
-docs/Features-Research.md
-docs/Features-Research-2.md
+docs/memory.md
+docs/Product.md
+docs/rules/
+docs/research/
+docs/logs/
 
 node_modules/
 dist/
