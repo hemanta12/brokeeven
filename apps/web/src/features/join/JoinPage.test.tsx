@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +14,7 @@ import { JoinPage } from './JoinPage';
 
 describe('JoinPage', () => {
   it('navigates to the uppercased group code on submit', () => {
-    render(<JoinPage />);
+    render(<JoinPage />, { wrapper: MemoryRouter });
 
     fireEvent.change(screen.getByLabelText('Group code'), { target: { value: 'abc123' } });
     fireEvent.click(screen.getByRole('button', { name: 'Join' }));

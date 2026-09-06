@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, formatDateGroupLabel, formatExpenseTitle } from './format';
+import { formatDate, formatDateGroupLabel, formatExpenseTitle, formatUpdatedLabel } from './format';
 
 describe('formatExpenseTitle', () => {
   it('normalizes all-uppercase and mixed-case titles', () => {
@@ -36,5 +36,26 @@ describe('formatDateGroupLabel', () => {
   it('drops the year within the current year and keeps it otherwise', () => {
     expect(formatDateGroupLabel('2026-08-22T00:00:00.000Z', today)).toBe('Sat, Aug 22');
     expect(formatDateGroupLabel('2025-12-31T00:00:00.000Z', today)).toBe('Wed, Dec 31, 2025');
+  });
+});
+
+describe('formatUpdatedLabel', () => {
+  const now = new Date(2026, 7, 24, 15, 0);
+  // Local-noon instant, so the runner's timezone can't shift the calendar day.
+  const at = (year: number, month: number, day: number) =>
+    new Date(year, month, day, 12, 0).toISOString();
+
+  it('says today and yesterday for the two recent days', () => {
+    expect(formatUpdatedLabel(at(2026, 7, 24), now)).toBe('today');
+    expect(formatUpdatedLabel(at(2026, 7, 23), now)).toBe('yesterday');
+  });
+
+  it('falls back to a weekday-less short date beyond yesterday', () => {
+    expect(formatUpdatedLabel(at(2026, 7, 22), now)).toBe('Aug 22');
+    expect(formatUpdatedLabel(at(2025, 11, 31), now)).toBe('Dec 31, 2025');
+  });
+
+  it('treats a future timestamp as today rather than a negative count', () => {
+    expect(formatUpdatedLabel(at(2026, 7, 25), now)).toBe('today');
   });
 });

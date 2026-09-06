@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
+import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
 import { ErrorState } from '../../shared/RouteStates';
@@ -20,9 +21,7 @@ export function QuickOneOnOnePage() {
 
   return (
     <main>
-      <Link to="/" className="focus-ring font-sans text-body font-medium text-ink-forest hover:underline active:opacity-70">
-        ‹ Back
-      </Link>
+      <BackButton to="/" />
 
       <h1 className="mt-6 heading text-display">Split with One Person</h1>
       <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">

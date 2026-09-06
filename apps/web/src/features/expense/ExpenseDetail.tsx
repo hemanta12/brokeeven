@@ -1,6 +1,11 @@
+import { useState } from 'react';
+
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Overlay } from '../../shared/Overlay';
-import { formatCurrency, formatDate, formatExpenseTitle } from '../../shared/format';
+import { Amount } from '../../components/Amount';
+import { ErrorState } from '../../shared/RouteStates';
+import { formatDate, formatExpenseTitle } from '../../shared/format';
 import { canEdit } from '../group/ownership';
 import type { Expense, Person } from '../group/types';
 
@@ -11,68 +16,148 @@ interface ExpenseDetailProps {
   viewerUserId: string | null;
   onClose: () => void;
   onEdit: () => void;
+  onDelete: () => void;
+  deletePending?: boolean;
+  deleteError?: string;
 }
 
 // Read-only view opened by tapping an expense row — editing is a deliberate
-// second step via the Edit button, not the default. Mirrors the Add/Edit
-// Expense field order (title/description/date, then payer, then splits) so
-// the two screens read as the same information, just view vs. edit.
+// second step, so Edit is a quiet icon beside the close control, not a sticky
+// primary button. Presented as a receipt: date under the title, the
+// description as a pulled quote, then one row pairing who paid with the total
+// so neither side leaves dead space.
 export function ExpenseDetail({
   expense,
   people,
   identityPersonId,
   viewerUserId,
   onClose,
-  onEdit
+  onEdit,
+  onDelete,
+  deletePending,
+  deleteError
 }: ExpenseDetailProps) {
   const payer = people.find((person) => person.id === expense.payerId);
   const editable = canEdit(expense.createdByUserId, viewerUserId);
+  // Trash tap asks first, same two-step inline pattern as removing a person
+  // (EditPersonForm) — this is the only irreversible action reachable from
+  // the receipt view, so it doesn't get a plain one-tap button.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
-    <Overlay title={formatExpenseTitle(expense.title)} centerTitle isDirty={false} onClose={onClose}>
-      <div className="flex flex-col gap-6">
-        <div className="expense-summary rounded-[10px] bg-ledger-paper px-4 py-5 text-center">
-          <p className="font-sans text-hero-balance tabular-nums text-ink-forest">
-            {formatCurrency(Number(expense.amount))}
-          </p>
-          <p className="mt-2 font-sans text-label text-ink-forest/70">{formatDate(expense.date)}</p>
-        </div>
-        {expense.description && <p className="font-sans text-body text-ink-forest/80">{expense.description}</p>}
+    <Overlay
+      title={formatExpenseTitle(expense.title)}
+      stackedHeader
+      isDirty={false}
+      onClose={onClose}
+      headerAction={
+        editable ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            aria-label="Edit"
+            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              aria-hidden="true"
+              className="size-5"
+            >
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        ) : undefined
+      }
+    >
+      <div className="flex flex-1 flex-col gap-5">
+        <p className="-mt-2 text-center font-sans text-label text-dim">{formatDate(expense.date)}</p>
 
-        <div className="rounded-[10px] bg-paper-white px-3.5 py-3">
-          <p className="font-sans text-label font-medium text-ink-forest">Paid by</p>
-          <p className="mt-1 font-sans text-body text-ink-forest">
-            {payer ? (payer.id === identityPersonId ? `${payer.name} (you)` : payer.name) : 'someone removed'}
+        {expense.description && (
+          <p className="border-l-2 border-line-strong pl-3 font-sans text-body italic text-dim">
+            {expense.description}
           </p>
+        )}
+
+        {/* Who paid on the left, the total on the right — one row so neither
+            the payer nor the figure sits alone above dead space. */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block font-sans text-micro text-dim">Paid by</span>
+            <span className="mt-1 flex items-center gap-2 font-sans text-body text-ink">
+              {payer ? (
+                <>
+                  <Avatar name={payer.name} isYou={payer.id === identityPersonId} />
+                  <span className="min-w-0 truncate">
+                    {payer.id === identityPersonId ? `${payer.name} (you)` : payer.name}
+                  </span>
+                </>
+              ) : (
+                <span className="text-dim">someone removed</span>
+              )}
+            </span>
+          </span>
+          <Amount
+            value={Number(expense.amount)}
+            className="shrink-0 text-hero-balance font-semibold"
+          />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <p className="font-sans text-label font-medium text-ink-forest">Split between</p>
-          <div className="flex flex-col divide-y divide-ink-forest/10 rounded-[10px] bg-ledger-paper px-3.5">
+        <div className="rounded-card bg-surface p-4 shadow-card">
+          <p className="font-sans text-micro text-dim">Split between</p>
+          <ul className="mt-1.5 flex flex-col divide-y divide-line">
             {expense.splits.map((split) => {
               const person = people.find((p) => p.id === split.personId);
               return (
-                <div key={split.id} className="flex items-center justify-between gap-3 py-2.5">
-                  <span className="font-sans text-body text-ink-forest">{person?.name ?? 'someone removed'}</span>
-                  <span className="font-sans text-row-amount tabular-nums text-ink-forest">
-                    {formatCurrency(Number(split.amount))}
+                <li key={split.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <span className="flex min-w-0 items-center gap-2 font-sans text-body text-ink">
+                    {person && <Avatar name={person.name} isYou={person.id === identityPersonId} />}
+                    <span className="min-w-0 truncate">{person?.name ?? 'someone removed'}</span>
                   </span>
-                </div>
+                  <Amount value={Number(split.amount)} className="shrink-0 text-row-amount" />
+                </li>
               );
             })}
-          </div>
+          </ul>
         </div>
 
-        {editable ? (
-          <Button onClick={onEdit} className="h-[52px] w-full">
-            Edit
-          </Button>
-        ) : (
-          // No disabled button: an affordance that only ever 403s is worse
-          // than none. Say why instead.
-          <p className="text-center font-sans text-label text-ink-forest/60">
-            Only the person who added this can edit it.
-          </p>
+        {/* No Edit/Delete affordance for non-owners (the header icon is
+            hidden): an action that only ever 403s is worse than none. */}
+        {!editable && (
+          <div className="modal-footer">
+            <p className="w-full text-center font-sans text-label text-dim">
+              Only the person who added this can edit it.
+            </p>
+          </div>
+        )}
+
+        {editable && (
+          <div className="modal-footer">
+            {confirmingDelete ? (
+              <div className="flex w-full flex-col gap-2">
+                <div className="flex w-full gap-3">
+                  <Button
+                    variant="tertiary"
+                    className="flex-1"
+                    onClick={() => setConfirmingDelete(false)}
+                    disabled={deletePending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button variant="primary" danger className="flex-1" onClick={onDelete} disabled={deletePending}>
+                    {deletePending ? 'Deleting…' : 'Delete expense'}
+                  </Button>
+                </div>
+                {deleteError && <ErrorState message={deleteError} />}
+              </div>
+            ) : (
+              <Button variant="secondary" danger onClick={() => setConfirmingDelete(true)}>
+                Delete expense
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </Overlay>

@@ -15,7 +15,7 @@ export function useCreateQuickGroup() {
     mutationFn: async ({ yourName, theirName }: QuickOneOnOneInput) => {
       const group = await apiFetch<Group>('/groups', {
         method: 'POST',
-        body: JSON.stringify({ name: `You & ${theirName}`, label: 'Individual' })
+        body: JSON.stringify({ name: `You & ${theirName}` })
       });
       const you = await apiFetch<Person>(`/groups/${group.joinCode}/people`, {
         method: 'POST',

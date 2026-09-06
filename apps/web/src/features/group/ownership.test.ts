@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canEdit, resolveIdentityPersonId } from './ownership';
+import { canEdit, resolveIdentityPersonId, viewerNetOnExpense } from './ownership';
 
 describe('canEdit', () => {
   it('leaves rows with no recorded creator open to everyone', () => {
@@ -43,5 +43,35 @@ describe('resolveIdentityPersonId', () => {
 
   it('returns null when neither source knows', () => {
     expect(resolveIdentityPersonId(people, null, null)).toBeNull();
+  });
+});
+
+describe('viewerNetOnExpense', () => {
+  const expense = (payerId: string, amount: string, splits: [string, string][]) => ({
+    payerId,
+    amount,
+    splits: splits.map(([personId, splitAmount]) => ({ personId, amount: splitAmount }))
+  });
+
+  it('is null until the viewer says which person they are', () => {
+    expect(viewerNetOnExpense(expense('p1', '90.00', [['p1', '45.00'], ['p2', '45.00']]), null)).toBeNull();
+  });
+
+  it('is what you paid minus your share when you paid', () => {
+    expect(viewerNetOnExpense(expense('p1', '90.00', [['p1', '30.00'], ['p2', '60.00']]), 'p1')).toBe(60);
+  });
+
+  it('is negative your share when someone else paid', () => {
+    expect(viewerNetOnExpense(expense('p2', '90.00', [['p1', '30.00'], ['p2', '60.00']]), 'p1')).toBe(-30);
+  });
+
+  it('is the whole amount when you paid and are not in the split', () => {
+    expect(viewerNetOnExpense(expense('p1', '90.00', [['p2', '90.00']]), 'p1')).toBe(90);
+  });
+
+  // Not "even": the expense simply is not the viewer's, which is why the row
+  // captions this case differently from a settled one.
+  it('is zero when someone else paid and you are not in the split', () => {
+    expect(viewerNetOnExpense(expense('p2', '90.00', [['p3', '90.00']]), 'p1')).toBe(0);
   });
 });

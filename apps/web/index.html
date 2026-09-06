@@ -3,7 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#E6F1E2" />
+    <!-- Must be a literal: <meta> cannot read a CSS custom property. Keep in
+         sync with --color-bg in src/styles.css (and theme_color in
+         vite.config.ts). -->
+    <meta name="theme-color" content="#F0F2F0" />
+    <!-- Both faces changed in the 006 redesign, so without this the first
+         paint is guaranteed to be the fallback stack. Sans only: the mono is
+         used below the fold on most screens. -->
+    <link rel="preload" href="/fonts/geist-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="icon" href="/icons/icon-192.png" type="image/png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <title>BrokeEven</title>

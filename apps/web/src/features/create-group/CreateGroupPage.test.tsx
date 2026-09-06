@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -16,7 +17,9 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <CreateGroupPage />
+      <MemoryRouter>
+        <CreateGroupPage />
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -39,7 +42,7 @@ describe('CreateGroupPage', () => {
         )
         .mockResolvedValueOnce(
           new Response(
-            JSON.stringify({ id: 'p1', groupId: 'g1', name: 'Alice', email: null, removedAt: null, createdAt: '2026-01-01' }),
+            JSON.stringify({ id: 'p1', groupId: 'g1', name: 'Alice', removedAt: null, createdAt: '2026-01-01' }),
             { status: 201 }
           )
         )

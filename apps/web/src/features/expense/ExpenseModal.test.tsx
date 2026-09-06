@@ -15,7 +15,7 @@ describe('ExpenseModal', () => {
       <ExpenseModal
         code="ABC123"
         people={[
-          { id: 'p1', groupId: 'g1', name: 'A very long payer name', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
+          { id: 'p1', groupId: 'g1', name: 'A very long payer name', userId: null, removedAt: null, createdAt: '2026-01-01' }
         ]}
         identityPersonId="p1"
         expense={{

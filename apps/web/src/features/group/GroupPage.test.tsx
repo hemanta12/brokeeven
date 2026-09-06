@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test-utils';
 import { GroupPage } from './GroupPage';
+import { setIdentity } from '../../shared/identity';
 
 // Group View joins a realtime room on mount (useGroupRealtime) — none of
 // these tests exercise live updates, so stub the socket to avoid a real
@@ -23,8 +24,8 @@ const baseGroup = {
   joinCode: 'ABC123',
   createdAt: '2026-01-01',
   people: [
-    { id: 'p1', groupId: 'g1', name: 'Alice', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' },
-    { id: 'p2', groupId: 'g1', name: 'Bob', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
+    { id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' },
+    { id: 'p2', groupId: 'g1', name: 'Bob', userId: null, removedAt: null, createdAt: '2026-01-01' }
   ],
   expenses: [
     {
@@ -75,7 +76,7 @@ describe('GroupPage', () => {
             label: null,
             joinCode: 'ABC123',
             createdAt: '2026-01-01',
-            people: [{ id: 'p1', groupId: 'g1', name: 'Alice', email: null, userId: null, removedAt: null, createdAt: '2026-01-01' }],
+            people: [{ id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' }],
             expenses: [],
             settlements: [],
             balances: []
@@ -116,18 +117,38 @@ describe('GroupPage', () => {
   });
 
   it('switches between the Expenses and Balances tabs', async () => {
+    // Claim Alice's seat: "Bob owes Alice" then involves the viewer, so the
+    // row carries a Settle action.
+    setIdentity('ABC123', 'p1');
     stubGroupFetch();
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
-    // dismiss the identity prompt so it doesn't shadow queries
-    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
-    expect(screen.getByText(/Dinner/)).toBeInTheDocument();
+    expect(await screen.findByText(/Dinner/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Balances' }));
 
-    expect(screen.getByText('Bob owes Alice')).toBeInTheDocument();
-    expect(screen.getByText('$10.00')).toBeInTheDocument();
+    expect(screen.getByText('Bob owes you')).toBeInTheDocument();
+    expect(screen.getByText('+$10.00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Settle' })).toBeInTheDocument();
+  });
+
+  it('shows a balance between two other people without a Settle action', async () => {
+    // Claim Cara's seat; the only balance is Alice -> Bob, nothing to do with her.
+    setIdentity('ABC123', 'p3');
+    stubGroupFetch({
+      ...baseGroup,
+      people: [
+        ...baseGroup.people,
+        { id: 'p3', groupId: 'g1', name: 'Cara', userId: null, removedAt: null, createdAt: '2026-01-01' },
+      ],
+      balances: [{ fromPersonId: 'p1', toPersonId: 'p2', amount: '10.00' }],
+    });
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+
+    fireEvent.click(await screen.findByRole('tab', { name: 'Balances' }));
+
+    expect(screen.getByText('Alice owes Bob')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Settle' })).not.toBeInTheDocument();
   });
 
   it('groups expenses under a plain day heading, carrying no running total', async () => {

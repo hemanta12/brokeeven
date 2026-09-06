@@ -12,8 +12,11 @@ export default defineConfig({
       manifest: {
         name: 'BrokeEven',
         short_name: 'BrokeEven',
-        theme_color: '#E6F1E2',
-        background_color: '#E6F1E2',
+        // Literals: the manifest cannot read a CSS custom property. Keep in
+        // sync with --color-bg in src/styles.css. An already-installed PWA
+        // keeps the old colour until it is reinstalled.
+        theme_color: '#F0F2F0',
+        background_color: '#F0F2F0',
         display: 'standalone',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },

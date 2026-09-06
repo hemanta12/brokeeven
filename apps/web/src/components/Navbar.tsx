@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 import { Button } from './Button';
 import { Overlay } from '../shared/Overlay';
-import { SignInButton } from '../features/auth/SignInButton';
+import { SignInPrompt } from '../features/auth/SignInPrompt';
 import { useSession, useSignOut } from '../features/auth/api';
 
 function PersonGlyph({ className }: { className: string }) {
@@ -20,26 +20,9 @@ function PersonGlyph({ className }: { className: string }) {
 // anything from Google.
 function AccountDisc({ sizeClass, glyphClass }: { sizeClass: string; glyphClass: string }) {
   return (
-    <span className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full bg-ink-forest text-paper-white`}>
+    <span className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full bg-ink text-surface`}>
       <PersonGlyph className={glyphClass} />
     </span>
-  );
-}
-
-// Bare check, no disc: a filled circle reads as a step number or a control.
-// Brass is the app's accent — it isn't a button colour anywhere.
-function CheckMark() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.25"
-      aria-hidden="true"
-      className="mt-1 h-3.5 w-3.5 shrink-0 text-brass-ui"
-    >
-      <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 
@@ -59,10 +42,19 @@ export function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, isSignedIn, isPending: isSessionPending } = useSession();
   const signOut = useSignOut();
+  const navigate = useNavigate();
+
+  // "/" already renders the right thing for either state (the landing pitch
+  // signed out, MyGroupsPage signed in), so one target closes and redirects
+  // both flows without needing to know which one just happened.
+  function closeAndGoHome() {
+    setIsProfileOpen(false);
+    navigate('/');
+  }
 
   return (
     <>
-      <header className="sticky top-0 z-10 border-b border-ink-forest/10 bg-paper-white">
+      <header className="sticky top-0 z-10 border-b border-line bg-surface">
         {/* px-4 on mobile matches the page card's own edge inset; on desktop
             the card gains a visible fill and its edge sits at the column
             boundary, so the wordmark and profile drop to px-0 to line up with
@@ -71,23 +63,23 @@ export function Navbar() {
           <Link
             to="/"
             aria-label="Home"
-            className="focus-ring flex h-11 items-center rounded-md px-1.5 transition-transform duration-100 hover:bg-ink-forest/10 active:scale-95"
+            className="focus-ring flex h-11 items-center rounded-md px-1.5 transition-transform duration-100 hover:bg-ink/10 active:scale-95"
           >
-            <span className="heading text-[1.25rem] leading-none">BrokeEven</span>
+            <span className="heading text-title leading-none">BrokeEven</span>
           </Link>
           {isSignedIn && user ? (
             <button
               type="button"
               aria-label="Profile"
               onClick={() => setIsProfileOpen(true)}
-              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-ink-forest transition-transform duration-100 hover:bg-ink-forest/10 active:scale-90"
+              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
             >
-              <AccountDisc sizeClass="h-8 w-8" glyphClass="h-[18px] w-[18px]" />
+              <AccountDisc sizeClass="h-8 w-8" glyphClass="size-4.5" />
             </button>
           ) : isSessionPending ? (
             // Neutral placeholder for the ~1 request /auth/me takes — no label
             // either way until we know which one is true.
-            <span className="flex h-11 w-11 items-center justify-center text-ink-forest/40">
+            <span className="flex h-11 w-11 items-center justify-center text-dim">
               <PersonGlyph className="h-6 w-6" />
             </span>
           ) : (
@@ -97,7 +89,7 @@ export function Navbar() {
             <button
               type="button"
               onClick={() => setIsProfileOpen(true)}
-              className="focus-ring flex h-11 items-center rounded-full border border-ink-forest/25 px-4 font-sans text-label font-medium text-ink-forest transition-transform duration-100 hover:bg-ledger-paper active:scale-95"
+              className="focus-ring flex h-11 items-center rounded-full border border-line-strong px-4 font-sans text-label font-medium text-ink transition-transform duration-100 hover:bg-sunken active:scale-95"
             >
               Sign in
             </button>
@@ -110,6 +102,11 @@ export function Navbar() {
           title={isSignedIn ? 'Profile' : 'Sign in'}
           isDirty={false}
           onClose={() => setIsProfileOpen(false)}
+          // The signed-in view is a left-aligned account row; the signed-out
+          // one (SignInPrompt) is centered top to bottom. A left-aligned
+          // title sitting over centered content is what read as "unstyled" --
+          // centerTitle already exists for exactly this shape.
+          centerTitle={!isSignedIn}
         >
           <div className="flex flex-col gap-6">
             {isSessionPending ? (
@@ -117,27 +114,27 @@ export function Navbar() {
               // flight: mounting the Google button for someone who turns out to
               // be signed in loads a third-party script for nothing and makes
               // GSI log an origin error against a page that never needed it.
-              <p className="font-sans text-label text-ink-forest/70">Loading…</p>
+              <p className="font-sans text-label text-dim">Loading…</p>
             ) : isSignedIn && user ? (
               <>
                 <div className="flex items-center gap-3">
                   <AccountDisc sizeClass="h-12 w-12" glyphClass="h-6 w-6" />
                   <div className="min-w-0">
-                    <p className="truncate font-sans text-body font-semibold text-ink-forest">
+                    <p className="truncate font-sans text-body font-semibold text-ink">
                       {user.name ?? 'Signed in'}
                     </p>
                     {user.email && (
-                      <p className="truncate font-sans text-label text-ink-forest/70">{user.email}</p>
+                      <p className="truncate font-sans text-label text-dim">{user.email}</p>
                     )}
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 border-t border-ink-forest/10 pt-4">
+                <div className="flex flex-col gap-2 border-t border-line pt-4">
                   <Button
                     variant="secondary"
-                    onClick={() => signOut.mutate()}
+                    danger
+                    onClick={() => signOut.mutate(undefined, { onSuccess: closeAndGoHome })}
                     disabled={signOut.isPending}
-                    className="border-debt-red/40! text-debt-red! hover:bg-debt-red/10!"
                   >
                     <SignOutGlyph />
                     {signOut.isPending ? 'Signing out…' : 'Sign out'}
@@ -145,36 +142,7 @@ export function Navbar() {
                 </div>
               </>
             ) : (
-              <>
-                <div className="rounded-[12px] bg-ledger-paper px-4 py-4">
-                  <p className="font-sans text-body text-ink-forest/85">
-                    Right now your groups live only in this browser. Sign in to:
-                  </p>
-                  <ul className="mt-3 flex flex-col gap-2.5">
-                    <li className="flex items-start gap-2.5">
-                      <CheckMark />
-                      <span className="font-sans text-body text-ink-forest">
-                        See all your groups in one place
-                      </span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <CheckMark />
-                      <span className="font-sans text-body text-ink-forest">Reach them from any device</span>
-                    </li>
-                    <li className="flex items-start gap-2.5">
-                      <CheckMark />
-                      <span className="font-sans text-body text-ink-forest">
-                        Keep them if this browser clears its data
-                      </span>
-                    </li>
-                  </ul>
-                </div>
-                <SignInButton />
-                <p className="rounded-[12px] bg-brass/10 px-4 py-3 font-sans text-label text-ink-forest/75">
-                  No account needed — every feature works as-is. Signing in only guards against losing a group
-                  this browser alone remembers.
-                </p>
-              </>
+              <SignInPrompt onSignedIn={closeAndGoHome} />
             )}
           </div>
         </Overlay>

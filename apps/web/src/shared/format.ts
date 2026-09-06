@@ -13,6 +13,15 @@ const groupDateFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric'
 });
 
+// "Updated" lines: no weekday. The day of the week is load-bearing on an expense
+// heading ("what did we spend Saturday") and pure noise on a last-touched date.
+const shortDateFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' });
+const shortDateWithYearFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric'
+});
+
 // The API stores `date` as `DateTime @db.Date` and serializes it as a full ISO
 // string at UTC midnight ("2026-01-05T00:00:00.000Z"), so only the leading
 // calendar portion carries meaning. Deliberately unanchored at the end: handing
@@ -56,4 +65,23 @@ export function formatDateGroupLabel(date: string, today: Date = new Date()): st
   return parsed.getFullYear() === today.getFullYear()
     ? groupDateFormatter.format(parsed)
     : dateFormatter.format(parsed);
+}
+
+function startOfLocalDay(date: Date): number {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+// "Updated <when>" on the My Groups card. Relative only for the two cases a
+// person actually reads that way — today and yesterday — then a weekday-less
+// short date, keeping the year only when it isn't the current one. `date` is a
+// full ISO instant here (not a @db.Date), so it's compared as an instant, by
+// local calendar day.
+export function formatUpdatedLabel(date: string, now: Date = new Date()): string {
+  const parsed = new Date(date);
+  const days = Math.round((startOfLocalDay(now) - startOfLocalDay(parsed)) / 86_400_000);
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  return parsed.getFullYear() === now.getFullYear()
+    ? shortDateFormatter.format(parsed)
+    : shortDateWithYearFormatter.format(parsed);
 }

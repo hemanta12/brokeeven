@@ -31,3 +31,11 @@ export function useUpdateExpense(code: string | undefined) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
   });
 }
+
+export function useDeleteExpense(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<void>(`/expenses/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+  });
+}

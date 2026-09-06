@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 
+import { Button } from '../../components/Button';
 import { ErrorState } from '../../shared/RouteStates';
 import { useRenamePerson } from './api';
 import type { Person } from './types';
@@ -47,25 +48,15 @@ export function EditPersonForm({ code, person, onRemove, removePending, removeEr
     return (
       <div className="flex flex-col gap-1.5">
         <div className="flex w-full items-center gap-2">
-          <p className="min-w-0 flex-1 truncate font-sans text-label font-medium text-ink-forest">
+          <p className="min-w-0 flex-1 truncate font-sans text-label font-medium text-ink">
             Remove {person.name}?
           </p>
-          <button
-            type="button"
-            onClick={() => setConfirmingRemove(false)}
-            disabled={removePending}
-            className="focus-ring h-9 shrink-0 rounded-full px-3 font-sans text-label font-medium text-ink-forest transition hover:bg-ink-forest/8 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45"
-          >
+          <Button variant="tertiary" size="sm" onClick={() => setConfirmingRemove(false)} disabled={removePending}>
             Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            disabled={removePending}
-            className="focus-ring h-9 shrink-0 rounded-full bg-debt-red px-3 font-sans text-label font-medium text-paper-white transition hover:bg-[color-mix(in_srgb,var(--color-debt-red)_88%,black)] active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
-          >
+          </Button>
+          <Button variant="primary" danger size="sm" onClick={onRemove} disabled={removePending}>
             {removePending ? 'Removing…' : 'Remove'}
-          </button>
+          </Button>
         </div>
         {removeError && <ErrorState message={removeError} />}
       </div>
@@ -74,7 +65,7 @@ export function EditPersonForm({ code, person, onRemove, removePending, removeEr
 
   return (
     <div
-      className={`flex flex-col gap-1.5 rounded-lg p-1.5 -m-1.5 transition-colors duration-[250ms] ease-out motion-reduce:transition-none ${justSaved ? 'bg-ledger-green/25' : ''}`}
+      className={`flex flex-col gap-1.5 rounded-lg p-1.5 -m-1.5 transition-colors duration-[250ms] ease-out motion-reduce:transition-none ${justSaved ? 'bg-accent/25' : ''}`}
     >
       <form onSubmit={handleSubmit} className="flex w-full items-center gap-2">
         <input
@@ -82,13 +73,13 @@ export function EditPersonForm({ code, person, onRemove, removePending, removeEr
           onChange={(event) => setName(event.target.value)}
           maxLength={60}
           aria-label={`Edit ${person.name}`}
-          className="focus-ring h-9 min-w-0 flex-1 rounded-[10px] border border-ink-forest bg-paper-white px-3 font-sans text-body font-medium text-ink-forest"
+          className="focus-ring h-9 min-w-0 flex-1 rounded-inner border border-ink bg-surface px-3 font-sans text-body font-medium text-ink"
         />
         <button
           type="submit"
           aria-label="Save name"
           disabled={renamePerson.isPending || !name.trim()}
-          className="focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink-forest text-ink-forest transition-transform hover:bg-ledger-paper active:scale-90 disabled:cursor-not-allowed disabled:opacity-45"
+          className="focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-ink text-ink transition-transform hover:bg-sunken active:scale-90 disabled:cursor-not-allowed disabled:opacity-45"
         >
           ✓
         </button>
@@ -97,7 +88,7 @@ export function EditPersonForm({ code, person, onRemove, removePending, removeEr
             type="button"
             onClick={() => setConfirmingRemove(true)}
             aria-label={`Remove ${person.name}`}
-            className="focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-debt-red/10 text-debt-red transition-transform hover:bg-debt-red/20 active:scale-90 disabled:cursor-not-allowed disabled:opacity-45"
+            className="focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-down/10 text-down transition-transform hover:bg-down/20 active:scale-90 disabled:cursor-not-allowed disabled:opacity-45"
           >
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5">
               <path
@@ -110,7 +101,7 @@ export function EditPersonForm({ code, person, onRemove, removePending, removeEr
         )}
       </form>
       {showSavedMessage && (
-        <p aria-live="polite" className="font-sans text-label font-medium text-ledger-green">
+        <p aria-live="polite" className="font-sans text-label font-medium text-accent">
           ✓ Saved
         </p>
       )}

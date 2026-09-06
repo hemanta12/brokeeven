@@ -39,7 +39,7 @@ export function Tabs({ items, activeId, onChange, label }: TabsProps) {
             data-active={isActive}
             onClick={() => onChange(item.id)}
             onKeyDown={handleKeyDown}
-            className="segment focus-ring min-h-11 px-4 py-2 font-sans text-body font-semibold text-ink-forest"
+            className="segment focus-ring min-h-11 px-4 py-2 font-sans text-label font-semibold"
           >
             {item.label}
           </button>

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
+import { BackButton } from '../../components/BackButton';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
 import { MemberChip } from '../../components/MemberChip';
@@ -56,9 +57,7 @@ export function CreateGroupPage() {
   if (!group) {
     return (
       <main>
-        <Link to="/" className="focus-ring font-sans text-body font-medium text-ink-forest hover:underline active:opacity-70">
-          ‹ Back
-        </Link>
+        <BackButton to="/" />
 
         <h1 className="mt-6 heading text-display">Create a Group</h1>
         <form onSubmit={handleCreateGroup} className="mt-6 flex flex-col gap-4">
@@ -86,13 +85,7 @@ export function CreateGroupPage() {
 
   return (
     <main>
-      <button
-        type="button"
-        onClick={() => navigate('/create', { replace: true })}
-        className="focus-ring font-sans text-body font-medium text-ink-forest hover:underline active:opacity-70"
-      >
-        ‹ Back
-      </button>
+      <BackButton onClick={() => navigate('/create', { replace: true })} />
 
       <h1 className="mt-6 heading text-display">Add people to {group.name}</h1>
 
@@ -102,7 +95,7 @@ export function CreateGroupPage() {
       </div>
 
       <div className="mt-6 flex flex-col gap-3">
-        <span className="font-sans text-label font-medium text-ink-forest">Add people to this group</span>
+        <span className="font-sans text-label font-medium text-ink">Add people to this group</span>
         <form onSubmit={handleAddPerson} className="flex items-end gap-2">
           <Field
             id="person-name"
@@ -120,7 +113,8 @@ export function CreateGroupPage() {
             variant="secondary"
             aria-label="Add person"
             disabled={addPerson.isPending}
-            className="h-11! w-11! shrink-0 rounded-full! p-0!"
+            size="icon"
+            className="shrink-0"
           >
             +
           </Button>
@@ -136,7 +130,7 @@ export function CreateGroupPage() {
                   type="button"
                   onClick={() => handleRemovePerson(person.id)}
                   aria-label={`Remove ${person.name}`}
-                  className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-debt-red/10 text-debt-red hover:bg-debt-red/20 active:scale-90"
+                  className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-down/10 text-down hover:bg-down/20 active:scale-90"
                 >
                   ×
                 </button>
@@ -144,7 +138,7 @@ export function CreateGroupPage() {
             ))}
           </ul>
         )}
-        <p className="font-sans text-label text-ink-forest/70">{people.length} people added</p>
+        <p className="font-sans text-label text-dim">{people.length} people added</p>
       </div>
 
       <Button className="mt-6 h-[52px] w-full" onClick={() => navigate(`/g/${group.joinCode}`)}>

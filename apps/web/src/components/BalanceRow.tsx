@@ -1,4 +1,4 @@
-import { formatCurrency } from '../shared/format';
+import { Amount, type AmountDirection } from './Amount';
 import { Button } from './Button';
 
 type Direction = 'owe' | 'owed' | 'neutral';
@@ -13,23 +13,16 @@ interface BalanceRowProps {
   onSettle?: () => void;
 }
 
-const DIRECTION_CLASSES: Record<Direction, string> = {
-  owe: 'text-debt-red',
-  owed: 'text-ledger-green',
-  // Muted, not full-strength ink: a balance between two other people is
-  // context, not your business. At equal weight a five-person group buries
-  // your own two rows among everyone else's.
-  neutral: 'text-ink-forest/70',
-};
-
-// Debt Red and Ledger Green sit at 1.03:1 against each other — near-identical
-// luminance, separated only by hue, and ~1.2:1 under deuteranopia. The sign is
-// therefore what actually carries the direction; the colour only reinforces it.
-// Neutral rows take no sign because the amount isn't the viewer's either way.
-const DIRECTION_SIGNS: Record<Direction, string> = {
-  owe: '−',
-  owed: '+',
-  neutral: '',
+// Down and accent sit at 1.03:1 against each other, near-identical luminance
+// separated only by hue, and ~1.2:1 under deuteranopia. The sign is therefore
+// what actually carries the direction; the colour only reinforces it. Amount
+// owns both. Neutral rows take no sign and a muted colour, because a balance
+// between two other people is context, not your business: at equal weight a
+// five-person group buries your own two rows among everyone else's.
+const AMOUNT_DIRECTIONS: Record<Direction, AmountDirection> = {
+  owe: 'down',
+  owed: 'up',
+  neutral: 'flat',
 };
 
 // "Name owes Name" + amount (colored by direction, never color alone — the
@@ -45,7 +38,6 @@ export function BalanceRow({
   toIsViewer = false,
   onSettle,
 }: BalanceRowProps) {
-  const signed = `${DIRECTION_SIGNS[direction]}${formatCurrency(amount)}`;
   return (
     <div className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
       {/* Wraps rather than truncates. Two real names plus "owes" doesn't fit
@@ -55,19 +47,20 @@ export function BalanceRow({
           for the pairs that actually need it. */}
       <span
         className={`min-w-0 flex-1 font-sans text-body ${
-          direction === 'neutral' ? 'text-ink-forest/70' : 'text-ink-forest'
+          direction === 'neutral' ? 'text-dim' : 'text-ink'
         }`}
       >
         {fromIsViewer ? 'You owe' : `${fromName} owes`} {toIsViewer ? 'you' : toName}
       </span>
       <span className="flex shrink-0 items-center gap-3">
-        <span
-          className={`font-sans text-row-amount font-medium tabular-nums ${DIRECTION_CLASSES[direction]}`}
-        >
-          {signed}
-        </span>
+        <Amount
+          value={amount}
+          direction={AMOUNT_DIRECTIONS[direction]}
+          signed
+          className="text-row-amount font-semibold"
+        />
         {onSettle && (
-          <Button variant="secondary" onClick={onSettle} className="px-3.5! text-[0.8125rem]!">
+          <Button variant="secondary" size="sm" onClick={onSettle}>
             Settle
           </Button>
         )}

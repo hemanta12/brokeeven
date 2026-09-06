@@ -1,18 +1,18 @@
 export function LoadingState({ label = 'Loading…' }: { label?: string }) {
   return (
-    <p role="status" aria-live="polite" className="font-sans text-body text-ink-forest/70">
+    <p role="status" aria-live="polite" className="font-sans text-body text-dim">
       {label}
     </p>
   );
 }
 
 export function EmptyState({ message }: { message: string }) {
-  return <p className="font-sans text-body text-ink-forest/70">{message}</p>;
+  return <p className="font-sans text-body text-dim">{message}</p>;
 }
 
-export function ErrorState({ message = 'Something broke — try again.', onRetry }: { message?: string; onRetry?: () => void }) {
+export function ErrorState({ message = 'Something broke. Try again.', onRetry }: { message?: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-col items-start gap-2 font-sans text-body text-debt-red">
+    <div role="alert" className="flex flex-col items-start gap-2 font-sans text-body text-down">
       <p>{message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry} className="focus-ring rounded-lg underline hover:opacity-70 active:opacity-50">
@@ -23,11 +23,11 @@ export function ErrorState({ message = 'Something broke — try again.', onRetry
   );
 }
 
-export function NotFoundState({ message = 'Page not found — check the link and try again.' }: { message?: string }) {
+export function NotFoundState({ message = 'Page not found. Check the link and try again.' }: { message?: string }) {
   return (
     <div>
       <h1 className="heading text-display">Not found</h1>
-      <p className="mt-2 font-sans text-body text-ink-forest/70">{message}</p>
+      <p className="mt-2 font-sans text-body text-dim">{message}</p>
     </div>
   );
 }

@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 
 import { GroupSummary } from './GroupSummary';
 import type { Balance, Expense } from './types';
@@ -10,10 +10,10 @@ function balance(fromPersonId: string, toPersonId: string, amount: string): Bala
   return { fromPersonId, toPersonId, amount };
 }
 
-let expenseSeq = 0;
+let seq = 0;
 function expense(payerId: string, amount: string, splits: Array<[string, string]>): Expense {
-  expenseSeq += 1;
-  const id = `e${expenseSeq}`;
+  seq += 1;
+  const id = `e${seq}`;
   return {
     id,
     groupId: 'g1',
@@ -34,103 +34,99 @@ function expense(payerId: string, amount: string, splits: Array<[string, string]
   };
 }
 
+const EXPENSES = [
+  expense(ME, '150.00', [[ME, '50.00'], ['p-alice', '50.00'], ['p-bob', '50.00']]),
+  expense('p-alice', '90.00', [[ME, '30.00'], ['p-alice', '30.00'], ['p-bob', '30.00']]),
+];
+
 describe('GroupSummary', () => {
-  // The scenario that drove the design: 5 expenses, the viewer fronted 3.
-  it('reports what the viewer paid, what was theirs, and what comes back', () => {
+  it('sums each side of the balances and shows the spend it sits against', () => {
     render(
       <GroupSummary
-        balances={[balance('p-alice', ME, '120.00'), balance('p-bob', ME, '80.00')]}
-        expenses={[
-          expense(ME, '150.00', [[ME, '50.00'], ['p-alice', '50.00'], ['p-bob', '50.00']]),
-          expense(ME, '90.00', [[ME, '30.00'], ['p-alice', '30.00'], ['p-bob', '30.00']]),
-          expense(ME, '60.00', [[ME, '20.00'], ['p-alice', '20.00'], ['p-bob', '20.00']]),
-          expense('p-alice', '30.00', [[ME, '10.00'], ['p-alice', '10.00'], ['p-bob', '10.00']]),
-          expense('p-bob', '30.00', [[ME, '10.00'], ['p-alice', '10.00'], ['p-bob', '10.00']]),
+        balances={[
+          balance('p-alice', ME, '120.00'),
+          balance('p-bob', ME, '80.00'),
+          balance(ME, 'p-cara', '30.00'),
         ]}
+        expenses={EXPENSES}
         personId={ME}
+        onSettleUp={vi.fn()}
       />
     );
 
-    expect(screen.getByText('You paid')).toBeInTheDocument();
-    expect(screen.getByText('$300.00')).toBeInTheDocument();
+    expect(screen.getByText('You’re owed')).toBeInTheDocument();
+    expect(screen.getByText('$200.00')).toBeInTheDocument();
+    expect(screen.getByText('You owe')).toBeInTheDocument();
+    expect(screen.getByText('$30.00')).toBeInTheDocument();
+    expect(screen.getByText('Total group expense')).toBeInTheDocument();
+    expect(screen.getByText('$240.00')).toBeInTheDocument();
     expect(screen.getByText('Your share')).toBeInTheDocument();
-    expect(screen.getByText('$120.00')).toBeInTheDocument();
-    expect(screen.getByText('Your balance')).toBeInTheDocument();
-    expect(screen.getByText('+$200.00')).toBeInTheDocument();
+    expect(screen.getByText('$80.00')).toBeInTheDocument();
   });
 
-  // Settling moves the balance but not what was paid or consumed, which is
-  // why the third figure reads from `balances` rather than paid − share.
-  it('tracks the balance after a settlement, not paid minus share', () => {
-    render(
-      <GroupSummary
-        // Alice has repaid 120 of the 200; only Bob's 80 is left.
-        balances={[balance('p-bob', ME, '80.00')]}
-        expenses={[expense(ME, '300.00', [[ME, '100.00'], ['p-alice', '120.00'], ['p-bob', '80.00']])]}
-        personId={ME}
-      />
-    );
-
-    expect(screen.getByText('$300.00')).toBeInTheDocument();
-    expect(screen.getByText('$100.00')).toBeInTheDocument();
-    expect(screen.getByText('+$80.00')).toBeInTheDocument();
-    // The naive paid − share figure, which would still claim 200.
-    expect(screen.queryByText('+$200.00')).not.toBeInTheDocument();
-  });
-
-  it('signs the balance negative when the viewer owes on net', () => {
-    render(
-      <GroupSummary
-        // Alice fronted it all and has since been paid back 15 of the 40.
-        balances={[balance(ME, 'p-alice', '25.00')]}
-        expenses={[expense('p-alice', '100.00', [[ME, '40.00'], ['p-alice', '60.00']])]}
-        personId={ME}
-      />
-    );
-
-    expect(screen.getByText('Your balance')).toBeInTheDocument();
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
-    expect(screen.getByText('$40.00')).toBeInTheDocument();
-    // One stable label; the sign carries the direction.
-    expect(screen.getByText('−$25.00')).toBeInTheDocument();
-  });
-
-  it('shows a zero balance when the viewer is square but has spent', () => {
-    render(
-      <GroupSummary
-        balances={[]}
-        expenses={[expense(ME, '50.00', [[ME, '50.00']])]}
-        personId={ME}
-      />
-    );
-
-    expect(screen.getByText('Your balance')).toBeInTheDocument();
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
-  });
-
-  it('breaks the net into gross sides when money moves both ways', () => {
+  it('jumps to settle up and reports how many payments are left', () => {
+    const onSettleUp = vi.fn();
     render(
       <GroupSummary
         balances={[balance('p-alice', ME, '50.00'), balance(ME, 'p-bob', '80.00')]}
-        expenses={[expense(ME, '150.00', [[ME, '30.00'], ['p-alice', '60.00'], ['p-bob', '60.00']])]}
+        expenses={EXPENSES}
+        personId={ME}
+        onSettleUp={onSettleUp}
+      />
+    );
+
+    expect(screen.getByText('2 payments left to settle')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /settle up/i }));
+    expect(onSettleUp).toHaveBeenCalledTimes(1);
+  });
+
+  it('counts only the balances the viewer is a party to', () => {
+    render(
+      <GroupSummary
+        balances={[
+          balance('p-alice', ME, '50.00'), // mine
+          balance('p-bob', 'p-cara', '80.00'), // not mine
+        ]}
+        expenses={EXPENSES}
+        personId={ME}
+        onSettleUp={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('1 payment left to settle')).toBeInTheDocument();
+  });
+
+  it('keeps the payments-left status but drops the jump link when already on Balances', () => {
+    render(
+      <GroupSummary
+        balances={[balance('p-alice', ME, '50.00')]}
+        expenses={EXPENSES}
         personId={ME}
       />
     );
 
-    expect(screen.getByText('Your balance')).toBeInTheDocument();
-    expect(screen.getByText('−$30.00')).toBeInTheDocument();
-    expect(screen.getByText('$50.00')).toBeInTheDocument();
-    expect(screen.getByText('$80.00')).toBeInTheDocument();
-    expect(screen.getByText('to you')).toBeInTheDocument();
-    expect(screen.getByText('you owe')).toBeInTheDocument();
+    // Status stays so the card is the same height on every tab.
+    expect(screen.getByText('1 payment left to settle')).toBeInTheDocument();
+    // The redundant "go to Balances" action does not.
+    expect(screen.queryByRole('button', { name: /settle up/i })).not.toBeInTheDocument();
   });
 
-  it('renders nothing when none of the group is the viewer’s', () => {
+  it('shows an all-settled state once every balance is cleared', () => {
+    render(
+      <GroupSummary balances={[]} expenses={EXPENSES} personId={ME} onSettleUp={vi.fn()} />
+    );
+
+    expect(screen.getByText('You’re all settled up')).toBeInTheDocument();
+    expect(screen.queryByText(/left to settle/)).not.toBeInTheDocument();
+  });
+
+  it('renders nothing when the viewer has no share and no open balance', () => {
     const { container } = render(
       <GroupSummary
         balances={[balance('p-alice', 'p-bob', '25.00')]}
         expenses={[expense('p-alice', '25.00', [['p-alice', '25.00']])]}
         personId={ME}
+        onSettleUp={vi.fn()}
       />
     );
 

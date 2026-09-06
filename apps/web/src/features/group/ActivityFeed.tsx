@@ -17,28 +17,30 @@ const ACTION_LABELS: Record<ActivityEntry['action'], string> = {
 };
 
 // Colour the action tag by kind so the eye can run down the column: additions
-// read green, removals red, edits brass. Never the only cue — the tag text
+// read green, removals red, edits accent. Never the only cue — the tag text
 // itself already names the action (color-blind-safe).
 const ACTION_TONE: Record<ActivityEntry['action'], string> = {
-  expense_add: 'text-ledger-green',
-  person_add: 'text-ledger-green',
-  settlement: 'text-ledger-green',
-  expense_edit: 'text-brass-ui',
-  person_rename: 'text-brass-ui',
-  expense_delete: 'text-debt-red',
-  person_remove: 'text-debt-red',
-  settlement_delete: 'text-debt-red',
+  expense_add: 'text-accent',
+  person_add: 'text-accent',
+  settlement: 'text-accent',
+  expense_edit: 'text-notice',
+  person_rename: 'text-notice',
+  expense_delete: 'text-down',
+  person_remove: 'text-down',
+  settlement_delete: 'text-down',
 };
 
-// The one thing worth scanning for in a money log is the money — give any
-// $-amount medium weight and tabular figures so it stands out of the sentence.
+// The one thing worth scanning for in a money log is the money, so any
+// $-amount gets the app's mono treatment and stands out of the sentence.
+// Not <Amount>: these are already-formatted strings pulled out of a
+// sentence, not numbers, and they carry no direction.
 const MONEY_SPLIT = /(\$[\d,]+(?:\.\d{2})?)/g;
 const MONEY_EXACT = /^\$[\d,]+(?:\.\d{2})?$/;
 
 function withMoneyEmphasis(text: string) {
   return text.split(MONEY_SPLIT).map((part, index) =>
     MONEY_EXACT.test(part) ? (
-      <span key={index} className="font-sans font-medium tabular-nums text-ink-forest">
+      <span key={index} className="font-mono font-medium text-ink">
         {part}
       </span>
     ) : (
@@ -69,21 +71,21 @@ export function ActivityFeed({ code, isActive }: { code: string; isActive: boole
     <div>
       {groupByDay(data.entries).map(([day, entries]) => (
         <div key={day} className="mt-4 first:mt-0">
-          <h3 className="mb-1.5 font-sans text-label font-medium text-ink-forest/70">
+          <h3 className="mb-1.5 font-sans text-label font-medium text-dim">
             {formatDateGroupLabel(day)}
           </h3>
           <ul className="flex flex-col gap-1.5">
             {entries.map((entry) => (
               <li key={entry.id} className="entry-card px-3 py-2">
-                <p className="font-sans text-label text-ink-forest">
+                <p className="font-sans text-label text-ink">
                   {withMoneyEmphasis(capitalizeFirst(entry.detail ?? ACTION_LABELS[entry.action]))}
                 </p>
-                <p className="mt-0.5 text-[0.8125rem]">
+                <p className="mt-0.5 text-micro">
                   <span className={`font-sans font-medium ${ACTION_TONE[entry.action]}`}>
                     {ACTION_LABELS[entry.action]}
                   </span>
                   {entry.actorName ? (
-                    <span className="font-sans text-ink-forest/70"> · by {capitalizeFirst(entry.actorName)}</span>
+                    <span className="font-sans text-dim"> · by {capitalizeFirst(entry.actorName)}</span>
                   ) : null}
                 </p>
               </li>

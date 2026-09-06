@@ -23,6 +23,14 @@ interface OverlayProps {
   // Short, non-form panels (Group info, People): float a content-sized card
   // on a scrim instead of a full-height paper sheet.
   compact?: boolean;
+  // Sits just left of the close control in the header (e.g. an Edit icon on a
+  // read-only detail sheet). Kept in the header, not a sticky footer button,
+  // when it is a secondary jump rather than the sheet's primary action.
+  headerAction?: ReactNode;
+  // Put the close/action controls alone on the first row and drop the title to
+  // its own row beneath them (centred). Reads more balanced than an inline
+  // title when the body content that follows is left-aligned.
+  stackedHeader?: boolean;
   children: ReactNode;
 }
 
@@ -30,7 +38,7 @@ interface OverlayProps {
 // Who Are You prompt (APP_FLOW §2.5, §2.7, §2.9): one-X close, focus trap,
 // background scroll lock, focus restoration, Escape, safe-area insets, and
 // dirty-form discard confirmation (an in-app panel, not window.confirm).
-export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerTitle = false, compact = false, children }: OverlayProps) {
+export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerTitle = false, compact = false, headerAction, stackedHeader = false, children }: OverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestCloseRef = useRef<() => void>(() => {});
   const performCloseRef = useRef<() => void>(() => {});
@@ -114,19 +122,33 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
     };
   }, []);
 
+  const controls = (
+    <div className="overlay-header-actions">
+      {/* Hidden while the discard prompt is up so it can't be tabbed to
+          behind the scrim. */}
+      {headerAction && !confirmingDiscard ? headerAction : null}
+      <button
+        type="button"
+        aria-label={confirmingDiscard ? 'Back to editing' : closeLabel}
+        onClick={() => (confirmingDiscard ? setConfirmingDiscard(false) : requestCloseRef.current())}
+        className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-xl text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+      >
+        {closeLabel === 'Close' ? '×' : closeLabel}
+      </button>
+    </div>
+  );
+
   return (
     <div className={compact ? 'overlay overlay-compact' : 'overlay'} role="dialog" aria-modal="true" aria-label={title} ref={containerRef}>
-      <div className="overlay-content bg-paper-white" data-phase={phase}>
-        <div className={`overlay-header mb-6${centerTitle ? ' overlay-header-centered' : ''}`}>
-          <h2 className="heading text-[1.375rem]">{title}</h2>
-          <button
-            type="button"
-            aria-label={confirmingDiscard ? 'Back to editing' : closeLabel}
-            onClick={() => (confirmingDiscard ? setConfirmingDiscard(false) : requestCloseRef.current())}
-            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-ledger-paper text-xl text-ink-forest transition-transform duration-100 hover:bg-ink-forest/10 active:scale-90"
-          >
-            {closeLabel === 'Close' ? '×' : closeLabel}
-          </button>
+      <div className="overlay-content" data-phase={phase}>
+        <div
+          className={`overlay-header mb-6${stackedHeader ? ' overlay-header-stacked' : ''}${
+            centerTitle && !stackedHeader ? ' overlay-header-centered' : ''
+          }${headerAction && !stackedHeader ? ' has-header-action' : ''}`}
+        >
+          {stackedHeader && controls}
+          <h2 className="heading text-title">{title}</h2>
+          {!stackedHeader && controls}
         </div>
         {/* flex-1 so a form inside can push its own sticky footer to the
             sheet's bottom edge (see .modal-footer). The form stays mounted
@@ -143,21 +165,21 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
 
       {/* A small centred card on a scrim, not another full sheet. */}
       {confirmingDiscard && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-forest/45 p-6">
-          <div className="w-full max-w-[22rem] rounded-[16px] bg-paper-white p-5 shadow-[0_12px_32px_-8px_color-mix(in_srgb,var(--color-ink-forest)_35%,transparent)]">
-            <p className="font-sans text-body font-semibold text-ink-forest">Discard unsaved changes?</p>
-            <p className="mt-1 font-sans text-label text-ink-forest/70">Leaving now clears what you entered.</p>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
+          <div className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog">
+            <p className="font-sans text-body font-semibold text-ink">Discard unsaved changes?</p>
+            <p className="mt-1 font-sans text-label text-dim">Leaving now clears what you entered.</p>
             <div className="mt-5 flex flex-col gap-2">
               <Button variant="secondary" autoFocus onClick={() => setConfirmingDiscard(false)}>
                 Keep editing
               </Button>
               <Button
                 variant="tertiary"
+                danger
                 onClick={() => {
                   setConfirmingDiscard(false);
                   performCloseRef.current();
                 }}
-                className="text-debt-red! hover:bg-debt-red/10!"
               >
                 Discard changes
               </Button>

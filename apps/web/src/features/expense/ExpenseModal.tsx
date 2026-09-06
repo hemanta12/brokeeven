@@ -1,18 +1,25 @@
 import { useState, type FormEvent } from 'react';
 
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
 import { Overlay } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
+import { Amount } from '../../components/Amount';
 import { formatCurrency, formatExpenseTitle } from '../../shared/format';
 import type { Expense, Person, SplitMethod } from '../group/types';
 import { useCreateExpense, useUpdateExpense } from './api';
 import { dollarsToCents, equalSplitCents } from './splitPreview';
 
 const selectClassName =
-  'focus-ring min-h-11 w-full rounded-lg border border-ink-forest/55 bg-[var(--field-bg,var(--color-paper-white))] px-3 font-sans text-body text-ink-forest';
+  'focus-ring min-h-12 w-full rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink';
+
+// The split-amount inputs stay sans with tabular figures: mono is for money
+// the app is *showing*, not money you are typing.
+const inlineAmountClassName =
+  'focus-ring h-11 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-2 font-sans text-body tabular-nums text-ink';
 
 function todayIsoDate(): string {
   return new Date().toISOString().slice(0, 10);
@@ -36,7 +43,9 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [title, setTitle] = useState(expense ? formatExpenseTitle(expense.title) : '');
   const [description, setDescription] = useState(expense?.description ?? '');
-  const [amount, setAmount] = useState(expense?.amount ?? '');
+  // Seed already at two decimals so editing an expense shows "20.00", not the
+  // raw "20" that only settled once the field was focused and blurred.
+  const [amount, setAmount] = useState(expense ? Number(expense.amount).toFixed(2) : '');
   const [date, setDate] = useState(expense?.date.slice(0, 10) ?? todayIsoDate());
   const [payerId, setPayerId] = useState(
     expense?.payerId ?? (identityPersonId && people.some((p) => p.id === identityPersonId) ? identityPersonId : '')
@@ -71,6 +80,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
     );
   }
 
+  const payer = people.find((person) => person.id === payerId);
   const amountCents = dollarsToCents(amount);
   const equalPreview = splitMethod === 'equal' ? equalSplitCents(amountCents, participantIds.length) : [];
   const percentEntered = participantIds.reduce((sum, id) => sum + (Number(percentByPerson[id]) || 0), 0);
@@ -116,6 +126,52 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   return (
     <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
+        {/* Amount first and at display scale: it is why the screen is open.
+            The $ is a separate adornment rather than part of the value, so
+            nothing has to be parsed back out of the field. Sans with tabular
+            figures, not mono: mono is for money the app shows. */}
+        {/* One tall bordered field with the value centred big inside it
+            (spliteroo food-split reference): label top-left, muted accent-wash
+            fill and accent border — the same "active" treatment a selected
+            split row gets. Focus shows on the box the way the split rows and
+            the segmented control show it, not as a ring around the bare input. */}
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="expense-amount" className="font-sans text-label font-medium text-ink">
+            Amount
+          </label>
+          <div className="flex items-baseline justify-center gap-1 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
+            <span aria-hidden="true" className="font-sans text-section font-semibold tabular-nums text-dim">
+              $
+            </span>
+            <input
+              id="expense-amount"
+              type="text"
+              inputMode="decimal"
+              value={amount}
+              onChange={(event) => touch(setAmount)(event.target.value)}
+              onBlur={() => {
+                markBlurred('amount');
+                // Settle to two decimals once the field is left, not while
+                // typing (reformatting mid-entry fights the caret).
+                if (amount.trim() !== '' && !Number.isNaN(Number(amount))) {
+                  setAmount(Number(amount).toFixed(2));
+                }
+              }}
+              aria-invalid={isRequiredError('amount', amount)}
+              aria-describedby={isRequiredError('amount', amount) ? 'expense-amount-error' : undefined}
+              required
+              placeholder="0.00"
+              size={Math.max(amount.length, 4)}
+              className="w-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-center font-sans text-hero-balance font-semibold tabular-nums text-ink outline-none placeholder:text-line-strong"
+            />
+          </div>
+          {isRequiredError('amount', amount) && (
+            <p id="expense-amount-error" className="text-label text-down">
+              Amount is required.
+            </p>
+          )}
+        </div>
+
         <Field
           id="expense-title"
           label="Title"
@@ -136,17 +192,40 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
         />
 
         <div className="paid-by-date">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="expense-payer" className="font-sans text-label font-medium text-ink-forest">
+          {/* Paid by reads as a person, not a dropdown: avatar, name, chevron.
+              The control underneath is still the native <select>, laid over
+              the drawing at zero opacity, so the label, the keyboard and the
+              platform's own picker all keep working. A custom listbox here
+              would be a real accessibility regression for a purely visual
+              gain. The select stays a direct child of this div because
+              ExpenseModal.test.tsx walks two parents up to .paid-by-date. */}
+          <div className="relative flex flex-col gap-1.5">
+            <label htmlFor="expense-payer" className="font-sans text-label font-medium text-ink">
               Paid by
             </label>
+            <div
+              aria-hidden="true"
+              className="flex h-12 min-w-0 items-center gap-2 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-2.5 font-sans text-body text-ink"
+            >
+              {payer ? (
+                <>
+                  <Avatar name={payer.name} isYou={payer.id === identityPersonId} />
+                  <span className="min-w-0 flex-1 truncate">{payer.name}</span>
+                </>
+              ) : (
+                <span className="min-w-0 flex-1 truncate text-dim">Select payer</span>
+              )}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-4 shrink-0 text-dim">
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
             <select
               id="expense-payer"
               value={payerId}
               onChange={(event) => touch(setPayerId)(event.target.value)}
               onBlur={() => markBlurred('payerId')}
               required
-              className={`${selectClassName} min-w-0 max-w-full box-border`}
+              className="focus-ring absolute inset-x-0 bottom-0 h-12 w-full rounded-inner opacity-0"
             >
               <option value="" disabled>
                 Select payer
@@ -157,10 +236,10 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                 </option>
               ))}
             </select>
-            {isRequiredError('payerId', payerId) && <p className="text-label text-debt-red">Payer is required.</p>}
+            {isRequiredError('payerId', payerId) && <p className="text-label text-down">Payer is required.</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label htmlFor="expense-date" className="font-sans text-label font-medium text-ink-forest">
+            <label htmlFor="expense-date" className="font-sans text-label font-medium text-ink">
               Date
             </label>
             <input
@@ -174,20 +253,8 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
           </div>
         </div>
 
-        <Field
-          id="expense-amount"
-          label="Amount"
-          type="text"
-          inputMode="decimal"
-          value={amount}
-          onChange={(event) => touch(setAmount)(event.target.value)}
-          onBlur={() => markBlurred('amount')}
-          error={isRequiredError('amount', amount) ? 'Amount is required.' : undefined}
-          required
-        />
-
         <fieldset className="flex flex-col gap-2">
-          <legend className="font-sans text-label font-medium text-ink-forest">Split method</legend>
+          <legend className="font-sans text-label font-medium text-ink">Split method</legend>
           <div className="segmented" role="radiogroup">
             {(['equal', 'percent', 'custom'] as const).map((method) => {
               const isActive = splitMethod === method;
@@ -195,7 +262,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                 <label
                   key={method}
                   data-active={isActive}
-                  className="segment flex min-h-9 items-center justify-center py-2 font-sans text-label font-semibold text-ink-forest has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brass-ui"
+                  className="segment flex min-h-9 items-center justify-center py-2 font-sans text-label font-semibold text-ink has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus"
                 >
                   <input
                     type="radio"
@@ -212,29 +279,43 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
         </fieldset>
 
         <fieldset className="flex flex-col gap-2">
-          <legend className="font-sans text-label font-medium text-ink-forest">Split between</legend>
-          <div className="flex flex-col divide-y divide-ink-forest/10 rounded-[10px] bg-[var(--field-bg,var(--color-paper-white))] px-3.5">
+          <legend className="font-sans text-label font-medium text-ink">Split between</legend>
+          {/* Full-width rows, wash fill plus an accent border when on, and
+              the tick on the RIGHT: selection has to survive with the tick
+              column covered up, which it does not when the fill is the only
+              cue. Two labels point at one checkbox so the name and the tick
+              are both hit targets without wrapping the inline amount inputs
+              in a label that would toggle it. */}
+          <div className="flex flex-col gap-2">
           {people.map((person) => {
             const checked = participantIds.includes(person.id);
             const participantIndex = participantIds.indexOf(person.id);
+            const boxId = `split-${person.id}`;
             return (
-              <div key={person.id} className="flex min-h-11 items-center justify-between gap-3 py-1.5">
-                <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-2 font-sans text-body text-ink-forest">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleParticipant(person.id)}
-                    className="focus-ring h-5 w-5 shrink-0 accent-ink-forest"
-                  />
-                  {person.name}
+              <div
+                key={person.id}
+                data-selected={checked}
+                className="flex min-h-13 items-center gap-3 rounded-inner border border-line bg-[var(--field-bg,var(--color-surface))] px-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus data-[selected=true]:border-accent data-[selected=true]:bg-accent-wash"
+              >
+                <input
+                  id={boxId}
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleParticipant(person.id)}
+                  className="sr-only"
+                />
+                <label
+                  htmlFor={boxId}
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 py-2 font-sans text-body font-medium text-ink"
+                >
+                  <Avatar name={person.name} isYou={person.id === identityPersonId} />
+                  <span className="min-w-0 truncate">{person.name}</span>
                 </label>
                 {checked && splitMethod === 'equal' && (
-                  <span className="font-sans text-row-amount tabular-nums text-ink-forest">
-                    {formatCurrency((equalPreview[participantIndex] ?? 0) / 100)}
-                  </span>
+                  <Amount value={(equalPreview[participantIndex] ?? 0) / 100} className="text-row-amount" />
                 )}
                 {checked && splitMethod === 'percent' && (
-                  <label className="flex items-center gap-1 font-sans text-body text-ink-forest">
+                  <label className="flex items-center gap-1 font-sans text-body text-ink">
                     <input
                       type="text"
                       inputMode="decimal"
@@ -242,13 +323,13 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setPercentByPerson)({ ...percentByPerson, [person.id]: event.target.value })
                       }
-                      className="focus-ring h-11 w-16 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-sans text-body tabular-nums text-ink-forest"
+                      className={`${inlineAmountClassName} w-16`}
                     />
                     %
                   </label>
                 )}
                 {checked && splitMethod === 'custom' && (
-                  <label className="flex items-center gap-1 font-sans text-body text-ink-forest">
+                  <label className="flex items-center gap-1 font-sans text-body text-ink">
                     $
                     <input
                       type="text"
@@ -257,32 +338,45 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                       onChange={(event) =>
                         touch(setCustomByPerson)({ ...customByPerson, [person.id]: event.target.value })
                       }
-                      className="focus-ring h-11 w-20 rounded-lg border border-ink-forest/55 bg-paper-white px-2 font-sans text-body tabular-nums text-ink-forest"
+                      className={`${inlineAmountClassName} w-20`}
                     />
                   </label>
                 )}
-                {!checked && splitMethod !== 'equal' && <span className="text-ink-forest/40">—</span>}
+                {!checked && splitMethod !== 'equal' && <span className="text-dim">&middot;</span>}
+                <label
+                  htmlFor={boxId}
+                  aria-hidden="true"
+                  className={`grid size-5.5 shrink-0 cursor-pointer place-items-center rounded-full border-[1.75px] ${
+                    checked ? 'border-accent bg-accent' : 'border-line-strong'
+                  }`}
+                >
+                  {checked && (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="size-3 text-surface">
+                      <path d="M4 12.5l5.5 5.5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </label>
               </div>
             );
           })}
           </div>
           {splitMethod === 'percent' && (
-            <p className={`font-sans text-label ${percentMismatch && submitAttempted ? 'text-debt-red' : 'text-ink-forest/70'}`}>
-              Entered: {percentEntered} / 100{percentMismatch && submitAttempted ? ' — must add up to 100%' : ''}
+            <p className={`font-sans text-label ${percentMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
+              Entered: {percentEntered} / 100{percentMismatch && submitAttempted ? ', must add up to 100%' : ''}
             </p>
           )}
           {splitMethod === 'custom' && (
-            <p className={`font-sans text-label ${customMismatch && submitAttempted ? 'text-debt-red' : 'text-ink-forest/70'}`}>
+            <p className={`font-sans text-label ${customMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
               Entered: {formatCurrency(customEnteredCents / 100)} / {formatCurrency(amountCents / 100)}
-              {customMismatch && submitAttempted ? ' — must add up to the total' : ''}
+              {customMismatch && submitAttempted ? ', must add up to the total' : ''}
             </p>
           )}
         </fieldset>
 
         {mutation.isError && <ErrorState message={mutation.error.message} />}
         <div className="modal-footer">
-          <Button type="submit" disabled={mutation.isPending || participantIds.length === 0}>
-            {mutation.isPending ? 'Saving…' : 'Save'}
+          <Button type="submit" size="lg" disabled={mutation.isPending || participantIds.length === 0}>
+            {mutation.isPending ? 'Saving…' : isEdit ? 'Save changes' : 'Save expense'}
           </Button>
         </div>
       </form>

@@ -3,57 +3,138 @@
 /* Self-hosted fonts, Latin subset only (app is English-only, so Google's
    cyrillic/greek/vietnamese subsets would be dead weight).
 
-   Newsreader (Production Type) for display — a screen-first text serif with a
-   press/financial cadence, not the indie-SaaS editorial serif. Libre Franklin
-   for everything else including money: a faithful Franklin Gothic revival
-   (Benton, 1912 — American newspaper/advertising), so numbers set with its
-   tabular figures read as printed record, not terminal output. No monospace
-   webfont; the system mono stack is kept only for literal codes/URLs. Both
-   files are variable; the `font-weight` range lets one file serve every
-   weight (Google's own css2 API does the same). */
+   Geist for everything, Geist Mono for money. This replaces the
+   Newsreader + Libre Franklin pair: the serif display face and the
+   green-bar paper it sat on were the two choices that read dated, and both
+   were dropped in sketch round 006. What survives is the part that was
+   never decoration, tabular figures used at display scale, now set in a
+   real mono rather than a sans with tabular numerals. Geist Mono is
+   tabular by construction, so `tabular-nums` is redundant wherever
+   font-mono is set. Both files are variable; the `font-weight` range lets
+   one file serve every weight (Google's own css2 API does the same). */
 @font-face {
-  font-family: "Newsreader";
+  font-family: "Geist";
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/newsreader-variable.woff2") format("woff2");
+  src: url("/fonts/geist-variable.woff2") format("woff2");
 }
 @font-face {
-  font-family: "Libre Franklin";
+  font-family: "Geist Mono";
   font-style: normal;
-  font-weight: 400 700;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/librefranklin-variable.woff2") format("woff2");
+  src: url("/fonts/geist-mono-variable.woff2") format("woff2");
 }
 
-/* Tailwind token mapping — DESIGN_SYSTEM.md §11 */
+/* Tailwind token mapping, DESIGN_SYSTEM.md §11.
+
+   No tokens for control heights, icon sizes or z-index. `--spacing` already
+   generates h-13 (52px) and size-4.5 (18px), and Tailwind v4 has no
+   `--z-index-*` namespace, so the five z-index literals stay where they are.
+   The whole ladder, low to high:
+
+     1   .modal-footer, .bottom-bar   sticky strips inside their own scroller
+     10  Navbar                       sticky page chrome
+     50  .overlay                     a modal, over the page
+     60  the discard prompt           over the modal it interrupts
+*/
 @theme {
-  --color-ledger-paper: #e6f1e2;
-  --color-paper-white: #f8fbf5;
-  --color-ink-forest: #1e2e23;
-  --color-ledger-green: #2f6b4f;
-  --color-debt-red: #a8402b;
-  --color-brass: #b8912b;
-  --color-brass-ui: #96762a;
+  /* Surfaces: three depths. The page ground is TINTED and the card is white,
+     which is the inversion the reference study forced. The bg/surface delta
+     is what makes a card read as a card; do not flatten it. `sunken` is the
+     tinted fill *inside* a card (entry rows, segmented control). Never
+     collapse it into bg. */
+  --color-bg:           #f0f2f0;   /* Settled in sketch 012. dL* 4.7 from white.
+                                      Was #FCFCFB (011) = dL* 0.4, invisible.
+                                      #EFF3EF was tried and read too green: its
+                                      green channel sat +4 over red/blue, this
+                                      is +2 at the same lightness. */
+  --color-surface:      #ffffff;
+  --color-sunken:       #e7ece7;   /* must still read inside a white card */
+  --color-desk:         #e2e8e2;   /* >=640px, behind the sheet. Darker than bg */
 
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-sans: "Libre Franklin", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --color-ink:          #12140f;   /* 16.5:1 on bg */
+  --color-dim:          #5b6360;   /* 5.5:1 on bg. One value replaces the six
+                                      ad-hoc ink opacities that used to mean
+                                      "secondary text". */
 
-  --text-display: 2rem;
-  --text-section: 1.125rem;
-  --text-body: 1rem;
-  --text-label: 0.875rem;
+  /* Two lines. `line` is decorative only. Anything that BOUNDS a control
+     (input, checkbox, outlined button) must use line-strong: WCAG 1.4.11
+     needs 3:1 and `line` is 1.22:1. line-strong is verified against BOTH
+     the white field fill and the tinted page ground, since a field can sit
+     on either. #868F86 was only 2.98:1 on the ground and had to be darkened. */
+  --color-line:         #e3e8e3;
+  --color-line-strong:  #7f887f;   /* 3.66:1 on white, 3.26:1 on bg */
+
+  --color-accent:       #0a6b42;   /* 5.8:1 on bg; white on it 6.6:1 */
+  --color-accent-hover: #0c7a4c;
+  --color-accent-wash:  #dce9e1;   /* selected-row fill. Pairs with an accent
+                                      border; ink on it stays 14:1 */
+  --color-mint:         #3ddc91;   /* 1.77:1 on white. FILLS ON THE BAND ONLY.
+                                      Never a text colour on a light surface. */
+
+  --color-down:         #be3623;   /* 5.0:1 on bg. NOT #D6432E (4.35, fails)
+                                      and NOT #C63B27, which is 4.6 on the
+                                      tinted ground: too thin for money */
+  --color-down-wash:    #f7dfdb;   /* the settle-up amount chip */
+  --color-notice:       #7a5e12;   /* 5.4:1 on bg. #8A6A16 was 4.5, a hair
+                                      over the line. Overpayment + edit tag */
+  --color-notice-wash:  #f4ebd3;   /* overpayment warning fill, from sketch 014 */
+
+  --color-band:         #123322;   /* TWO surfaces use this, settled in 013:
+                                      the landing proof band and the GroupPage
+                                      header. Same token so they read as one
+                                      device used twice. */
+  --color-band-dim:     #a9bbae;   /* 6.8:1 on band. Also the ONLY colour for a
+                                      control boundary sitting on the band:
+                                      white at 22% composites to #465F53 = 2.0:1
+                                      and fails WCAG 1.4.11. */
+
+  --color-focus:        #12140f;   /* deliberately NOT accent */
+  --color-scrim:        color-mix(in srgb, #12140f 45%, transparent);
+
+  /* One family plus its mono companion. No display face: .heading is Geist
+     600 with negative tracking. */
+  --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-zero:         3.25rem;    /* the two "big zero" moments and nothing
+                                      else: the landing hero counting down,
+                                      and the settled receipt. */
+  --text-display:      2rem;
+  --text-title:        1.375rem;   /* overlay h2, navbar wordmark */
+  --text-section:      1.125rem;
+  --text-body:         1rem;
+  --text-row-amount:   1rem;
   --text-hero-balance: 1.75rem;
-  --text-row-amount: 1rem;
+  --text-label:        0.875rem;
+  --text-micro:        0.8125rem;
+
+  --radius-card:   14px;
+  --radius-inner:  10px;
+
+  /* Ink at 25-50% was tuned against saturated green paper; on #F0F2F0 it
+     reads as dirt. Halved. */
+  /* Resting lift for a list card on the tinted page ground — enough to peel
+     the white off #F0F2F0, not a floating panel. Pairs with the border. */
+  --shadow-card:   0 1px 2px -1px color-mix(in srgb, var(--color-ink) 10%, transparent),
+                   0 3px 8px -3px color-mix(in srgb, var(--color-ink) 8%, transparent);
+  /* Hover state for a card that is itself a link target. */
+  --shadow-card-hover: 0 2px 4px -2px color-mix(in srgb, var(--color-ink) 12%, transparent),
+                       0 6px 16px -4px color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --shadow-sheet:  0 12px 32px -8px color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --shadow-dialog: 0 12px 32px -8px color-mix(in srgb, var(--color-ink) 18%, transparent);
+  --shadow-float:  0 8px 24px -6px  color-mix(in srgb, var(--color-ink) 22%, transparent);
+  --shadow-press:  0 4px 12px -4px  color-mix(in srgb, var(--color-ink) 22%, transparent);
 }
 
 @layer base {
   :root {
-    color: var(--color-ink-forest);
-    background: var(--color-ledger-paper);
+    color: var(--color-ink);
+    background: var(--color-bg);
     /* Opening a modal sets body{overflow:hidden}, which removes the page
-       scrollbar and widens the viewport by its width — the navbar and the
+       scrollbar and widens the viewport by its width. The navbar and the
        centered sheet visibly jumped right on open and back on close.
        Reserving the gutter permanently means nothing reflows. */
     scrollbar-gutter: stable;
@@ -65,7 +146,7 @@
   }
 
   /* Browsers default <button> to cursor:default, not pointer (unlike <a
-     href>) — every button in the app needs this explicitly, one rule instead
+     href>), so every button in the app needs this explicitly, one rule instead
      of repeating it per component. */
   button:not(:disabled) {
     cursor: pointer;
@@ -74,7 +155,7 @@
     cursor: not-allowed;
   }
 
-  /* Fill the space left under the sticky navbar, not the whole viewport —
+  /* Fill the space left under the sticky navbar, not the whole viewport.
      100vh here pushed the card a full navbar-height past the fold, which read
      as "the card never ends" once the card got a visible fill (desktop). */
   main {
@@ -87,21 +168,17 @@
 }
 
 /* Tablet/desktop framing (DESIGN_SYSTEM.md §4: column width itself never
-   changes — a ledger stays a narrow bound page even on a laptop). Below
+   changes: a ledger stays a narrow bound page even on a laptop). Below
    this, the column already fills the viewport edge-to-edge as designed for
    mobile; above it, a wide bare browser window reads as unfinished rather
    than intentional, so the page gets a visible "desk" surrounding a raised
    paper sheet instead. */
 @media (min-width: 640px) {
   /* The desk color goes on :root, not body. :root already carries a
-     background, so body's own only paints its box — leaving the lighter root
-     green showing below it as a second band. One surface, one color. */
+     background, so body's own only paints its box, leaving the lighter root
+     ground showing below it as a second band. One surface, one color. */
   :root {
-    background: color-mix(
-      in srgb,
-      var(--color-ledger-green) 12%,
-      var(--color-ledger-paper)
-    );
+    background: var(--color-desk);
   }
 
   main {
@@ -109,38 +186,45 @@
        rather than overflowing by 4rem. */
     min-height: calc(100vh - var(--navbar-height) - 4rem);
     margin-block: 2rem;
-    border-radius: 16px;
-    background: var(--color-paper-white);
-    box-shadow: 0 12px 32px -8px
-      color-mix(in srgb, var(--color-ink-forest) 25%, transparent);
+    border-radius: var(--radius-card);
+    /* The sheet is the PAGE, so it takes the page ground and sits on the
+       darker desk. Not surface: a white sheet would invert the whole model,
+       since every card and every control on it is white and would have
+       nowhere to be raised from. The old design had it the other way round
+       (a tinted page under a lighter sheet), which is what this replaces. */
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sheet);
   }
 }
 
 @layer components {
   /* Contrast-safe double focus ring (DESIGN_SYSTEM.md §10): outer ring
-     (brass-ui) reads against both app backgrounds, inner ring (paper-white)
-     reads against dark control fills. Hand-written box-shadow, not
-     Tailwind's ring+ring-offset utilities, since ring-offset assumes a
-     solid matching background color and this app has two. */
+     (focus ink) reads against every light surface in the app, inner ring
+     (surface white) reads against dark control fills. Hand-written
+     box-shadow, not Tailwind's ring+ring-offset utilities, since
+     ring-offset assumes a solid matching background color and this app has
+     several. */
   .focus-ring {
     outline: none;
   }
   .focus-ring:focus-visible {
     box-shadow:
-      0 0 0 2px var(--color-paper-white),
-      0 0 0 4px var(--color-brass-ui);
+      0 0 0 2px var(--color-surface),
+      0 0 0 4px var(--color-focus);
   }
 
   /* One place for the display-heading treatment (family, weight, leading,
      tracking, colour). Size stays a per-use utility (text-display, etc.).
-     Newsreader is a text serif with optical sizing — it wants normal
-     tracking, not the negative tracking a geometric display face takes. */
+     Geist is a geometric-leaning grotesque, so it wants the negative
+     tracking Newsreader refused: this rule is the inverse of what it said
+     before the 006 font change. -0.02em here; the hero figure on the
+     landing page goes to the -0.04em floor and no tighter. */
   .heading {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     font-weight: 600;
     line-height: 1.15;
-    letter-spacing: normal;
-    color: var(--color-ink-forest);
+    letter-spacing: -0.02em;
+    color: var(--color-ink);
     text-wrap: balance;
   }
 }
@@ -148,15 +232,18 @@
 /* Fixed full-viewport scroll region. Width itself is capped one level in,
    on .overlay-content, so the modal matches <main>'s column width instead
    of spanning edge-to-edge on desktop while every other screen doesn't. Its
-   own background is required here — .overlay-content's cap leaves bare
+   own background is required here. .overlay-content's cap leaves bare
    viewport margin on anything wider than 32.5rem, and without this the page
    underneath (still mounted, mid-modal) shows through that margin. */
 .overlay {
-  --field-bg: var(--color-ledger-paper);
+  /* The modal sheet is the tinted page ground at every width, so fields are
+     raised white at every width. A field must never be the same fill as what
+     it sits on, and here it never is. */
+  --field-bg: var(--color-surface);
   position: fixed;
   inset: 0;
   overflow-y: auto;
-  background: var(--color-ledger-paper);
+  background: var(--color-bg);
   /* Positioned page content with any positive z-index would otherwise paint
      over this (z-index:auto sorts below z-index:1+ in the same stacking
      context), leaving bits of the page visible through the modal. */
@@ -199,11 +286,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: color-mix(
-      in srgb,
-      var(--color-ledger-green) 12%,
-      var(--color-ledger-paper)
-    );
+    background: var(--color-desk);
   }
 
   .overlay-content {
@@ -211,10 +294,9 @@
     min-height: 0;
     height: calc(100vh - 4rem);
     overflow-y: auto;
-    border-radius: 16px;
-    background: var(--color-paper-white);
-    box-shadow: 0 12px 32px -8px
-      color-mix(in srgb, var(--color-ink-forest) 25%, transparent);
+    border-radius: var(--radius-card);
+    background: var(--color-bg);
+    box-shadow: var(--shadow-sheet);
   }
 }
 
@@ -222,12 +304,14 @@
    forms, so the sheet sizes to its content and floats on a scrim at every
    width rather than running a full-height paper column. */
 .overlay-compact {
+  --field-bg: var(--color-sunken);
+  --page-ground: var(--color-surface);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
   padding: 1.5rem;
-  background: color-mix(in srgb, var(--color-ink-forest) 45%, transparent);
+  background: var(--color-scrim);
 }
 
 .overlay-compact .overlay-content {
@@ -237,10 +321,9 @@
   max-height: calc(100vh - 3rem);
   height: auto;
   margin: auto;
-  border-radius: 16px;
-  background: var(--color-paper-white);
-  box-shadow: 0 12px 32px -8px
-    color-mix(in srgb, var(--color-ink-forest) 35%, transparent);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-dialog);
 }
 
 /* Sticky form action, same behaviour as GroupPage's .bottom-bar: margin-top
@@ -256,9 +339,9 @@
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
   background: linear-gradient(
     to top,
-    var(--color-paper-white) 0%,
-    var(--color-paper-white) 55%,
-    color-mix(in srgb, var(--color-paper-white) 0%, transparent) 100%
+    var(--page-ground) 0%,
+    var(--page-ground) 55%,
+    color-mix(in srgb, var(--page-ground) 0%, transparent) 100%
   );
 }
 
@@ -287,33 +370,33 @@
   }
 }
 
-/* Segmented-pill control (DESIGN_SYSTEM.md §7-adjacent) — shared by Group
-   View tabs and the Add Expense split-method control. */
-/* Border, not just background, groups the segments: .segmented's fill falls
-   back to Paper White when --field-bg isn't set (only .overlay sets it), and
-   on GroupPage the tabs sit directly on a Paper White card — the fill alone
-   would be invisible there, leaving the inactive tab floating with no visible
-   tie to the active one. */
+/* Segmented-pill control (DESIGN_SYSTEM.md §7-adjacent), shared by Group
+   View tabs and the Add Expense split-method control. A sunken track with a
+   raised white thumb (sketch 012/013), which is why it needs no border: the
+   track's own fill is the grouping now, and it reads on both the tinted
+   page ground and a white card. Always the sunken fill, never --field-bg:
+   inside the Add/Edit sheet --field-bg is white, which would collapse the
+   track into the white active thumb and leave only its shadow. */
 .segmented {
   display: flex;
   gap: 0;
-  border-radius: 10px;
+  border-radius: 9999px;
   padding: 4px;
-  background: var(--field-bg, var(--color-paper-white));
-  border: 1px solid color-mix(in srgb, var(--color-ink-forest) 15%, transparent);
+  background: var(--color-sunken);
 }
 
 .segment {
   flex: 1;
   text-align: center;
-  border-radius: 8px;
+  border-radius: 9999px;
+  color: var(--color-dim);
   cursor: pointer;
   transition: transform 100ms ease-out;
 }
 
 @media (hover: hover) {
   .segment:not([data-active="true"]):hover {
-    background: color-mix(in srgb, var(--color-ink-forest) 6%, transparent);
+    background: color-mix(in srgb, var(--color-ink) 6%, transparent);
   }
 }
 
@@ -322,8 +405,9 @@
 }
 
 .segment[data-active="true"] {
-  background: var(--color-ink-forest);
-  color: var(--color-paper-white);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: 0 1px 3px -1px color-mix(in srgb, var(--color-ink) 16%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -336,6 +420,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.overlay-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .overlay-header-centered {
@@ -352,11 +442,34 @@
   padding-inline: 3.25rem;
 }
 
-.overlay-header-centered > button {
+/* A second control (Edit) sits beside the close button, so the title needs
+   more clearance to stay centred between them. */
+.overlay-header-centered.has-header-action h2 {
+  padding-inline: 6rem;
+}
+
+.overlay-header-centered > .overlay-header-actions {
   position: absolute;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
+}
+
+/* Controls alone on the first row, title dropped to its own row beneath and
+   centred. Nothing sits beside the title here, so it needs no side clearance
+   and the actions need no absolute positioning. */
+.overlay-header-stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.875rem;
+}
+
+.overlay-header-stacked .overlay-header-actions {
+  align-self: flex-end;
+}
+
+.overlay-header-stacked h2 {
+  text-align: center;
 }
 
 .paid-by-date {
@@ -388,31 +501,31 @@
   }
 }
 
-/* Entry cards. Replaces the banded hairline list: each expense/balance is its
-   own Ledger Paper surface separated by a gap, sitting on the Paper White
-   group surface. Radius stays in DESIGN_SYSTEM.md §4's 8–10px band. The fill
-   lives here rather than on the inner <button> so the .row-pulse cue below —
-   which is set on the <li> — isn't painted over by its own child. */
+/* Entry cards. Bordered white rather than a tinted fill (sketch 013): every
+   reference puts white cards on a tinted ground, and the old filled block
+   was the reverse of that. The border and radius live here rather than on
+   the inner <button> so the .row-pulse cue below, which is set on the
+   <li>, isn't painted over by its own child. */
 .entry-card {
-  border-radius: 10px;
-  background-color: var(--color-ledger-paper);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-inner);
+  background-color: var(--color-surface);
   /* background-color stays at §6's 250ms: this element is also the .row-pulse
      target, and a shorter duration here would quietly retime that cue. */
   transition:
+    border-color 150ms ease-out,
     background-color 250ms ease-out,
     transform 100ms ease-out;
 }
 
-/* Only cards that are themselves a tap target get the feedback — a balance
+/* Only cards that are themselves a tap target get the feedback. A balance
    card isn't clickable as a whole (just its Settle button), so lighting it up
-   on hover would promise an interaction that isn't there. */
+   on hover would promise an interaction that isn't there. Hover darkens the
+   border, not the fill: darkening the fill outranked li.row-pulse and quietly
+   suppressed the real-time cue for anyone with a pointer. */
 @media (hover: hover) {
   .entry-card-tappable:hover {
-    background-color: color-mix(
-      in srgb,
-      var(--color-ledger-paper) 90%,
-      var(--color-ink-forest)
-    );
+    border-color: var(--color-line-strong);
   }
 }
 
@@ -421,17 +534,21 @@
 }
 
 :root {
-  /* Navbar's own box model (py-2 + h-11 content + border-b) — kept in sync
+  /* Navbar's own box model (py-2 + h-11 content + border-b), kept in sync
      the same way, so a page can center within the space actually left under
      it instead of within the full 100vh main{} sets by default. */
   --navbar-height: calc(0.5rem + 2.75rem + 0.5rem + 1px);
+  /* What a sticky bar's gradient fades into. The page ground on mobile; the
+     white sheet inside <main> and inside a modal on desktop, both of which
+     override it above. */
+  --page-ground: var(--color-bg);
 }
 
-/* Persistent Add Expense action (DESIGN_SYSTEM.md §10) — thumb-reachable on
+/* Persistent Add Expense action (DESIGN_SYSTEM.md §10), thumb-reachable on
    small mobile widths, safe-area aware. Sticky, not fixed: fixed pulled the
    button out of the sheet and left it floating on the desk below the paper.
    Sticky keeps it in the card's own flow (mt-auto parks it at the bottom
-   edge) while still riding along as rows scroll past underneath. The paper
+   edge) while still riding along as rows scroll past underneath. The ground
    fades up behind it so scrolled content dissolves instead of hitting a hard
    edge, and the strip is click-through apart from the button itself. */
 .bottom-bar {
@@ -450,9 +567,9 @@
   pointer-events: none;
   background: linear-gradient(
     to top,
-    var(--color-paper-white) 0%,
-    var(--color-paper-white) 55%,
-    color-mix(in srgb, var(--color-paper-white) 0%, transparent) 100%
+    var(--page-ground) 0%,
+    var(--page-ground) 62%,
+    color-mix(in srgb, var(--page-ground) 0%, transparent) 100%
   );
 }
 
@@ -462,7 +579,7 @@
    own label and fully rounded, it reads as what it is: the one action that
    sits above the page rather than inside it. */
 /* The bar itself is click-through so the faded strip doesn't eat taps meant
-   for the rows scrolling under it — its actual children are not. */
+   for the rows scrolling under it. Its actual children are not. */
 .bottom-bar > * {
   pointer-events: auto;
 }
@@ -472,40 +589,38 @@
   width: auto;
   border-radius: 999px;
   padding-inline: 1.5rem;
-  box-shadow: 0 8px 24px -6px
-    color-mix(in srgb, var(--color-ink-forest) 50%, transparent);
+  box-shadow: var(--shadow-float);
 }
 
 .bottom-bar > button:active,
 .bottom-bar > a:active {
-  box-shadow: 0 4px 12px -4px
-    color-mix(in srgb, var(--color-ink-forest) 50%, transparent);
+  box-shadow: var(--shadow-press);
 }
 
 /* One-shot real-time update cue (DESIGN_SYSTEM.md §6): a transition, not a
    keyframe, so a second update arriving mid-fade retargets smoothly instead
-   of restarting. */
-li {
+   of restarting. Scoped to the two list items that can actually pulse: a
+   bare `li` selector also caught the Navbar's benefit list and every other
+   <li> in the app. */
+li.entry-card,
+li.row-pulse {
   transition: background-color 250ms ease-out;
 }
 
 li.row-pulse {
-  /* Tinted, not solid — a full-strength Ledger Green fill drops text
-     contrast below the readable floor against Ink Forest copy. */
-  background-color: color-mix(
-    in srgb,
-    var(--color-ledger-green) 25%,
-    transparent
-  );
+  /* Tinted, not solid. A full-strength accent fill drops text contrast
+     below the readable floor against ink copy. */
+  background-color: var(--color-accent-wash);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  li {
+  li.entry-card,
+  li.row-pulse {
     transition: none;
   }
 
-  /* Needed on top of the `li` rule above — .entry-card outranks a bare element
-     selector, so it would otherwise keep animating. */
+  /* Needed on top of the rule above: .entry-card's own transition shorthand
+     would otherwise keep animating. */
   .entry-card {
     transition: none;
   }
@@ -517,4 +632,48 @@ li.row-pulse {
   .animate-pulse {
     animation: none;
   }
+}
+
+/* The receipt tear, settled in sketch 014. TWO surfaces use it and no others:
+   the settle card and the settled receipt. It survives the precedent set by
+   the killed settle stamp because it is the card being cut through rather
+   than a picture of a receipt, and because settle up is the only screen in
+   the app where something is genuinely finished. Do not spread it.
+
+   Two notches punched out of the card's own left and right edges, filled
+   with whatever is behind the card, plus a dashed rule between them. The
+   card clips them to half circles, which is the bite. */
+.tear {
+  position: relative;
+  height: 22px;
+}
+
+.tear::before,
+.tear::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--page-ground);
+  transform: translateY(-50%);
+}
+
+.tear::before {
+  left: -11px;
+}
+
+.tear::after {
+  right: -11px;
+}
+
+.tear > span {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  right: 14px;
+  height: 0;
+  border-top: 2px dashed var(--color-line);
+  transform: translateY(-50%);
 }

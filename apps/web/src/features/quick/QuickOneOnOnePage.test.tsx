@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import type * as ReactRouterDom from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +18,9 @@ function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <QuickOneOnOnePage />
+      <MemoryRouter>
+        <QuickOneOnOnePage />
+      </MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -44,13 +47,13 @@ describe('QuickOneOnOnePage', () => {
         )
         .mockResolvedValueOnce(
           new Response(
-            JSON.stringify({ id: 'you', groupId: 'g1', name: 'Alice', email: null, removedAt: null, createdAt: '2026-01-01' }),
+            JSON.stringify({ id: 'you', groupId: 'g1', name: 'Alice', removedAt: null, createdAt: '2026-01-01' }),
             { status: 201 }
           )
         )
         .mockResolvedValueOnce(
           new Response(
-            JSON.stringify({ id: 'bob', groupId: 'g1', name: 'Bob', email: null, removedAt: null, createdAt: '2026-01-01' }),
+            JSON.stringify({ id: 'bob', groupId: 'g1', name: 'Bob', removedAt: null, createdAt: '2026-01-01' }),
             { status: 201 }
           )
         )

@@ -1,5 +1,6 @@
 import { Button } from '../../components/Button';
-import { formatCurrency, formatDateGroupLabel } from '../../shared/format';
+import { Amount } from '../../components/Amount';
+import { formatDateGroupLabel } from '../../shared/format';
 import { useDeleteSettlement } from '../settlement/api';
 import type { Person, Settlement } from './types';
 
@@ -27,7 +28,7 @@ export function SettlementHistory({ code, settlements, people, identityPersonId 
 
   return (
     <section aria-label="Settled payments" className="mt-6">
-      <h3 className="mb-2 font-sans text-label font-medium text-ink-forest/70">Settled</h3>
+      <h3 className="mb-2 font-sans text-label font-medium text-dim">Settled</h3>
       <ul className="flex flex-col gap-2">
         {ordered.map((settlement) => {
           const from = settlement.fromPersonId === identityPersonId ? 'You' : nameFor(settlement.fromPersonId);
@@ -37,13 +38,11 @@ export function SettlementHistory({ code, settlements, people, identityPersonId 
             <li key={settlement.id} className="entry-card px-4 py-3">
               <div className="flex min-h-11 items-center justify-between gap-3">
                 <span className="min-w-0 flex-1">
-                  <span className="block font-sans text-body text-ink-forest">
+                  <span className="block font-sans text-body text-ink">
                     {from} paid {to}{' '}
-                    <span className="font-sans font-medium tabular-nums">
-                      {formatCurrency(Number(settlement.amount))}
-                    </span>
+                    <Amount value={Number(settlement.amount)} className="font-medium" />
                   </span>
-                  <span className="mt-0.5 block truncate font-sans text-label text-ink-forest/70">
+                  <span className="mt-0.5 block truncate font-sans text-label text-dim">
                     {formatDateGroupLabel(settlement.settledAt)} · {settlement.note}
                   </span>
                 </span>
@@ -51,7 +50,8 @@ export function SettlementHistory({ code, settlements, people, identityPersonId 
                   variant="secondary"
                   onClick={() => deleteSettlement.mutate(settlement.id)}
                   disabled={isUndoing}
-                  className="shrink-0 px-3.5! text-[0.8125rem]!"
+                  size="sm"
+                  className="shrink-0"
                 >
                   {isUndoing ? 'Undoing…' : 'Undo'}
                 </Button>
@@ -61,7 +61,7 @@ export function SettlementHistory({ code, settlements, people, identityPersonId 
         })}
       </ul>
       {deleteSettlement.isError && (
-        <p role="alert" className="mt-2 font-sans text-label text-debt-red">
+        <p role="alert" className="mt-2 font-sans text-label text-down">
           {deleteSettlement.error.message}
         </p>
       )}

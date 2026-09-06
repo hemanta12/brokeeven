@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 
+import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
 import { Overlay } from '../../shared/Overlay';
@@ -51,11 +52,14 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
               const isSelected = selectedId === person.id;
               return (
                 <li key={person.id}>
+                  {/* Same selection model as the split rows in sketch 012:
+                      wash fill plus an accent border, with the control on the
+                      right, so selection survives with the tick covered. */}
                   <label
-                    className={`focus-ring flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-3 font-sans text-body font-medium text-ink-forest transition-colors duration-100 ${
+                    className={`focus-ring flex min-h-13 cursor-pointer items-center gap-2.5 rounded-inner border px-3 py-2 font-sans text-body font-medium text-ink transition-colors duration-100 ${
                       isSelected
-                        ? 'border-[1.5px] border-ink-forest bg-ledger-paper'
-                        : 'border-ink-forest/20 hover:border-ink-forest/40 active:bg-ink-forest/5'
+                        ? 'border-accent bg-accent-wash'
+                        : 'border-line bg-[var(--field-bg,var(--color-surface))] hover:border-line-strong'
                     }`}
                   >
                     <input
@@ -65,11 +69,20 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
                       onChange={() => setSelectedId(person.id)}
                       className="sr-only"
                     />
+                    <Avatar name={person.name} />
+                    <span className="min-w-0 flex-1 truncate">{person.name}</span>
                     <span
                       aria-hidden="true"
-                      className={`h-5 w-5 shrink-0 rounded-full border-2 ${isSelected ? 'border-ink-forest' : 'border-ink-forest/30'}`}
-                    />
-                    {person.name}
+                      className={`grid size-5.5 shrink-0 place-items-center rounded-full border-[1.75px] ${
+                        isSelected ? 'border-accent bg-accent' : 'border-line-strong'
+                      }`}
+                    >
+                      {isSelected && (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="size-3 text-surface">
+                          <path d="M4 12.5l5.5 5.5L20 7" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </span>
                   </label>
                 </li>
               );

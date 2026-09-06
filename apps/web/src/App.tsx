@@ -30,7 +30,7 @@ export function App() {
               element={
                 <main>
                   <NotFoundState />
-                  <p className="mt-4 font-sans text-body text-ink-forest">
+                  <p className="mt-4 font-sans text-body text-ink">
                     <Link to="/" className="underline">
                       Back to home
                     </Link>

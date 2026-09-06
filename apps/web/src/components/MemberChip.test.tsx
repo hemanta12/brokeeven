@@ -10,8 +10,8 @@ describe('MemberChip', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('marks the viewer\'s own chip with the Brass border', () => {
+  it('marks the viewer\'s own avatar with the accent ring', () => {
     const { container } = render(<MemberChip name="Bob" isYou />);
-    expect(container.querySelector('span')).toHaveClass('border-b-brass');
+    expect(container.querySelector('[aria-hidden="true"]')).toHaveClass('ring-accent');
   });
 });

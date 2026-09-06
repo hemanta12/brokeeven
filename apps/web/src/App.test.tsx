@@ -24,7 +24,7 @@ describe('App routing', () => {
 
     renderAt('/');
 
-    expect(await screen.findByRole('heading', { name: 'BrokeEven' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Every group expense ends here.' })).toBeInTheDocument();
   });
 
   it('renders the group list at / when signed in', async () => {
