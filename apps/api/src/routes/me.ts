@@ -19,7 +19,7 @@ meRouter.get('/me/groups', async (request, response) => {
     include: {
       group: {
         include: {
-          people: { where: { removedAt: null }, select: { id: true } },
+          people: { where: { removedAt: null }, select: { id: true, name: true } },
           expenses: { include: { splits: true } },
           settlements: true
         }
@@ -51,10 +51,19 @@ meRouter.get('/me/groups', async (request, response) => {
       return total;
     }, 0);
 
-    const lastExpenseAt = group.expenses.reduce<Date>(
-      (latest, expense) => (expense.createdAt > latest ? expense.createdAt : latest),
-      group.createdAt
-    );
+    // Last time the group moved: an expense added or a settlement recorded,
+    // whichever is more recent (createdAt of the group itself as the floor).
+    const lastActivityAt = [
+      group.createdAt,
+      ...group.expenses.map((expense) => expense.createdAt),
+      ...group.settlements.map((settlement) => settlement.settledAt)
+    ].reduce((latest, at) => (at > latest ? at : latest));
+
+    // First names for the avatar cluster, the viewer first so their disc leads.
+    const members = [
+      ...group.people.filter((person) => person.id === personId),
+      ...group.people.filter((person) => person.id !== personId)
+    ].map((person) => person.name);
 
     return {
       id: group.id,
@@ -62,11 +71,12 @@ meRouter.get('/me/groups', async (request, response) => {
       label: group.label,
       joinCode: group.joinCode,
       personId,
+      members,
       memberCount: group.people.length,
       expenseCount: group.expenses.length,
       netAmount: centsToAmount(Math.abs(netCents)),
       netDirection: netCents > 0 ? 'owe' : netCents < 0 ? 'owed' : 'settled',
-      lastActivityAt: lastExpenseAt.toISOString()
+      lastActivityAt: lastActivityAt.toISOString()
     };
   });
 
