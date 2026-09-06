@@ -10,13 +10,9 @@ import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
 import { redistributeAmounts } from '../split/redistribution.js';
+import { isNonEmptyString, UUID_PATTERN } from '../validation.js';
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const NAME_MAX_LENGTH = 60;
-
-function isNonEmptyString(value: unknown, maxLength: number): value is string {
-  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
-}
 
 export const peopleRouter = Router();
 
@@ -27,13 +23,24 @@ async function redistributeSplitsForRemoval(tx: Prisma.TransactionClient, person
     where: { personId },
     include: { expense: true }
   });
+  if (removedSplits.length === 0) return;
+
+  // One batched read for every affected expense's remaining splits instead of
+  // one findMany per expense the removed person was part of.
+  const allRemaining = await tx.expenseSplit.findMany({
+    where: { expenseId: { in: removedSplits.map((split) => split.expenseId) }, personId: { not: personId } },
+    orderBy: { id: 'asc' }
+  });
+  const remainingByExpense = new Map<string, typeof allRemaining>();
+  for (const split of allRemaining) {
+    const list = remainingByExpense.get(split.expenseId);
+    if (list) list.push(split);
+    else remainingByExpense.set(split.expenseId, [split]);
+  }
 
   for (const removedSplit of removedSplits) {
     const { expense } = removedSplit;
-    const remaining = await tx.expenseSplit.findMany({
-      where: { expenseId: expense.id, personId: { not: personId } },
-      orderBy: { id: 'asc' }
-    });
+    const remaining = remainingByExpense.get(expense.id) ?? [];
 
     if (remaining.length === 0) {
       await tx.expenseSplit.delete({ where: { id: removedSplit.id } });

@@ -22,7 +22,7 @@ export function sessionSecret(): string {
 // loses edit rights on their older entries. Set COOKIE_DOMAIN (e.g.
 // ".brokeeven.app") once web and API share a parent domain and this becomes a
 // first-party SameSite=Lax cookie with the full lifetime.
-export function cookieOptions() {
+function cookieOptions() {
   const base = { httpOnly: true, signed: true, maxAge: SESSION_MAX_AGE_MS, path: '/' } as const;
 
   if (process.env.NODE_ENV !== 'production') {

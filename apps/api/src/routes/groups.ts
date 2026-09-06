@@ -9,14 +9,11 @@ import { normalizePersonName } from '../group/personName.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
+import { isNonEmptyString } from '../validation.js';
 
 const MEMBER_CAP = 20;
 const NAME_MAX_LENGTH = 60;
 const JOIN_CODE_MAX_ATTEMPTS = 5;
-
-function isNonEmptyString(value: unknown, maxLength: number): value is string {
-  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
-}
 
 function isUniqueConstraintError(error: unknown): boolean {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';

@@ -133,8 +133,8 @@ describe('PATCH /people/:id', () => {
       expense: { id: 'e1', amount: '9.00', splitMethod: 'equal' }
     };
     const remaining = [
-      { id: 'split-q', personId: 'q', amount: '3.00', percentAtEntry: null },
-      { id: 'split-r', personId: 'r', amount: '3.00', percentAtEntry: null }
+      { id: 'split-q', expenseId: 'e1', personId: 'q', amount: '3.00', percentAtEntry: null },
+      { id: 'split-r', expenseId: 'e1', personId: 'r', amount: '3.00', percentAtEntry: null }
     ];
     vi.mocked(prisma.expenseSplit.findMany).mockImplementation((args) => {
       const where = (args as { where: { personId?: string | { not: string } } }).where;

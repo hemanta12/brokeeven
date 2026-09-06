@@ -1,6 +1,6 @@
 import type { Response } from 'express';
 
-export const NOT_OWNER_MESSAGE = 'Only the person who added this can edit it';
+const NOT_OWNER_MESSAGE = 'Only the person who added this can edit it';
 
 // A null owner means the row predates ownership, or was created by a client
 // whose cookie never stuck. Either way nobody can prove it is theirs, so it

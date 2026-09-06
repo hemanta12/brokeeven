@@ -1,23 +1,16 @@
 import type { Request } from 'express';
 import { Router } from 'express';
 
+import { activeMembers } from '../group/activeMembers.js';
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
 import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
+import { isNonEmptyString, isPositiveAmount, UUID_PATTERN } from '../validation.js';
 
 const NOTE_MAX_LENGTH = 200;
-const MAX_AMOUNT = 1_000_000;
-
-function isNonEmptyString(value: unknown, maxLength: number): value is string {
-  return typeof value === 'string' && value.trim().length > 0 && value.length <= maxLength;
-}
-
-function isPositiveAmount(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0 && value <= MAX_AMOUNT;
-}
 
 export const settlementsRouter = Router();
 
@@ -49,7 +42,7 @@ settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor
     return;
   }
 
-  const members = await prisma.person.findMany({ where: { groupId: group.id, removedAt: null } });
+  const members = await activeMembers(group.id);
   const memberById = new Map(members.map((member) => [member.id, member]));
   if (!memberById.has(fromPersonId) || !memberById.has(toPersonId)) {
     response.status(400).json({ error: 'fromPersonId and toPersonId must be active members of this group' });
@@ -84,8 +77,6 @@ settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor
   response.status(201).json(settlement);
   void broadcastGroupUpdate(group.id);
 });
-
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Undo. Balances are derived on read (expenses minus settlements, netted per
 // pair), so removing the row is the whole reversal -- no compensating entry,
