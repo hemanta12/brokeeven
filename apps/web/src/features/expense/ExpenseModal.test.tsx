@@ -18,6 +18,7 @@ describe('ExpenseModal', () => {
           { id: 'p1', groupId: 'g1', name: 'A very long payer name', userId: null, removedAt: null, createdAt: '2026-01-01' }
         ]}
         identityPersonId="p1"
+        currency="USD"
         expense={{
           id: 'e1', groupId: 'g1', title: 'DINNER', description: null, amount: '20.00', date: '2026-01-05',
           payerId: 'p1', splitMethod: 'equal',

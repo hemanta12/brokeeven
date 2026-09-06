@@ -28,12 +28,14 @@ const ACTION_TONE: Record<ActivityEntry['action'], string> = {
   settlement_delete: 'text-down',
 };
 
-// Wraps $-amounts in the app's mono style. Not <Amount>: these are formatted
-// strings from a sentence, not directional numbers.
-const MONEY_SPLIT = /(\$[\d,]+(?:\.\d{2})?)/g;
-const MONEY_EXACT = /^\$[\d,]+(?:\.\d{2})?$/;
+// Wraps money amounts in mono. Not <Amount>: these are formatted substrings of a
+// sentence, not directional numbers. The prefix matches both a leading symbol
+// ($, €, ₹, CA$…) and a 3-letter code ("NPR 20.00") from Intl.NumberFormat.
+const MONEY = String.raw`(?:[A-Z]{3}\s|[^\s\d]{1,3}\s?)[\d,]+(?:\.\d{1,2})?`;
+const MONEY_SPLIT = new RegExp(`(${MONEY})`, 'g');
+const MONEY_EXACT = new RegExp(`^${MONEY}$`);
 
-function withMoneyEmphasis(text: string) {
+export function withMoneyEmphasis(text: string) {
   return text.split(MONEY_SPLIT).map((part, index) =>
     MONEY_EXACT.test(part) ? (
       <span key={index} className="font-mono font-medium text-ink">

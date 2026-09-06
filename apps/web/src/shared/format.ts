@@ -1,4 +1,64 @@
-const currencyFormatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+// The API validates against its own copy of this list
+// (apps/api/src/split/money.ts) and stays the source of truth; this duplicate
+// only powers the picker and the locale default.
+export const SUPPORTED_CURRENCIES = [
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'JPY',
+  'INR',
+  'NPR',
+  'SGD',
+  'AED'
+] as const;
+
+// Locale currency if it's in the allowlist, else USD. Picker default and the
+// fieldless Quick 1:1 flow.
+export function localeCurrency(): string {
+  try {
+    const code = new Intl.NumberFormat().resolvedOptions().currency;
+    return code && (SUPPORTED_CURRENCIES as readonly string[]).includes(code) ? code : 'USD';
+  } catch {
+    return 'USD';
+  }
+}
+
+// Bare symbol for a code ("$", "€", "₹"), for input adornments where a full
+// formatted figure would be wrong. Falls back to the code itself.
+const currencySymbols = new Map<string, string>();
+
+export function currencySymbol(currency: string): string {
+  let symbol = currencySymbols.get(currency);
+  if (symbol === undefined) {
+    try {
+      const parts = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        currencyDisplay: 'narrowSymbol'
+      }).formatToParts(0);
+      symbol = parts.find((part) => part.type === 'currency')?.value ?? currency;
+    } catch {
+      symbol = currency;
+    }
+    currencySymbols.set(currency, symbol);
+  }
+  return symbol;
+}
+
+// One formatter per currency code, cached. USD default keeps non-group figures
+// (e.g. the marketing counter) working without a code.
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+function currencyFormatterFor(currency: string): Intl.NumberFormat {
+  let formatter = currencyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency });
+    currencyFormatters.set(currency, formatter);
+  }
+  return formatter;
+}
 const dateFormatter = new Intl.DateTimeFormat('en-US', {
   weekday: 'short',
   month: 'short',
@@ -32,8 +92,8 @@ function parseCalendarDate(date: string): Date {
     : new Date(date);
 }
 
-export function formatCurrency(amount: number): string {
-  return currencyFormatter.format(amount);
+export function formatCurrency(amount: number, currency = 'USD'): string {
+  return currencyFormatterFor(currency).format(amount);
 }
 
 export function formatExpenseTitle(title: string): string {

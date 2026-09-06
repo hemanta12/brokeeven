@@ -35,6 +35,7 @@ function baseGroup(overrides: Partial<GroupWithPeople> = {}): GroupWithPeople {
     name: 'Trip',
     label: null,
     joinCode: 'ABC123',
+    currency: 'USD',
     createdAt: '2026-01-01',
     people: [],
     expenses: [],

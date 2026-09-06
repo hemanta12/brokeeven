@@ -50,6 +50,7 @@ describe('GroupSummary', () => {
         ]}
         expenses={EXPENSES}
         personId={ME}
+        currency="USD"
         onSettleUp={vi.fn()}
       />
     );
@@ -71,6 +72,7 @@ describe('GroupSummary', () => {
         balances={[balance('p-alice', ME, '50.00'), balance(ME, 'p-bob', '80.00')]}
         expenses={EXPENSES}
         personId={ME}
+        currency="USD"
         onSettleUp={onSettleUp}
       />
     );
@@ -89,6 +91,7 @@ describe('GroupSummary', () => {
         ]}
         expenses={EXPENSES}
         personId={ME}
+        currency="USD"
         onSettleUp={vi.fn()}
       />
     );
@@ -102,6 +105,7 @@ describe('GroupSummary', () => {
         balances={[balance('p-alice', ME, '50.00')]}
         expenses={EXPENSES}
         personId={ME}
+        currency="USD"
       />
     );
 
@@ -113,7 +117,7 @@ describe('GroupSummary', () => {
 
   it('shows an all-settled state once every balance is cleared', () => {
     render(
-      <GroupSummary balances={[]} expenses={EXPENSES} personId={ME} onSettleUp={vi.fn()} />
+      <GroupSummary balances={[]} expenses={EXPENSES} personId={ME} currency="USD" onSettleUp={vi.fn()} />
     );
 
     expect(screen.getByText('You’re all settled up')).toBeInTheDocument();
@@ -126,6 +130,7 @@ describe('GroupSummary', () => {
         balances={[balance('p-alice', 'p-bob', '25.00')]}
         expenses={[expense('p-alice', '25.00', [['p-alice', '25.00']])]}
         personId={ME}
+        currency="USD"
         onSettleUp={vi.fn()}
       />
     );

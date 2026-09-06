@@ -7,7 +7,7 @@ import { prisma } from '../prisma.js';
 
 vi.mock('../prisma.js', () => {
   const prismaMock = {
-    group: { create: vi.fn(), findUnique: vi.fn() },
+    group: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     person: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn() },
     activityLog: { create: vi.fn() },
     user: { findUnique: vi.fn(), create: vi.fn() },
@@ -54,6 +54,31 @@ describe('POST /groups', () => {
     expect(prisma.group.create).not.toHaveBeenCalled();
   });
 
+  it('stores a supported currency', async () => {
+    vi.mocked(prisma.group.create).mockResolvedValue({
+      id: 'g1',
+      name: 'Kathmandu',
+      label: null,
+      joinCode: 'ABCD2345',
+      currency: 'NPR',
+      createdAt: new Date()
+    } as never);
+
+    const response = await request(app).post('/groups').send({ name: 'Kathmandu', currency: 'NPR' });
+
+    expect(response.status).toBe(201);
+    expect(prisma.group.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ currency: 'NPR' }) })
+    );
+  });
+
+  it('rejects an unsupported currency', async () => {
+    const response = await request(app).post('/groups').send({ name: 'Trip', currency: 'XXX' });
+
+    expect(response.status).toBe(400);
+    expect(prisma.group.create).not.toHaveBeenCalled();
+  });
+
   it('retries on a join code collision and succeeds', async () => {
     const collision = new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
       code: 'P2002',
@@ -73,6 +98,35 @@ describe('POST /groups', () => {
 
     expect(response.status).toBe(201);
     expect(prisma.group.create).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('PATCH /groups/:code/currency', () => {
+  it('updates a group to a supported currency', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345' } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({ id: 'g1', currency: 'NPR' } as never);
+
+    const response = await request(app).patch('/groups/abcd2345/currency').send({ currency: 'NPR' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'g1' }, data: { currency: 'NPR' } })
+    );
+  });
+
+  it('rejects an unsupported currency without touching the group', async () => {
+    const response = await request(app).patch('/groups/ABCD2345/currency').send({ currency: 'XYZ' });
+
+    expect(response.status).toBe(400);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the group does not exist', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue(null);
+
+    const response = await request(app).patch('/groups/NOPE0000/currency').send({ currency: 'EUR' });
+
+    expect(response.status).toBe(404);
   });
 });
 

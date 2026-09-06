@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { activeMembers } from '../group/activeMembers.js';
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
-import { centsToAmount, toCents } from '../split/money.js';
+import { centsToAmount, formatMoney, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
@@ -69,7 +69,7 @@ settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor
       tx,
       group.id,
       'settlement',
-      `${fromName} paid ${toName} $${created.amount.toString()} (${trimmedNote})`,
+      `${fromName} paid ${toName} ${formatMoney(amountCents, group.currency)} (${trimmedNote})`,
       await actorNameInGroup(tx, group.id, request.actorId)
     );
     return created;
@@ -94,7 +94,10 @@ settlementsRouter.delete(
       return;
     }
 
-    const existing = await prisma.settlement.findUnique({ where: { id: request.params.id } });
+    const existing = await prisma.settlement.findUnique({
+      where: { id: request.params.id },
+      include: { group: { select: { currency: true } } }
+    });
     if (!existing) {
       response.status(404).json({ error: 'Settlement not found' });
       return;
@@ -114,7 +117,7 @@ settlementsRouter.delete(
         'settlement_delete',
         `undid ${nameById.get(existing.fromPersonId) ?? 'someone'} paying ${
           nameById.get(existing.toPersonId) ?? 'someone'
-        } $${existing.amount.toString()}`,
+        } ${formatMoney(toCents(Number(existing.amount)), existing.group.currency)}`,
         await actorNameInGroup(tx, existing.groupId, request.actorId)
       );
     });

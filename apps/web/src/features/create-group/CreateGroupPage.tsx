@@ -6,6 +6,7 @@ import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
 import { MemberChip } from '../../components/MemberChip';
 import { ErrorState } from '../../shared/RouteStates';
+import { SUPPORTED_CURRENCIES, localeCurrency } from '../../shared/format';
 import { useAddPerson, useCreateGroup, useRemovePerson } from '../group/api';
 import type { Group, Person } from '../group/types';
 
@@ -19,6 +20,7 @@ export function CreateGroupPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [name, setName] = useState('');
   const [label, setLabel] = useState('');
+  const [currency, setCurrency] = useState(localeCurrency());
   const [personName, setPersonName] = useState('');
 
   // mutateAsync rejects on failure; catch it or a 4xx logs an unhandled rejection.
@@ -26,7 +28,7 @@ export function CreateGroupPage() {
   async function handleCreateGroup(event: FormEvent) {
     event.preventDefault();
     try {
-      setGroup(await createGroup.mutateAsync({ name, label: label.trim() || undefined }));
+      setGroup(await createGroup.mutateAsync({ name, label: label.trim() || undefined, currency }));
     } catch {
       // Rendered from createGroup.isError.
     }
@@ -73,6 +75,24 @@ export function CreateGroupPage() {
             value={label}
             onChange={(event) => setLabel(event.target.value)}
           />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="group-currency" className="font-sans text-label font-medium text-dim">
+              Currency
+            </label>
+            <select
+              id="group-currency"
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value)}
+              className="focus-ring min-h-12 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink"
+            >
+              {SUPPORTED_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+            <p className="text-micro text-dim">Every amount in this group shows in this currency.</p>
+          </div>
           {createGroup.isError && <ErrorState message={createGroup.error.message} />}
           <Button type="submit" disabled={createGroup.isPending}>
             {createGroup.isPending ? 'Creating…' : 'Create group'}

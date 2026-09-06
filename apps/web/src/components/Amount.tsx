@@ -12,6 +12,9 @@ interface AmountProps {
   // Caption above the figure ("you're owed" / "you owe" / "settled") so direction
   // does not ride on colour alone.
   label?: string;
+  // ISO 4217 code of the enclosing group; omitted where there is no group
+  // (defaults to USD).
+  currency?: string;
   className?: string;
 }
 
@@ -26,13 +29,13 @@ const SIGNS: Record<AmountDirection, string> = { up: '+', down: '−', flat: '' 
 // The single place money is rendered: mono font, direction colour, sign (size
 // and weight are a caller className). Mono is already tabular — no `tabular-nums`
 // anywhere.
-export function Amount({ value, direction, signed = false, label, className = '' }: AmountProps) {
+export function Amount({ value, direction, signed = false, label, currency, className = '' }: AmountProps) {
   const colour = direction ? DIRECTION_CLASSES[direction] : 'text-ink';
   const sign = signed && direction ? SIGNS[direction] : '';
   const figure = (
     <span className={`font-mono ${colour} ${className}`}>
       {sign}
-      {formatCurrency(Math.abs(value))}
+      {formatCurrency(Math.abs(value), currency)}
     </span>
   );
 

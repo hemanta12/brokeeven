@@ -7,6 +7,7 @@ interface ExpenseRowProps {
   payerName: string;
   payerIsViewer?: boolean;
   amount: number;
+  currency: string;
   // The expense's effect on the viewer's balance (paid minus owed). Null when no
   // person is claimed, so only the total can be shown.
   viewerNet?: number | null;
@@ -28,6 +29,7 @@ export function ExpenseRow({
   payerName,
   payerIsViewer = false,
   amount,
+  currency,
   viewerNet = null,
   onClick,
 }: ExpenseRowProps) {
@@ -46,15 +48,18 @@ export function ExpenseRow({
         {/* "paid": a lone name next to an amount reads equally as who owes it. */}
         <span className="mt-0.5 flex items-baseline gap-1.5 font-sans text-micro text-dim">
           <span className="min-w-0 truncate">{payerIsViewer ? 'You' : payerName} paid</span>
-          {viewerNet !== null && <Amount value={amount} direction="flat" className="shrink-0" />}
+          {viewerNet !== null && (
+            <Amount value={amount} currency={currency} direction="flat" className="shrink-0" />
+          )}
         </span>
       </span>
       <span className="shrink-0">
         {viewerNet === null ? (
-          <Amount value={amount} className="text-row-amount font-semibold" />
+          <Amount value={amount} currency={currency} className="text-row-amount font-semibold" />
         ) : (
           <Amount
             value={viewerNet}
+            currency={currency}
             direction={viewerNet > 0 ? 'up' : viewerNet < 0 ? 'down' : 'flat'}
             label={captionFor(viewerNet)}
             className="text-row-amount font-semibold"

@@ -31,7 +31,11 @@ beforeEach(() => {
   vi.mocked(prisma.$transaction).mockImplementation((fn) =>
     Promise.resolve((fn as (tx: typeof prisma) => unknown)(prisma))
   );
-  vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
+  vi.mocked(prisma.group.findUnique).mockResolvedValue({
+    id: GROUP_ID,
+    joinCode: 'ABCD2345',
+    currency: 'USD'
+  } as never);
   vi.mocked(prisma.person.findMany).mockResolvedValue([
     { id: ALICE, name: 'Alice' },
     { id: BOB, name: 'Bob' }
@@ -130,9 +134,10 @@ describe('DELETE /settlements/:id', () => {
       groupId: GROUP_ID,
       fromPersonId: BOB,
       toPersonId: ALICE,
-      amount: { toString: () => '20.00' },
+      amount: '20.00',
       note: 'Venmo',
-      createdByUserId: 'someone-else'
+      createdByUserId: 'someone-else',
+      group: { currency: 'USD' }
     };
   }
 

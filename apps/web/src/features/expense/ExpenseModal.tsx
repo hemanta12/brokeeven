@@ -8,7 +8,7 @@ import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
 import { Amount } from '../../components/Amount';
-import { formatCurrency, formatExpenseTitle } from '../../shared/format';
+import { currencySymbol, formatCurrency, formatExpenseTitle } from '../../shared/format';
 import type { Expense, Person, SplitMethod } from '../group/types';
 import { useCreateExpense, useUpdateExpense } from './api';
 import { dollarsToCents, equalSplitCents } from './splitPreview';
@@ -28,11 +28,12 @@ interface ExpenseModalProps {
   code: string;
   people: Person[];
   identityPersonId: string | null;
+  currency: string;
   expense?: Expense;
   onClose: () => void;
 }
 
-export function ExpenseModal({ code, people, identityPersonId, expense, onClose }: ExpenseModalProps) {
+export function ExpenseModal({ code, people, identityPersonId, currency, expense, onClose }: ExpenseModalProps) {
   const isEdit = Boolean(expense);
   const createExpense = useCreateExpense(code);
   const updateExpense = useUpdateExpense(code);
@@ -124,15 +125,15 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   return (
     <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
-        {/* $ is a separate adornment, not part of the value, so nothing has to
-            be parsed back out of the field. */}
+        {/* The currency symbol is a separate adornment, not part of the value, so
+            nothing has to be parsed back out of the field. */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="expense-amount" className="font-sans text-label font-medium text-ink">
             Amount
           </label>
           <div className="flex items-baseline justify-center gap-1 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
             <span aria-hidden="true" className="font-sans text-section font-semibold tabular-nums text-dim">
-              $
+              {currencySymbol(currency)}
             </span>
             <input
               id="expense-amount"
@@ -297,7 +298,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                   <span className="min-w-0 truncate">{person.name}</span>
                 </label>
                 {checked && splitMethod === 'equal' && (
-                  <Amount value={(equalPreview[participantIndex] ?? 0) / 100} className="text-row-amount" />
+                  <Amount value={(equalPreview[participantIndex] ?? 0) / 100} currency={currency} className="text-row-amount" />
                 )}
                 {checked && splitMethod === 'percent' && (
                   <label className="flex items-center gap-1 font-sans text-body text-ink">
@@ -315,7 +316,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
                 )}
                 {checked && splitMethod === 'custom' && (
                   <label className="flex items-center gap-1 font-sans text-body text-ink">
-                    $
+                    {currencySymbol(currency)}
                     <input
                       type="text"
                       inputMode="decimal"
@@ -352,7 +353,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
           )}
           {splitMethod === 'custom' && (
             <p className={`font-sans text-label ${customMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
-              Entered: {formatCurrency(customEnteredCents / 100)} / {formatCurrency(amountCents / 100)}
+              Entered: {formatCurrency(customEnteredCents / 100, currency)} / {formatCurrency(amountCents / 100, currency)}
               {customMismatch && submitAttempted ? ', must add up to the total' : ''}
             </p>
           )}

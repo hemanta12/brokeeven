@@ -9,6 +9,7 @@ import { normalizePersonName } from '../group/personName.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
+import { isSupportedCurrency } from '../split/money.js';
 import { isNonEmptyString } from '../validation.js';
 
 const MEMBER_CAP = 20;
@@ -22,7 +23,11 @@ function isUniqueConstraintError(error: unknown): boolean {
 export const groupsRouter = Router();
 
 groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, response) => {
-  const { name, label } = request.body as { name?: unknown; label?: unknown };
+  const { name, label, currency } = request.body as {
+    name?: unknown;
+    label?: unknown;
+    currency?: unknown;
+  };
 
   if (!isNonEmptyString(name, NAME_MAX_LENGTH)) {
     response.status(400).json({ error: 'name is required' });
@@ -32,11 +37,20 @@ groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, respo
     response.status(400).json({ error: 'label must be a non-empty string' });
     return;
   }
+  if (currency !== undefined && !isSupportedCurrency(currency)) {
+    response.status(400).json({ error: 'currency is not supported' });
+    return;
+  }
 
   for (let attempt = 0; attempt < JOIN_CODE_MAX_ATTEMPTS; attempt++) {
     try {
       const group = await prisma.group.create({
-        data: { name: name.trim(), label: label?.trim(), joinCode: generateJoinCode() }
+        data: {
+          name: name.trim(),
+          label: label?.trim(),
+          joinCode: generateJoinCode(),
+          ...(currency !== undefined ? { currency } : {})
+        }
       });
       response.status(201).json(group);
       return;
@@ -45,6 +59,30 @@ groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, respo
     }
   }
   response.status(500).json({ error: 'Could not generate a unique join code' });
+});
+
+// Currency is display-only: amounts are stored as decimals and balances derive
+// from them, so a change only relabels figures. No recompute; no ActivityLog
+// entry (needs a new enum value).
+groupsRouter.patch('/groups/:code/currency', writeRateLimit, requireActor, async (request, response) => {
+  const { currency } = request.body as { currency?: unknown };
+
+  if (!isSupportedCurrency(currency)) {
+    response.status(400).json({ error: 'currency is not supported' });
+    return;
+  }
+
+  const group = await prisma.group.findUnique({
+    where: { joinCode: String(request.params.code).toUpperCase() }
+  });
+  if (!group) {
+    response.status(404).json({ error: 'Group not found' });
+    return;
+  }
+
+  const updated = await prisma.group.update({ where: { id: group.id }, data: { currency } });
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(group.id);
 });
 
 // Balances are computed on read (TECH_STACK.md §4); the expense list and balance

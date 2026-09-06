@@ -2,6 +2,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { apiFetch } from '../../lib/apiClient';
 import type { Group, Person } from '../group/types';
+import { localeCurrency } from '../../shared/format';
 import { setIdentity } from '../../shared/identity';
 import { claimPerson } from '../auth/api';
 
@@ -15,7 +16,7 @@ export function useCreateQuickGroup() {
     mutationFn: async ({ yourName, theirName }: QuickOneOnOneInput) => {
       const group = await apiFetch<Group>('/groups', {
         method: 'POST',
-        body: JSON.stringify({ name: `You & ${theirName}` })
+        body: JSON.stringify({ name: `You & ${theirName}`, currency: localeCurrency() })
       });
       const you = await apiFetch<Person>(`/groups/${group.joinCode}/people`, {
         method: 'POST',

@@ -1,6 +1,49 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, formatDateGroupLabel, formatExpenseTitle, formatUpdatedLabel } from './format';
+import {
+  currencySymbol,
+  formatCurrency,
+  formatDate,
+  formatDateGroupLabel,
+  formatExpenseTitle,
+  formatUpdatedLabel,
+  localeCurrency
+} from './format';
+
+describe('formatCurrency', () => {
+  it('defaults to USD and matches the pre-currency format', () => {
+    expect(formatCurrency(20)).toBe('$20.00');
+    expect(formatCurrency(12345.6)).toBe('$12,345.60');
+  });
+
+  it('formats a passed currency code with its own symbol', () => {
+    expect(formatCurrency(20, 'EUR')).toBe('€20.00');
+    expect(formatCurrency(20, 'NPR')).toContain('20.00');
+    expect(formatCurrency(20, 'JPY')).toBe('¥20');
+  });
+});
+
+describe('currencySymbol', () => {
+  it('returns the bare symbol for common codes', () => {
+    expect(currencySymbol('USD')).toBe('$');
+    expect(currencySymbol('EUR')).toBe('€');
+    expect(currencySymbol('GBP')).toBe('£');
+    expect(currencySymbol('INR')).toBe('₹');
+  });
+
+  it('falls back to the code itself when Intl cannot resolve one', () => {
+    expect(currencySymbol('ZZZ')).toBe('ZZZ');
+  });
+});
+
+describe('localeCurrency', () => {
+  it('returns a supported code or falls back to USD', () => {
+    // The test env locale is unpredictable; only the contract is asserted.
+    expect(['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'NPR', 'SGD', 'AED']).toContain(
+      localeCurrency()
+    );
+  });
+});
 
 describe('formatExpenseTitle', () => {
   it('normalizes all-uppercase and mixed-case titles', () => {

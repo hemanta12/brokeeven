@@ -67,6 +67,7 @@ export interface MyGroup {
   name: string;
   label: string | null;
   joinCode: string;
+  currency: string;
   members: string[];
   memberCount: number;
   expenseCount: number;

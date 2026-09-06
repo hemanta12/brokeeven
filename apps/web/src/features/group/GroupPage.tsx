@@ -210,6 +210,7 @@ export function GroupPage() {
             balances={group.balances}
             expenses={group.expenses}
             personId={resolvedIdentityPersonId}
+            currency={group.currency}
             onSettleUp={tab === "balances" ? undefined : () => setTab("balances")}
           />
         )}
@@ -262,6 +263,7 @@ export function GroupPage() {
                               payerName={payer?.name ?? "someone removed"}
                               payerIsViewer={expense.payerId === resolvedIdentityPersonId}
                               amount={Number(expense.amount)}
+                              currency={group.currency}
                               viewerNet={viewerNetOnExpense(expense, resolvedIdentityPersonId)}
                               onClick={() => setViewingExpense(expense)}
                             />
@@ -306,6 +308,7 @@ export function GroupPage() {
                           fromName={from?.name ?? "Someone"}
                           toName={to?.name ?? "someone"}
                           amount={Number(balance.amount)}
+                          currency={group.currency}
                           direction={balanceDirection(balance)}
                           fromIsViewer={
                             balance.fromPersonId === resolvedIdentityPersonId
@@ -330,6 +333,7 @@ export function GroupPage() {
               settlements={group.settlements}
               people={group.people}
               identityPersonId={resolvedIdentityPersonId}
+              currency={group.currency}
             />
           </div>
         )}
@@ -368,6 +372,7 @@ export function GroupPage() {
           people={group.people}
           identityPersonId={resolvedIdentityPersonId}
           viewerUserId={group.viewerUserId}
+          currency={group.currency}
           onClose={() => setViewingExpense(null)}
           onEdit={() => {
             setEditingExpense(viewingExpense);
@@ -386,6 +391,7 @@ export function GroupPage() {
           code={code}
           people={group.people}
           identityPersonId={resolvedIdentityPersonId}
+          currency={group.currency}
           expense={expenseModal === "new" ? undefined : expenseModal}
           onClose={closeExpenseModal}
         />
@@ -397,6 +403,7 @@ export function GroupPage() {
           people={group.people}
           balance={settlingBalance}
           balances={group.balances}
+          currency={group.currency}
           onClose={() => setSettlingBalance(null)}
         />
       )}
@@ -405,6 +412,7 @@ export function GroupPage() {
         <GroupInfoOverlay
           joinCode={group.joinCode}
           inviteLink={inviteLink}
+          currency={group.currency}
           onClose={() => setShowInfo(false)}
         />
       )}

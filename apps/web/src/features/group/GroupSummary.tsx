@@ -5,6 +5,7 @@ interface GroupSummaryProps {
   balances: Balance[];
   expenses: Expense[];
   personId: string;
+  currency: string;
   // Passed only when the viewer isn't on the Balances tab; absent hides the settle jump.
   onSettleUp?: () => void;
 }
@@ -17,7 +18,7 @@ const DOT_CAP = 5;
 
 // The owed/owe per-side totals exist nowhere else — the Balances tab lists them
 // per person but never sums either side.
-export function GroupSummary({ balances, expenses, personId, onSettleUp }: GroupSummaryProps) {
+export function GroupSummary({ balances, expenses, personId, currency, onSettleUp }: GroupSummaryProps) {
   const total = sum(expenses.map((e) => e.amount));
   const share = sum(
     expenses.flatMap((e) => e.splits.filter((s) => s.personId === personId)).map((s) => s.amount),
@@ -40,21 +41,21 @@ export function GroupSummary({ balances, expenses, personId, onSettleUp }: Group
       className="relative z-1 mx-4 -mt-16 flex flex-col gap-3 overflow-hidden rounded-card bg-surface p-4 shadow-sheet sm:mx-6"
     >
       <div className="grid grid-cols-2 gap-2.5">
-        <Chip label="You’re owed" value={owed} variant="in" />
-        <Chip label="You owe" value={owe} variant="out" />
+        <Chip label="You’re owed" value={owed} variant="in" currency={currency} />
+        <Chip label="You owe" value={owe} variant="out" currency={currency} />
       </div>
 
       <dl className="flex items-start justify-between gap-3 border-t border-line pt-3">
         <div className="min-w-0">
           <dt className="font-sans text-micro text-dim">Total group expense</dt>
           <dd>
-            <Amount value={total} className="block truncate text-title font-semibold text-ink" />
+            <Amount value={total} currency={currency} className="block truncate text-title font-semibold text-ink" />
           </dd>
         </div>
         <div className="min-w-0 text-right">
           <dt className="font-sans text-micro text-dim">Your share</dt>
           <dd>
-            <Amount value={share} className="block truncate text-title font-semibold text-ink" />
+            <Amount value={share} currency={currency} className="block truncate text-title font-semibold text-ink" />
           </dd>
         </div>
       </dl>
@@ -133,7 +134,17 @@ function FlowArrow({ variant, className }: { variant: 'in' | 'out'; className: s
   );
 }
 
-function Chip({ label, value, variant }: { label: string; value: number; variant: 'in' | 'out' }) {
+function Chip({
+  label,
+  value,
+  variant,
+  currency,
+}: {
+  label: string;
+  value: number;
+  variant: 'in' | 'out';
+  currency: string;
+}) {
   // A zero side is not an "owed" / "owe" item — leave it uncoloured.
   const direction = value === 0 ? 'flat' : variant === 'in' ? 'up' : 'down';
   const iconColour = value === 0 ? 'text-dim' : variant === 'in' ? 'text-accent' : 'text-down';
@@ -144,6 +155,7 @@ function Chip({ label, value, variant }: { label: string; value: number; variant
         <span className="block truncate font-sans text-micro text-dim">{label}</span>
         <Amount
           value={value}
+          currency={currency}
           direction={direction}
           className="block truncate text-row-amount font-semibold"
         />

@@ -14,6 +14,7 @@ interface ExpenseDetailProps {
   people: Person[];
   identityPersonId: string | null;
   viewerUserId: string | null;
+  currency: string;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -28,6 +29,7 @@ export function ExpenseDetail({
   people,
   identityPersonId,
   viewerUserId,
+  currency,
   onClose,
   onEdit,
   onDelete,
@@ -94,6 +96,7 @@ export function ExpenseDetail({
           </span>
           <Amount
             value={Number(expense.amount)}
+            currency={currency}
             className="shrink-0 text-hero-balance font-semibold"
           />
         </div>
@@ -109,7 +112,7 @@ export function ExpenseDetail({
                     {person && <Avatar name={person.name} isYou={person.id === identityPersonId} />}
                     <span className="min-w-0 truncate">{person?.name ?? 'someone removed'}</span>
                   </span>
-                  <Amount value={Number(split.amount)} className="shrink-0 text-row-amount" />
+                  <Amount value={Number(split.amount)} currency={currency} className="shrink-0 text-row-amount" />
                 </li>
               );
             })}

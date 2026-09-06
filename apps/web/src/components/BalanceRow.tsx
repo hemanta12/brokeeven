@@ -7,6 +7,7 @@ interface BalanceRowProps {
   fromName: string;
   toName: string;
   amount: number;
+  currency: string;
   direction?: Direction;
   fromIsViewer?: boolean;
   toIsViewer?: boolean;
@@ -27,6 +28,7 @@ export function BalanceRow({
   fromName,
   toName,
   amount,
+  currency,
   direction = 'neutral',
   fromIsViewer = false,
   toIsViewer = false,
@@ -46,6 +48,7 @@ export function BalanceRow({
       <span className="flex shrink-0 items-center gap-3">
         <Amount
           value={amount}
+          currency={currency}
           direction={AMOUNT_DIRECTIONS[direction]}
           signed
           className="text-row-amount font-semibold"

@@ -46,12 +46,13 @@ interface SettleUpModalProps {
   // All balances, not just the opened row: From/To stay editable, so owed is
   // re-derived per pair.
   balances: Balance[];
+  currency: string;
   onClose: () => void;
 }
 
 // Prefills From/To/Amount from the tapped balance row; all three stay editable
 // (APP_FLOW §2.9) behind a disclosure rather than as stacked selects.
-export function SettleUpModal({ code, people, balance, balances, onClose }: SettleUpModalProps) {
+export function SettleUpModal({ code, people, balance, balances, currency, onClose }: SettleUpModalProps) {
   const createSettlement = useCreateSettlement(code);
 
   const [touched, setTouched] = useState(false);
@@ -103,14 +104,14 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
                 {fromPersonName} paid <span className="font-semibold text-ink">{toPersonName}</span>
               </p>
               <span className="mt-3 inline-block rounded-full bg-accent-wash px-4 py-1.5">
-                <Amount value={Number(amount)} direction="up" className="text-title font-semibold" />
+                <Amount value={Number(amount)} currency={currency} direction="up" className="text-title font-semibold" />
               </span>
             </div>
             <div className="tear">
               <span />
             </div>
             <div className="px-4 pb-6 text-center">
-              <Amount value={0} className="block text-zero font-semibold tracking-[-0.04em]" />
+              <Amount value={0} currency={currency} className="block text-zero font-semibold tracking-[-0.04em]" />
               <p className="mt-1 font-sans text-body text-dim">Even.</p>
             </div>
           </div>
@@ -146,7 +147,7 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
               <span className="font-semibold text-ink">{toPersonName}</span>
             </p>
             <span className="mt-3 inline-block rounded-full bg-down-wash px-4 py-1.5">
-              <Amount value={Number(amount) || 0} direction="down" className="text-title font-semibold" />
+              <Amount value={Number(amount) || 0} currency={currency} direction="down" className="text-title font-semibold" />
             </span>
           </div>
 
@@ -222,17 +223,17 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
           <div className="flex flex-col gap-1 px-4 pb-4 font-sans text-label">
             <p className="flex items-baseline justify-between gap-3">
               <span className="text-dim">Owed before</span>
-              <Amount value={owedBefore} className="font-medium" />
+              <Amount value={owedBefore} currency={currency} className="font-medium" />
             </p>
             <p className="flex items-baseline justify-between gap-3">
               <span className="text-dim">After this</span>
               {remaining > 0 ? (
                 <span className="text-right text-ink">
-                  {fromPersonName} still owes {formatCurrency(remaining)}
+                  {fromPersonName} still owes {formatCurrency(remaining, currency)}
                 </span>
               ) : remaining < 0 ? (
                 <span className="text-right text-down">
-                  {toPersonName} owes {fromPersonName} {formatCurrency(-remaining)}
+                  {toPersonName} owes {fromPersonName} {formatCurrency(-remaining, currency)}
                 </span>
               ) : (
                 <span className="text-right font-medium text-ink">Even.</span>
@@ -261,10 +262,10 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
             className="rounded-inner border border-notice bg-notice-wash px-3.5 py-3 font-sans text-label text-ink"
           >
             <p className="font-medium">
-              That&rsquo;s {formatCurrency(overpayment.excess)} more than the {formatCurrency(overpayment.owed)} owed.
+              That&rsquo;s {formatCurrency(overpayment.excess, currency)} more than the {formatCurrency(overpayment.owed, currency)} owed.
             </p>
             <p className="mt-1 text-dim">
-              Recording it leaves {toPersonName} owing {fromPersonName} {formatCurrency(overpayment.excess)}.
+              Recording it leaves {toPersonName} owing {fromPersonName} {formatCurrency(overpayment.excess, currency)}.
             </p>
             <label className="mt-2 flex min-h-11 cursor-pointer items-center gap-2 text-ink">
               <input

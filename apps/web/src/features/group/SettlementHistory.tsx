@@ -9,9 +9,10 @@ interface SettlementHistoryProps {
   settlements: Settlement[];
   people: Person[];
   identityPersonId: string | null;
+  currency: string;
 }
 
-export function SettlementHistory({ code, settlements, people, identityPersonId }: SettlementHistoryProps) {
+export function SettlementHistory({ code, settlements, people, identityPersonId, currency }: SettlementHistoryProps) {
   const deleteSettlement = useDeleteSettlement(code);
 
   if (settlements.length === 0) return null;
@@ -37,7 +38,7 @@ export function SettlementHistory({ code, settlements, people, identityPersonId 
                 <span className="min-w-0 flex-1">
                   <span className="block font-sans text-body text-ink">
                     {from} paid {to}{' '}
-                    <Amount value={Number(settlement.amount)} className="font-medium" />
+                    <Amount value={Number(settlement.amount)} currency={currency} className="font-medium" />
                   </span>
                   <span className="mt-0.5 block truncate font-sans text-label text-dim">
                     {formatDateGroupLabel(settlement.settledAt)} · {settlement.note}

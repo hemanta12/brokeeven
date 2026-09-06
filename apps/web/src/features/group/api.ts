@@ -51,7 +51,7 @@ export function useGroupActivity(code: string | undefined, enabled: boolean) {
 
 export function useCreateGroup() {
   return useMutation({
-    mutationFn: (input: { name: string; label?: string }) =>
+    mutationFn: (input: { name: string; label?: string; currency?: string }) =>
       apiFetch<Group>('/groups', { method: 'POST', body: JSON.stringify(input) })
   });
 }
@@ -69,6 +69,21 @@ export function useRemovePerson(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (personId: string) => apiFetch<Person>(`/people/${personId}`, { method: 'PATCH' }),
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
+  });
+}
+
+export function useUpdateGroupCurrency(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (currency: string) =>
+      apiFetch<Group>(`/groups/${code}/currency`, {
+        method: 'PATCH',
+        body: JSON.stringify({ currency })
+      }),
     onSuccess: () => {
       vibrateConfirm();
       return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });

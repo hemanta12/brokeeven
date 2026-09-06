@@ -1,16 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "../../components/Button";
 import { Overlay } from "../../shared/Overlay";
+import { SUPPORTED_CURRENCIES } from "../../shared/format";
+import { useUpdateGroupCurrency } from "./api";
 
 interface GroupInfoOverlayProps {
   joinCode: string;
   inviteLink: string;
+  currency: string;
   onClose: () => void;
 }
 
-export function GroupInfoOverlay({ joinCode, inviteLink, onClose }: GroupInfoOverlayProps) {
+export function GroupInfoOverlay({ joinCode, inviteLink, currency, onClose }: GroupInfoOverlayProps) {
   const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
+  const updateCurrency = useUpdateGroupCurrency(joinCode);
+  const [savedCurrency, setSavedCurrency] = useState(false);
+
+  // Clear the "Saved" cue after 2s, matching the copy buttons above.
+  useEffect(() => {
+    if (!savedCurrency) return;
+    const timer = setTimeout(() => setSavedCurrency(false), 2000);
+    return () => clearTimeout(timer);
+  }, [savedCurrency]);
 
   async function copyText(field: "code" | "link", text: string) {
     await navigator.clipboard?.writeText(text);
@@ -52,6 +64,46 @@ export function GroupInfoOverlay({ joinCode, inviteLink, onClose }: GroupInfoOve
           <Button variant="secondary" onClick={() => copyText("link", inviteLink)} className="mt-3">
             <span aria-live="polite">{copiedField === "link" ? "Copied!" : "Copy link"}</span>
           </Button>
+        </div>
+        <div className="rounded-card bg-sunken px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5">
+              <label htmlFor="group-currency-edit" className="font-sans text-label font-medium text-ink">
+                Currency
+              </label>
+              {updateCurrency.isPending && (
+                <span className="font-sans text-micro text-dim">Saving…</span>
+              )}
+              {savedCurrency && !updateCurrency.isPending && (
+                <span className="flex items-center gap-1 font-sans text-micro font-medium text-accent">
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-3.5 w-3.5">
+                    <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <span aria-live="polite">Saved</span>
+                </span>
+              )}
+            </span>
+            <select
+              id="group-currency-edit"
+              value={currency}
+              disabled={updateCurrency.isPending}
+              onChange={(event) =>
+                updateCurrency.mutate(event.target.value, { onSuccess: () => setSavedCurrency(true) })
+              }
+              className="focus-ring min-h-11 w-28 rounded-inner border border-line-strong bg-surface px-3 font-sans text-body text-ink disabled:opacity-60"
+            >
+              {SUPPORTED_CURRENCIES.map((code) => (
+                <option key={code} value={code}>
+                  {code}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="mt-1.5 font-sans text-micro text-dim">
+            {updateCurrency.isError
+              ? updateCurrency.error.message
+              : "Changes how amounts are shown, does not convert them."}
+          </p>
         </div>
         <p className="mt-auto border-t border-line pt-4 font-sans text-label text-dim">
           Anyone with the code or link can join. Email invites are coming later.

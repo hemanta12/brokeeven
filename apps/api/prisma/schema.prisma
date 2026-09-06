@@ -42,6 +42,8 @@ model Group {
   name         String
   label        String?
   joinCode     String        @unique
+  // ISO 4217, validated against an allowlist at the API (see split/money.ts).
+  currency     String        @default("USD")
   createdAt    DateTime      @default(now())
   people       Person[]
   expenses     Expense[]

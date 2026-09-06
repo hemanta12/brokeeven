@@ -10,13 +10,22 @@ import { capitalizeFirst, formatUpdatedLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 
 // Plain text, not a pill — a pill inside a row that's already a link reads as a button.
-function BalanceAmount({ direction, amount }: { direction: MyGroup['netDirection']; amount: string }) {
+function BalanceAmount({
+  direction,
+  amount,
+  currency
+}: {
+  direction: MyGroup['netDirection'];
+  amount: string;
+  currency: string;
+}) {
   if (direction === 'settled') {
     return <span className="font-sans text-row-amount font-semibold text-dim">Even.</span>;
   }
   return (
     <Amount
       value={Number(amount)}
+      currency={currency}
       direction={direction === 'owed' ? 'up' : 'down'}
       label={direction === 'owed' ? 'you’re owed' : 'you owe'}
       className="text-row-amount font-semibold"
@@ -30,9 +39,17 @@ function totalFor(groups: MyGroup[], direction: MyGroup['netDirection']): number
     .reduce((sum, group) => sum + Number(group.netAmount), 0);
 }
 
+// ponytail: cross-group totals only make sense in one currency. Mixed currencies
+// fall back to USD until the deferred consolidated view (PRD deferred #3).
+function commonCurrency(groups: MyGroup[]): string {
+  const distinct = new Set(groups.map((group) => group.currency));
+  return distinct.size === 1 ? ([...distinct][0] ?? 'USD') : 'USD';
+}
+
 function BandHeader({ groups }: { groups?: MyGroup[] }) {
   const owed = groups ? totalFor(groups, 'owed') : null;
   const owe = groups ? totalFor(groups, 'owe') : null;
+  const bandCurrency = groups ? commonCurrency(groups) : 'USD';
   const settled = owed === 0 && owe === 0;
 
   return (
@@ -64,13 +81,13 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
           <div className="rounded-card bg-surface px-4 py-3 shadow-sheet">
             <dt className="font-sans text-micro text-dim">You&rsquo;re owed</dt>
             <dd className="mt-1">
-              <Amount value={owed ?? 0} direction="up" className="block truncate text-title font-semibold" />
+              <Amount value={owed ?? 0} currency={bandCurrency} direction="up" className="block truncate text-title font-semibold" />
             </dd>
           </div>
           <div className="rounded-card bg-surface px-4 py-3 shadow-sheet">
             <dt className="font-sans text-micro text-dim">You owe</dt>
             <dd className="mt-1">
-              <Amount value={owe ?? 0} direction="down" className="block truncate text-title font-semibold" />
+              <Amount value={owe ?? 0} currency={bandCurrency} direction="down" className="block truncate text-title font-semibold" />
             </dd>
           </div>
         </dl>
@@ -165,7 +182,7 @@ export function MyGroupsPage() {
                     </span>
                   </span>
                   <span className="shrink-0">
-                    <BalanceAmount direction={group.netDirection} amount={group.netAmount} />
+                    <BalanceAmount direction={group.netDirection} amount={group.netAmount} currency={group.currency} />
                   </span>
                 </Link>
                 <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">

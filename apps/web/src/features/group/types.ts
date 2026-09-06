@@ -12,6 +12,9 @@ export interface Group {
   name: string;
   label: string | null;
   joinCode: string;
+  // ISO 4217 group base currency (Sprint 6.1). Always present — the API defaults
+  // it to "USD".
+  currency: string;
   createdAt: string;
 }
 
