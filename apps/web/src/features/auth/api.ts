@@ -26,10 +26,10 @@ export function useSession() {
 export function useSignIn() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (credential: string) => {
+    mutationFn: async (code: string) => {
       const user = await apiFetch<SessionUser>('/auth/google', {
         method: 'POST',
-        body: JSON.stringify({ credential })
+        body: JSON.stringify({ code })
       });
       // Claim the groups this browser already knows about, so the account
       // starts with the history it should have rather than nothing.
@@ -53,7 +53,16 @@ export function useSignOut() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
-    onSuccess: () => queryClient.clear()
+    // invalidateQueries, not clear(): clear() drops the cache outright, which
+    // does not make an already-mounted useQuery (e.g. the page you're still
+    // on) refetch -- it just keeps showing its last in-memory result until
+    // something remounts it, which read as a stale screen until a hard
+    // refresh. invalidateQueries marks the same keys stale and refetches any
+    // still-active observer immediately, matching useSignIn just above.
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+      await queryClient.invalidateQueries({ queryKey: myGroupsQueryKey });
+    }
   });
 }
 
@@ -62,6 +71,7 @@ export interface MyGroup {
   name: string;
   label: string | null;
   joinCode: string;
+  members: string[];
   memberCount: number;
   expenseCount: number;
   netAmount: string;

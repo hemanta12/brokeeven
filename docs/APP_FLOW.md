@@ -63,7 +63,7 @@
 
 ### 2.4b Sign In (optional, anywhere) — added 2026-08-30
 - Reached from the Profile control in the navbar, or from `/groups` when signed out. Nothing else in the app links to it, and nothing requires it.
-- One Google button. The script is fetched only when the button actually renders, so anonymous visitors never pay for it.
+- One button, styled like the rest of the app rather than Google's own rendered widget, that opens Google's sign-in popup (added 2026-09-05, see `decision-log.md`). The script is fetched only when the button actually renders, so anonymous visitors never pay for it.
 - On success the browser's remembered group identities are silently claimed for the account, so "My Groups" is populated immediately rather than empty.
 - Signing out is spelled out: entries stay with the account, and are editable again on signing back in.
 

@@ -13,7 +13,7 @@ export const authRouter = Router();
 let cachedClient: OAuth2Client | undefined;
 
 function googleClient(): OAuth2Client {
-  cachedClient ??= new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+  cachedClient ??= new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
   return cachedClient;
 }
 
@@ -51,24 +51,28 @@ async function mergeGuestInto(guestId: string, targetUserId: string): Promise<vo
   });
 }
 
-// Google Identity Services hands the browser an ID token directly, so there is
-// no redirect, callback, or state parameter to manage -- verifying that token
-// is the whole of the server's job.
+// The browser gets an authorization code from Google's OAuth popup (our own
+// button, not Google's rendered one, triggers it) and hands that to us, not
+// an ID token directly -- so the first step here is exchanging it
+// server-side. `redirect_uri: 'postmessage'` is Google's documented value for
+// exactly this popup-from-a-browser exchange, not a real URI.
 authRouter.post('/auth/google', authRateLimit, async (request, response) => {
-  const { credential } = request.body as { credential?: unknown };
-  if (typeof credential !== 'string' || credential.length === 0) {
-    response.status(400).json({ error: 'credential is required' });
+  const { code } = request.body as { code?: unknown };
+  if (typeof code !== 'string' || code.length === 0) {
+    response.status(400).json({ error: 'code is required' });
     return;
   }
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     response.status(503).json({ error: 'Google sign-in is not configured' });
     return;
   }
 
   let payload;
   try {
+    const { tokens } = await googleClient().getToken({ code, redirect_uri: 'postmessage' });
+    if (!tokens.id_token) throw new Error('no id_token in token response');
     const ticket = await googleClient().verifyIdToken({
-      idToken: credential,
+      idToken: tokens.id_token,
       audience: process.env.GOOGLE_CLIENT_ID
     });
     payload = ticket.getPayload();
@@ -158,16 +162,27 @@ authRouter.post('/auth/claim', writeRateLimit, requireActor, async (request, res
   }
 
   const actorId = request.actorId!;
+  const validEntries = entries
+    .slice(0, MAX_CLAIM_ENTRIES)
+    .map((entry) => (entry ?? {}) as { code?: unknown; personId?: unknown })
+    .filter((entry): entry is { code: string; personId: string } => typeof entry.code === 'string' && typeof entry.personId === 'string');
+
+  // One batched read for every entry's person instead of one findUnique per
+  // entry -- the "already claimed in this group" check below still has to run
+  // per-entry, since claiming one person can rule out another entry for the
+  // same group later in this same loop.
+  const people = validEntries.length
+    ? await prisma.person.findMany({
+        where: { id: { in: validEntries.map((entry) => entry.personId) } },
+        include: { group: { select: { joinCode: true } } }
+      })
+    : [];
+  const personById = new Map(people.map((person) => [person.id, person]));
+
   let claimed = 0;
 
-  for (const entry of entries.slice(0, MAX_CLAIM_ENTRIES)) {
-    const { code, personId } = (entry ?? {}) as { code?: unknown; personId?: unknown };
-    if (typeof code !== 'string' || typeof personId !== 'string') continue;
-
-    const person = await prisma.person.findUnique({
-      where: { id: personId },
-      include: { group: { select: { joinCode: true } } }
-    });
+  for (const { code, personId } of validEntries) {
+    const person = personById.get(personId);
     if (!person) continue;
     if (person.group.joinCode !== code.toUpperCase()) continue;
     if (person.userId !== null && person.userId !== actorId) continue;

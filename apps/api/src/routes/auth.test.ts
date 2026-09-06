@@ -5,9 +5,11 @@ import { createApp } from '../app.js';
 import { prisma } from '../prisma.js';
 
 const verifyIdToken = vi.fn();
+const getToken = vi.fn();
 vi.mock('google-auth-library', () => ({
   OAuth2Client: class {
     verifyIdToken = verifyIdToken;
+    getToken = getToken;
   }
 }));
 
@@ -39,6 +41,8 @@ const account = {
 beforeEach(() => {
   vi.resetAllMocks();
   process.env.GOOGLE_CLIENT_ID = 'test-client-id';
+  process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
+  getToken.mockResolvedValue({ tokens: { id_token: 'id-token' } });
   verifyIdToken.mockResolvedValue({
     getPayload: () => ({ sub: 'google-1', email: 'a@example.com', email_verified: true, name: 'Alice' })
   });
@@ -74,7 +78,7 @@ describe('POST /auth/google', () => {
     mockUserLookup((where) => ('googleSub' in where ? null : guest));
     vi.mocked(prisma.user.update).mockResolvedValue({ ...guest, ...account, id: GUEST_ID } as never);
 
-    const response = await request(app).post('/auth/google').set('Cookie', cookies).send({ credential: 'token' });
+    const response = await request(app).post('/auth/google').set('Cookie', cookies).send({ code: 'auth-code' });
 
     expect(response.status).toBe(200);
     // Same row, same id: nothing had to be migrated.
@@ -89,7 +93,7 @@ describe('POST /auth/google', () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never);
     vi.mocked(prisma.user.create).mockResolvedValue(account as never);
 
-    const response = await request(app).post('/auth/google').send({ credential: 'token' });
+    const response = await request(app).post('/auth/google').send({ code: 'auth-code' });
 
     expect(response.status).toBe(201);
     expect(response.body.id).toBe(ACCOUNT_ID);
@@ -101,7 +105,7 @@ describe('POST /auth/google', () => {
     // The account holds no person yet, so the guest's person moves across.
     mockPeopleByUser((userId) => (userId === ACCOUNT_ID ? [] : [{ id: 'p1', groupId: 'g1' }]));
 
-    const response = await request(app).post('/auth/google').set('Cookie', cookies).send({ credential: 'token' });
+    const response = await request(app).post('/auth/google').set('Cookie', cookies).send({ code: 'auth-code' });
 
     expect(response.status).toBe(200);
     expect(response.body.id).toBe(ACCOUNT_ID);
@@ -121,7 +125,7 @@ describe('POST /auth/google', () => {
     // (groupId, userId) unique index.
     mockPeopleByUser((userId) => (userId === ACCOUNT_ID ? [{ groupId: 'g1' }] : [{ id: 'p1', groupId: 'g1' }]));
 
-    const response = await request(app).post('/auth/google').set('Cookie', cookies).send({ credential: 'token' });
+    const response = await request(app).post('/auth/google').set('Cookie', cookies).send({ code: 'auth-code' });
 
     expect(response.status).toBe(200);
     expect(prisma.person.update).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { userId: null } });
@@ -131,7 +135,7 @@ describe('POST /auth/google', () => {
   it('rejects a token Google will not verify', async () => {
     verifyIdToken.mockRejectedValue(new Error('bad token'));
 
-    const response = await request(app).post('/auth/google').send({ credential: 'token' });
+    const response = await request(app).post('/auth/google').send({ code: 'auth-code' });
 
     expect(response.status).toBe(401);
     expect(prisma.user.create).not.toHaveBeenCalled();
@@ -140,7 +144,7 @@ describe('POST /auth/google', () => {
   it('rejects an unverified email address', async () => {
     verifyIdToken.mockResolvedValue({ getPayload: () => ({ sub: 'google-1', email_verified: false }) });
 
-    const response = await request(app).post('/auth/google').send({ credential: 'token' });
+    const response = await request(app).post('/auth/google').send({ code: 'auth-code' });
 
     expect(response.status).toBe(401);
   });
@@ -159,12 +163,9 @@ describe('GET /auth/me', () => {
 describe('POST /auth/claim', () => {
   it('links the people this browser already remembers', async () => {
     const cookies = await guestSession();
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({
-      id: 'p1',
-      groupId: 'g1',
-      userId: null,
-      group: { joinCode: 'ABCD2345' }
-    } as never);
+    vi.mocked(prisma.person.findMany).mockResolvedValue([
+      { id: 'p1', groupId: 'g1', userId: null, group: { joinCode: 'ABCD2345' } }
+    ] as never);
     vi.mocked(prisma.person.findFirst).mockResolvedValue(null as never);
 
     const response = await request(app)
@@ -179,12 +180,9 @@ describe('POST /auth/claim', () => {
 
   it('skips a person someone else has already claimed, without erroring', async () => {
     const cookies = await guestSession();
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({
-      id: 'p1',
-      groupId: 'g1',
-      userId: 'someone-else',
-      group: { joinCode: 'ABCD2345' }
-    } as never);
+    vi.mocked(prisma.person.findMany).mockResolvedValue([
+      { id: 'p1', groupId: 'g1', userId: 'someone-else', group: { joinCode: 'ABCD2345' } }
+    ] as never);
 
     const response = await request(app)
       .post('/auth/claim')
@@ -198,12 +196,9 @@ describe('POST /auth/claim', () => {
 
   it('ignores an entry whose join code does not match the person', async () => {
     const cookies = await guestSession();
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({
-      id: 'p1',
-      groupId: 'g1',
-      userId: null,
-      group: { joinCode: 'OTHER123' }
-    } as never);
+    vi.mocked(prisma.person.findMany).mockResolvedValue([
+      { id: 'p1', groupId: 'g1', userId: null, group: { joinCode: 'OTHER123' } }
+    ] as never);
 
     const response = await request(app)
       .post('/auth/claim')
