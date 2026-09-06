@@ -12,12 +12,11 @@ export function setIdentity(groupCode: string, personId: string): void {
   try {
     localStorage.setItem(STORAGE_PREFIX + groupCode, personId);
   } catch {
-    // localStorage unavailable (private mode, disabled) -- identity is a convenience, safe to skip.
+    // localStorage unavailable (private mode); identity is a convenience, safe to skip.
   }
 }
 
-// Every group this browser has recorded an identity for, sent to the server
-// once at sign-in so My Groups is populated from the start rather than empty.
+// Every locally recorded identity, sent to the server at sign-in to seed My Groups.
 export function listLocalIdentities(): { code: string; personId: string }[] {
   try {
     const entries: { code: string; personId: string }[] = [];

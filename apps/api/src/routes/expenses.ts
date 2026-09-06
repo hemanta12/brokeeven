@@ -17,8 +17,7 @@ import { isNonEmptyString, isPositiveAmount, UUID_PATTERN } from '../validation.
 const TITLE_MAX_LENGTH = 200;
 const DESCRIPTION_MAX_LENGTH = 1000;
 
-// Description is optional free-text notes — unlike title, an absent or
-// empty value is valid; only a too-long or non-string value is rejected.
+// Optional: absent, null, or empty is valid; only a too-long or non-string value fails.
 function isValidOptionalDescription(value: unknown): value is string | undefined {
   return value === undefined || value === null || value === '' || (typeof value === 'string' && value.length <= DESCRIPTION_MAX_LENGTH);
 }
@@ -78,8 +77,7 @@ type ValidatedExpenseInput = {
   resolvedSplits: ResolvedSplit[];
 };
 
-// Shared by create and edit: both accept the same expense shape and enforce
-// the same field/participant rules, so one validator keeps them from drifting.
+// Shared by create and edit so the two cannot drift apart on field or participant rules.
 async function validateExpenseInput(
   body: Record<string, unknown>,
   groupId: string

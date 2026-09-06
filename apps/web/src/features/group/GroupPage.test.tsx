@@ -5,9 +5,8 @@ import { renderWithProviders } from '../../test-utils';
 import { GroupPage } from './GroupPage';
 import { setIdentity } from '../../shared/identity';
 
-// Group View joins a realtime room on mount (useGroupRealtime) — none of
-// these tests exercise live updates, so stub the socket to avoid a real
-// network connection attempt from jsdom.
+// Group View joins a realtime room on mount; stub the socket so jsdom doesn't
+// attempt a real connection.
 vi.mock('socket.io-client', () => ({
   io: vi.fn(() => ({
     emit: vi.fn(),
@@ -48,10 +47,8 @@ const baseGroup = {
   balances: [{ fromPersonId: 'p2', toPersonId: 'p1', amount: '10.00' }]
 };
 
-// A Response body can only be read once — mockResolvedValue would reuse the
-// same Response instance for every call, breaking any test whose mutation
-// triggers a refetch (invalidateQueries) on top of the initial GET.
-// mockImplementation constructs a fresh one per call instead.
+// A Response body reads once, so mockResolvedValue would break any test whose
+// mutation triggers a refetch. mockImplementation builds a fresh Response per call.
 function stubGroupFetch(body: unknown = baseGroup) {
   vi.stubGlobal(
     'fetch',
@@ -156,8 +153,8 @@ describe('GroupPage', () => {
     renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
     fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
 
-    // Matched loosely on the day, not the full label — the heading drops the
-    // year while it's the current one, so pinning it would rot in January.
+    // Match the day loosely: the heading drops the current year, so a full-label
+    // assertion would rot in January.
     const dayHeading = screen.getByRole('heading', { level: 3, name: /Jan 5/ });
     expect(dayHeading).not.toHaveTextContent('$');
     expect(screen.getByText('Alice paid')).toBeInTheDocument();

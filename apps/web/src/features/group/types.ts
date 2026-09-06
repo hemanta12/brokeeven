@@ -60,8 +60,7 @@ export interface GroupWithPeople extends Group {
   expenses: Expense[];
   settlements: Settlement[];
   balances: Balance[];
-  // Who the API thinks is asking. Present on the REST fetch only -- the
-  // realtime broadcast is one shared payload for the whole room, so
-  // useGroupRealtime carries this value forward itself.
+  // Who the API thinks is asking. On the REST fetch only — the realtime broadcast
+  // is one shared payload, so useGroupRealtime carries this forward itself.
   viewerUserId: string | null;
 }

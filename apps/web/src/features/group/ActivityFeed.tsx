@@ -2,9 +2,8 @@ import { capitalizeFirst, formatDateGroupLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 import { useGroupActivity, type ActivityEntry } from './api';
 
-// The log records a formatted sentence, not structured ids, so this view is
-// history — it can't drive undo. Undo lives on the entities themselves (the
-// Settled list in Balances, and edit/delete on an expense).
+// The log stores formatted sentences, not ids, so this view is read-only history.
+// Undo lives on the entities (Settled list in Balances, edit/delete on an expense).
 const ACTION_LABELS: Record<ActivityEntry['action'], string> = {
   expense_add: 'Expense added',
   expense_edit: 'Expense edited',
@@ -16,9 +15,8 @@ const ACTION_LABELS: Record<ActivityEntry['action'], string> = {
   settlement_delete: 'Settlement undone',
 };
 
-// Colour the action tag by kind so the eye can run down the column: additions
-// read green, removals red, edits accent. Never the only cue — the tag text
-// itself already names the action (color-blind-safe).
+// Tag colour by kind (add/remove/edit); never the only cue — the tag text names
+// the action.
 const ACTION_TONE: Record<ActivityEntry['action'], string> = {
   expense_add: 'text-accent',
   person_add: 'text-accent',
@@ -30,10 +28,8 @@ const ACTION_TONE: Record<ActivityEntry['action'], string> = {
   settlement_delete: 'text-down',
 };
 
-// The one thing worth scanning for in a money log is the money, so any
-// $-amount gets the app's mono treatment and stands out of the sentence.
-// Not <Amount>: these are already-formatted strings pulled out of a
-// sentence, not numbers, and they carry no direction.
+// Wraps $-amounts in the app's mono style. Not <Amount>: these are formatted
+// strings from a sentence, not directional numbers.
 const MONEY_SPLIT = /(\$[\d,]+(?:\.\d{2})?)/g;
 const MONEY_EXACT = /^\$[\d,]+(?:\.\d{2})?$/;
 

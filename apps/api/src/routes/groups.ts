@@ -47,24 +47,21 @@ groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, respo
   response.status(500).json({ error: 'Could not generate a unique join code' });
 });
 
-// Balances are computed on read (TECH_STACK.md §4), so Group View's expense
-// list and balance summary (2.3.1) ride along on the same fetch — no separate
-// endpoint needed yet since nothing else consumes expenses/settlements/balances alone.
+// Balances are computed on read (TECH_STACK.md §4); the expense list and balance
+// summary ride along on this one fetch.
 groupsRouter.get('/groups/:code', async (request, response) => {
   const state = await getGroupStateByCode(request.params.code);
   if (!state) {
     response.status(404).json({ error: 'Group not found' });
     return;
   }
-  // Per-viewer, so it rides on this response only — never on the realtime
-  // broadcast, which goes to the whole room from one shared payload.
+  // Per-viewer: keep viewerUserId on this response only, never in the shared
+  // realtime broadcast.
   response.status(200).json({ ...state, viewerUserId: request.actorId ?? null });
 });
 
-// The audit trail has been written on every mutation since the beginning and
-// read by nobody. It stays off the main group fetch: it grows without bound
-// while the rest of the payload doesn't, and it's only wanted when someone
-// opens the Activity tab.
+// Kept off the main group fetch: it grows without bound and is only needed when
+// the Activity tab is opened.
 const ACTIVITY_PAGE_SIZE = 100;
 
 groupsRouter.get('/groups/:code/activity', async (request, response) => {

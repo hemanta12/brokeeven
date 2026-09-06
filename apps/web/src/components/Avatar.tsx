@@ -5,21 +5,19 @@ interface AvatarProps {
   className?: string;
 }
 
-// Five hues, each checked for a white initial at 4.5:1 (5.7 to 6.9:1), and
-// deliberately containing no red and no amber: a member sitting next to a
-// `down` amount or a `notice` tag must never read as a warning. Not @theme
-// tokens, because nothing outside this file ever picks one by name.
+// Five hues, each ≥4.5:1 for a white initial, with no red or amber so a member
+// next to a `down` amount never reads as a warning.
 const PALETTE = ['#2f6b8f', '#6b4e9b', '#a03d6b', '#4a5a7d', '#2e6e6e'];
 
 const SIZE_CLASSES = {
   sm: 'size-7 text-micro',
   md: 'size-8.5 text-label',
-  // Only the settle card, where two faces are the first thing on the screen.
+  // Only the settle card.
   lg: 'size-13 text-section',
 } as const;
 
-// Same person, same colour on every screen, with nothing stored anywhere:
-// the hue is derived from the name itself.
+// Hue derived from the name so the same person is the same colour everywhere,
+// with nothing stored.
 function hueFor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) hash = (hash + name.charCodeAt(i) * (i + 1)) % 9973;
@@ -48,8 +46,7 @@ interface AvatarClusterProps {
   className?: string;
 }
 
-// Overlapping initials for a group row. Shows `max` faces then a "+N" disc; the
-// white ring is what reads the overlap as separate people rather than a blob.
+// Overlapping initials for a group row: `max` faces then a "+N" disc.
 export function AvatarCluster({ names, total, max = 3, className = '' }: AvatarClusterProps) {
   const shown = names.slice(0, max);
   const overflow = total - shown.length;

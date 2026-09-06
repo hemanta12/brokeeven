@@ -16,8 +16,7 @@ import { checkOverpayment, owedCents } from './overpayment';
 const selectClassName =
   'focus-ring min-h-12 w-full rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink';
 
-// The card is the field fill, not plain white: on desktop the sheet behind it
-// is already white, and a card has to differ from what it sits on.
+// Field fill, not white: on desktop the sheet behind it is already white.
 const cardClassName =
   'settle-card relative overflow-hidden rounded-card bg-[var(--field-bg,var(--color-surface))]';
 
@@ -30,8 +29,6 @@ function PencilGlyph() {
   );
 }
 
-// Two faces, overlapping, in the card's own fill so the ring reads as a cut
-// rather than a stroke.
 function Faces({ from, to }: { from: string; to: string }) {
   const ring = 'ring-[3px] ring-[var(--field-bg,var(--color-surface))]';
   return (
@@ -46,18 +43,14 @@ interface SettleUpModalProps {
   code: string;
   people: Person[];
   balance: Balance;
-  // Every balance in the group, not just the row this was opened from: From
-  // and To stay editable, so the amount owed has to be re-derived per pair.
+  // All balances, not just the opened row: From/To stay editable, so owed is
+  // re-derived per pair.
   balances: Balance[];
   onClose: () => void;
 }
 
-// Settling a specific balance row (DESIGN_SYSTEM.md §7, each Balance row owns
-// its own Settle button) prefills From/To/Amount from that pair; all three
-// stay editable per APP_FLOW §2.9, but behind a disclosure rather than as
-// four stacked selects. They are prefilled from the row you tapped and are
-// almost never wrong, so giving them the same weight as the primary action
-// was the hierarchy problem sketch rounds 001 to 011 spent their time fixing.
+// Prefills From/To/Amount from the tapped balance row; all three stay editable
+// (APP_FLOW §2.9) behind a disclosure rather than as stacked selects.
 export function SettleUpModal({ code, people, balance, balances, onClose }: SettleUpModalProps) {
   const createSettlement = useCreateSettlement(code);
 
@@ -80,8 +73,7 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
   const remaining = owedBefore - (Number.isFinite(paying) ? paying : 0);
 
   const overpayment = checkOverpayment(balances, fromPersonId, toPersonId, amount);
-  // Re-arm on every change: confirming $6,667 shouldn't silently pre-approve
-  // whatever the next typo is.
+  // Re-arm on every change: confirming one overpayment must not pre-approve the next typo.
   const blockedByOverpayment = overpayment !== null && !confirmedOverpayment;
 
   function touch<T>(setter: (value: T) => void) {
@@ -134,8 +126,7 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
     <Overlay title="Settle up" isDirty={touched} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className={cardClassName}>
-          {/* A 44px target drawn small. It needs to say what it edits: a bare
-              pencil sitting on a card does not. */}
+          {/* aria-label names what the pencil edits. */}
           <Button
             variant="tertiary"
             size="icon"
@@ -159,8 +150,7 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
             </span>
           </div>
 
-          {/* Above the tear on purpose: the tear separates the payment from
-              its consequence, not the form from itself. */}
+          {/* Above the tear: the tear separates the payment from its consequence. */}
           <div id="settle-edit" hidden={!editing} className="flex flex-col gap-3 border-t border-line px-4 py-4">
             <div className="flex flex-col gap-1.5">
               <label htmlFor="settle-from" className="font-sans text-label font-medium text-ink">
@@ -263,9 +253,8 @@ export function SettleUpModal({ code, people, balance, balances, onClose }: Sett
           required
         />
 
-        {/* Warn and let them through, rather than capping at the balance:
-            paying a round number or paying ahead are both real. Naming the
-            reverse debt in currency is what makes a typo obvious. */}
+        {/* Warn, don't cap: paying ahead is real. Naming the reverse debt in
+            currency is what makes a typo obvious. */}
         {overpayment && (
           <div
             role="status"

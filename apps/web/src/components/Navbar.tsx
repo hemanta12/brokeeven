@@ -15,9 +15,7 @@ function PersonGlyph({ className }: { className: string }) {
   );
 }
 
-// Generic, not a real photo: a signed-in viewer gets the same person glyph on
-// a filled ink disc so the corner reads as "your account" without pulling
-// anything from Google.
+// Generic glyph on an ink disc, not a Google photo.
 function AccountDisc({ sizeClass, glyphClass }: { sizeClass: string; glyphClass: string }) {
   return (
     <span className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full bg-ink text-surface`}>
@@ -44,9 +42,7 @@ export function Navbar() {
   const signOut = useSignOut();
   const navigate = useNavigate();
 
-  // "/" already renders the right thing for either state (the landing pitch
-  // signed out, MyGroupsPage signed in), so one target closes and redirects
-  // both flows without needing to know which one just happened.
+  // "/" renders the right thing for either auth state, so one target covers both flows.
   function closeAndGoHome() {
     setIsProfileOpen(false);
     navigate('/');
@@ -77,15 +73,12 @@ export function Navbar() {
               <AccountDisc sizeClass="h-8 w-8" glyphClass="size-4.5" />
             </button>
           ) : isSessionPending ? (
-            // Neutral placeholder for the ~1 request /auth/me takes — no label
-            // either way until we know which one is true.
+            // Neutral placeholder while /auth/me is in flight.
             <span className="flex h-11 w-11 items-center justify-center text-dim">
               <PersonGlyph className="h-6 w-6" />
             </span>
           ) : (
-            // Signed out: a "profile" glyph would name something that doesn't
-            // exist yet. An explicit affordance is clearer and it opens the
-            // same panel.
+            // Signed out: explicit "Sign in", not a profile glyph.
             <button
               type="button"
               onClick={() => setIsProfileOpen(true)}
@@ -102,18 +95,13 @@ export function Navbar() {
           title={isSignedIn ? 'Profile' : 'Sign in'}
           isDirty={false}
           onClose={() => setIsProfileOpen(false)}
-          // The signed-in view is a left-aligned account row; the signed-out
-          // one (SignInPrompt) is centered top to bottom. A left-aligned
-          // title sitting over centered content is what read as "unstyled" --
-          // centerTitle already exists for exactly this shape.
+          // Signed-out content is centered; match the title to it.
           centerTitle={!isSignedIn}
         >
           <div className="flex flex-col gap-6">
             {isSessionPending ? (
-              // Don't fall through to the sign-in branch while /auth/me is in
-              // flight: mounting the Google button for someone who turns out to
-              // be signed in loads a third-party script for nothing and makes
-              // GSI log an origin error against a page that never needed it.
+              // Don't mount the sign-in branch while /auth/me is in flight: loading the
+              // Google script for an already-signed-in user makes GSI log an origin error.
               <p className="font-sans text-label text-dim">Loading…</p>
             ) : isSignedIn && user ? (
               <>

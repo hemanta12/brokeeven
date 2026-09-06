@@ -17,8 +17,8 @@ interface WhoAreYouPromptProps {
   onClose: () => void;
 }
 
-// First-visit "who are you" identification (APP_FLOW §2.5). Fully skippable via
-// the overlay's one-X close; picking a name or adding yourself both close it too.
+// First-visit identification (APP_FLOW §2.5). Skippable; picking a name or adding
+// yourself also closes it.
 export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps) {
   const addPerson = useAddPerson(code);
   const [touched, setTouched] = useState(false);
@@ -28,9 +28,8 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
 
   function pickExisting(personId: string) {
     setIdentity(code, personId);
-    // Links this person to the session too, so the choice survives a new
-    // device once signed in. Deliberately not awaited: the overlay should
-    // close instantly, and a failed claim costs nothing locally.
+    // Also links this person to the session (survives a new device once signed in).
+    // Not awaited: the overlay closes instantly and a failed claim costs nothing locally.
     void claimPerson(personId);
     onClose();
   }
@@ -52,9 +51,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
               const isSelected = selectedId === person.id;
               return (
                 <li key={person.id}>
-                  {/* Same selection model as the split rows in sketch 012:
-                      wash fill plus an accent border, with the control on the
-                      right, so selection survives with the tick covered. */}
+                  {/* Wash fill + accent border so selection reads even if the tick is covered. */}
                   <label
                     className={`focus-ring flex min-h-13 cursor-pointer items-center gap-2.5 rounded-inner border px-3 py-2 font-sans text-body font-medium text-ink transition-colors duration-100 ${
                       isSelected

@@ -6,8 +6,8 @@ import { prisma } from '../prisma.js';
 
 export const meRouter = Router();
 
-// Every group the caller has a live person in. Removed members drop off the
-// list even though their expenses stay in the group.
+// Groups where the caller has a live (non-removed) person; their expenses stay
+// in the group even after removal.
 meRouter.get('/me/groups', async (request, response) => {
   if (!request.actorId) {
     response.status(200).json({ groups: [] });
@@ -51,15 +51,14 @@ meRouter.get('/me/groups', async (request, response) => {
       return total;
     }, 0);
 
-    // Last time the group moved: an expense added or a settlement recorded,
-    // whichever is more recent (createdAt of the group itself as the floor).
+    // Most recent of: group creation, any expense, any settlement.
     const lastActivityAt = [
       group.createdAt,
       ...group.expenses.map((expense) => expense.createdAt),
       ...group.settlements.map((settlement) => settlement.settledAt)
     ].reduce((latest, at) => (at > latest ? at : latest));
 
-    // First names for the avatar cluster, the viewer first so their disc leads.
+    // Viewer first so their avatar leads the cluster.
     const members = [
       ...group.people.filter((person) => person.id === personId),
       ...group.people.filter((person) => person.id !== personId)

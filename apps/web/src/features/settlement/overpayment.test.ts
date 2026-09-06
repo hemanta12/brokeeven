@@ -28,8 +28,7 @@ describe('checkOverpayment', () => {
     expect(checkOverpayment(BALANCES, ALICE, BOB, '10')).toEqual({ owed: 0, excess: 10 });
   });
 
-  // Direction is not symmetric: Bob owing Alice says nothing about what
-  // Alice owes Bob, so swapping From/To must re-derive rather than reuse.
+  // Direction isn't symmetric: swapping From/To must re-derive, not reuse.
   it('does not treat the reverse direction as the same balance', () => {
     expect(checkOverpayment(BALANCES, ALICE, BOB, '66.67')).toEqual({ owed: 0, excess: 66.67 });
   });

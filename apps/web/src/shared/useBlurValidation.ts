@@ -1,8 +1,6 @@
 import { useState } from 'react';
 
-// DESIGN_SYSTEM.md §9: validation fires on blur, not on keystroke. Shared by
-// every form built in Sprint 2.3 (Add/Edit Expense, Settle Up, Who Are You,
-// Add Person) so a required field only shows its error once focus leaves it.
+// DESIGN_SYSTEM.md §9: validation fires on blur, not on keystroke.
 export function useBlurValidation() {
   const [blurred, setBlurred] = useState<Record<string, boolean>>({});
 
@@ -10,10 +8,8 @@ export function useBlurValidation() {
     setBlurred((current) => ({ ...current, [field]: true }));
   }
 
-  // For a form that clears its own value programmatically (e.g. after a
-  // successful submit, ready for the next entry) without the field actually
-  // being re-touched — without this, the stale touched flag makes the fresh
-  // empty value immediately read as a validation error.
+  // Clears the touched flag after a programmatic value reset (e.g. post-submit),
+  // so the fresh empty field doesn't immediately read as a validation error.
   function untouch(field: string) {
     setBlurred((current) => ({ ...current, [field]: false }));
   }

@@ -3,9 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button } from '../components/Button';
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-// Restrained timing per the app's existing motion principle (Sprint 4.1.5:
-// "100-300ms restrained transitions") — ease-out entering, ease-in exiting
-// (UIUX_rules.md Core §10), not spring/bounce physics.
+// Restrained exit timing (UIUX_rules.md §10): ease-in, no spring physics.
 const EXIT_MS = 150;
 
 type Phase = 'entering' | 'visible' | 'exiting';
@@ -20,35 +18,27 @@ interface OverlayProps {
   onClose: () => void;
   closeLabel?: string;
   centerTitle?: boolean;
-  // Short, non-form panels (Group info, People): float a content-sized card
-  // on a scrim instead of a full-height paper sheet.
+  // Float a content-sized card on a scrim instead of a full-height sheet.
   compact?: boolean;
-  // Sits just left of the close control in the header (e.g. an Edit icon on a
-  // read-only detail sheet). Kept in the header, not a sticky footer button,
-  // when it is a secondary jump rather than the sheet's primary action.
+  // Secondary control shown left of the close button (e.g. an Edit icon).
   headerAction?: ReactNode;
-  // Put the close/action controls alone on the first row and drop the title to
-  // its own row beneath them (centred). Reads more balanced than an inline
-  // title when the body content that follows is left-aligned.
+  // Controls on the first row, title centered on its own row beneath.
   stackedHeader?: boolean;
   children: ReactNode;
 }
 
-// Full-page overlay shell shared by Add/Edit Expense, Settle Up, and the
-// Who Are You prompt (APP_FLOW §2.5, §2.7, §2.9): one-X close, focus trap,
-// background scroll lock, focus restoration, Escape, safe-area insets, and
-// dirty-form discard confirmation (an in-app panel, not window.confirm).
+// Full-page overlay shell (Add/Edit Expense, Settle Up, Who Are You): focus trap,
+// scroll lock, focus restoration, Escape, safe-area insets, and in-app dirty-form
+// discard confirmation (never window.confirm).
 export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerTitle = false, compact = false, headerAction, stackedHeader = false, children }: OverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestCloseRef = useRef<() => void>(() => {});
   const performCloseRef = useRef<() => void>(() => {});
   const exitingRef = useRef(false);
-  // Lazy initializer runs synchronously on first render, so a reduced-motion
-  // viewer never flashes through an invisible "entering" frame.
+  // Lazy init so a reduced-motion viewer never flashes the invisible "entering" frame.
   const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'visible' : 'entering'));
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  // The keydown listener is bound once (empty deps); this ref keeps the latest
-  // value reachable from inside it.
+  // Keydown listener is bound once; this ref keeps the latest value reachable inside it.
   const confirmingRef = useRef(false);
   confirmingRef.current = confirmingDiscard;
 
@@ -71,7 +61,7 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
     };
     performCloseRef.current = performClose;
     requestCloseRef.current = () => {
-      // A dirty form asks first, in-app — never a browser confirm() dialog.
+      // Dirty form asks first, in-app — never confirm().
       if (isDirty) {
         setConfirmingDiscard(true);
         return;
@@ -124,8 +114,7 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
 
   const controls = (
     <div className="overlay-header-actions">
-      {/* Hidden while the discard prompt is up so it can't be tabbed to
-          behind the scrim. */}
+      {/* Hidden under the discard prompt so it can't be tabbed to behind the scrim. */}
       {headerAction && !confirmingDiscard ? headerAction : null}
       <button
         type="button"
@@ -150,10 +139,8 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
           <h2 className="heading text-title">{title}</h2>
           {!stackedHeader && controls}
         </div>
-        {/* flex-1 so a form inside can push its own sticky footer to the
-            sheet's bottom edge (see .modal-footer). The form stays mounted
-            under the discard prompt — inert, not unmounted — so "Keep editing"
-            returns to it with every field still filled in. */}
+        {/* Form stays mounted (inert, not unmounted) under the discard prompt so
+            "Keep editing" returns to it with every field still filled in. */}
         <div
           className="mt-4 flex flex-1 flex-col"
           inert={confirmingDiscard || undefined}
@@ -163,7 +150,6 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
         </div>
       </div>
 
-      {/* A small centred card on a scrim, not another full sheet. */}
       {confirmingDiscard && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
           <div className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog">

@@ -21,9 +21,8 @@ export function CreateGroupPage() {
   const [label, setLabel] = useState('');
   const [personName, setPersonName] = useState('');
 
-  // mutateAsync rejects on failure; without catching, a 4xx surfaces as an
-  // unhandled rejection in the console instead of the ErrorState already
-  // rendered below from the mutation's own isError.
+  // mutateAsync rejects on failure; catch it or a 4xx logs an unhandled rejection.
+  // The error itself renders below from createGroup.isError.
   async function handleCreateGroup(event: FormEvent) {
     event.preventDefault();
     try {

@@ -14,8 +14,8 @@ const NOTE_MAX_LENGTH = 200;
 
 export const settlementsRouter = Router();
 
-// PRD §6.4: record-keeping only — no money actually moves. A required note
-// (e.g. "Venmo", "cash") says how it was settled outside the app.
+// PRD §6.4: record-keeping only, no money moves. The note (e.g. "Venmo", "cash")
+// records how it was settled outside the app.
 settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor, async (request, response) => {
   const { fromPersonId, toPersonId, amount, note } = request.body as Record<string, unknown>;
 
@@ -78,15 +78,12 @@ settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor
   void broadcastGroupUpdate(group.id);
 });
 
-// Undo. Balances are derived on read (expenses minus settlements, netted per
-// pair), so removing the row is the whole reversal -- no compensating entry,
-// and it stays correct even when expenses were added after the settlement.
+// Balances are derived on read, so deleting the row is the whole reversal — no
+// compensating entry.
 //
-// Deliberately no rejectIfNotOwner, unlike DELETE /expenses/:id. A settlement
-// is usually recorded by whoever received the money, but the person who paid
-// is just as likely to spot a wrong amount, and a guest who loses their
-// cookie could otherwise never undo their own mistake. The log records who
-// recorded it and who undid it, so this is accountable rather than anonymous.
+// Deliberately no rejectIfNotOwner (unlike DELETE /expenses/:id): either party
+// to a settlement may undo it, and a guest who lost their cookie otherwise never
+// could. The activity log records who recorded it and who undid it.
 settlementsRouter.delete(
   '/settlements/:id',
   writeRateLimit,

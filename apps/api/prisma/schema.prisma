@@ -24,9 +24,8 @@ enum ActivityAction {
   settlement_delete
 }
 
-// One row per actor, signed in or not. A guest is simply a User with
-// googleSub = null; signing in promotes that same row in place, so entries
-// created anonymously keep their owner id and stay editable.
+// One row per actor. A guest is a User with googleSub = null; sign-in promotes
+// that same row in place, so anonymous entries keep their owner id.
 model User {
   id         String   @id @default(uuid()) @db.Uuid
   googleSub  String?  @unique
@@ -64,8 +63,8 @@ model Person {
   settlementsFrom Settlement[]   @relation("SettlementFrom")
   settlementsTo   Settlement[]   @relation("SettlementTo")
 
-  // One account claims at most one person per group. Nullable-safe in Postgres:
-  // multiple unclaimed (NULL) people per group remain fine.
+  // One account claims at most one person per group. Postgres allows multiple
+  // NULL userId rows per group.
   @@unique([groupId, userId])
   @@index([groupId])
 }
@@ -80,8 +79,8 @@ model Expense {
   payerId        String         @db.Uuid
   splitMethod    SplitMethod
   idempotencyKey String?        @unique
-  // null => created before ownership existed, or by a cookie-less client:
-  // unowned, so anyone in the group may edit it.
+  // null => unowned (predates ownership, or a cookie-less client): anyone in the
+  // group may edit it.
   createdByUserId String?       @db.Uuid
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt

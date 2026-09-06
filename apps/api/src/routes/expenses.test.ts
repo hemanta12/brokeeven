@@ -262,9 +262,8 @@ describe('DELETE /expenses/:id', () => {
   });
 });
 
-// A bare unique-constraint collision on the idempotency key (a genuine race
-// between two concurrent identical submits) is exercised in isolation here
-// rather than in the "creates" test above, to keep that test's happy path clean.
+// The idempotency-key race (two concurrent identical submits) is isolated here to
+// keep the happy-path "creates" test clean.
 describe('POST /groups/:code/expenses — idempotency race', () => {
   it('returns the winning expense when two requests race on the same key', async () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
@@ -295,8 +294,7 @@ describe('POST /groups/:code/expenses — idempotency race', () => {
 });
 
 describe('expense ownership', () => {
-  // The session cookie is the only thing that proves an actor is who they
-  // claim, so ownership is enforced from it, never from the request body.
+  // Ownership is enforced from the session cookie, never the request body.
   async function sessionCookie(): Promise<string[]> {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue(null as never);
     const seed = await request(app).delete(`/expenses/${EXPENSE_ID}`);

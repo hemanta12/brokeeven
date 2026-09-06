@@ -1,7 +1,5 @@
-// Mirrors the server's exact rounding rule (splitMath.ts distributeProportionally,
-// equal weights) for the Equal split's live per-participant preview: round each
-// 1/n share to the nearest cent, then hand out leftover pennies one at a time in
-// input order, so the UI and server always agree on who gets the odd cent.
+// Mirrors the server's rounding rule (splitMath.ts distributeProportionally,
+// equal weights) so the Equal-split preview and the server agree on the odd cent.
 export function equalSplitCents(totalCents: number, participantCount: number): number[] {
   if (participantCount === 0) return [];
 

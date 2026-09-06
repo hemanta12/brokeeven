@@ -85,9 +85,8 @@ describe('CSRF guard', () => {
   });
 
   it('allows a bodyless write that declares JSON', async () => {
-    // apiFetch always sets the JSON content-type, and claim / logout / remove
-    // person send no body. request.is() returns null for those, so checking
-    // it here would 415 every one of them.
+    // claim / logout / remove-person send no body; request.is() returns null for
+    // those, so a content-type check would 415 them.
     vi.mocked(prisma.group.findUnique).mockResolvedValue(null as never);
 
     const response = await request(createApp())

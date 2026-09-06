@@ -51,9 +51,8 @@ beforeEach(() => {
   );
 });
 
-// Prisma's generated argument types are far too specific to satisfy from a
-// hand-rolled mock, so route the two lookups the merge path depends on
-// through these instead of casting at every call site.
+// Prisma's generated arg types are too specific for a hand-rolled mock; route the
+// merge path's two lookups through these instead of casting everywhere.
 function mockUserLookup(resolve: (where: Record<string, unknown>) => unknown): void {
   vi.mocked(prisma.user.findUnique).mockImplementation(((args: { where: Record<string, unknown> }) =>
     Promise.resolve(resolve(args.where))) as never);

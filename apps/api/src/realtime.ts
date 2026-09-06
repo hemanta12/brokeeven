@@ -6,16 +6,15 @@ import { getGroupStateById } from './group/groupState.js';
 
 let io: Server | undefined;
 
-// One Socket.io server per process, same lifetime as the Express app (mirrors
-// prisma.ts's shared-client pattern) — no per-request instantiation needed.
+// One Socket.io server per process, same lifetime as the Express app.
 export function initRealtime(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
     cors: { origin: process.env.WEB_ORIGIN ?? true }
   });
 
   io.on('connection', (socket) => {
-    // One room per Group.id (TECH_STACK.md §4); client sends the id it got
-    // from its own GET /groups/:code fetch.
+    // One room per Group.id (TECH_STACK.md §4); the client sends the id from its
+    // own GET /groups/:code.
     socket.on('group:join', (groupId: unknown) => {
       if (typeof groupId === 'string' && groupId.length > 0) {
         socket.join(groupId);
@@ -26,10 +25,9 @@ export function initRealtime(httpServer: HttpServer): Server {
   return io;
 }
 
-// Called after every mutation (expense CRUD, person add/remove, settlement)
-// once the write has committed. Broadcasts the same shape GET /groups/:code
-// returns so clients can apply it directly. No-op if realtime isn't
-// initialized (e.g. in tests that exercise routes via supertest only).
+// Call after a mutation has committed. Emits the same shape as GET /groups/:code
+// so clients apply it directly; no-op when realtime is uninitialized (route-only
+// tests).
 export async function broadcastGroupUpdate(groupId: string): Promise<void> {
   if (!io) return;
   try {

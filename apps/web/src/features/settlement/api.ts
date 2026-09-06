@@ -20,8 +20,7 @@ export function useCreateSettlement(code: string | undefined) {
   });
 }
 
-// Undo. Deleting the row is the whole reversal — balances are recomputed from
-// expenses minus settlements on every read, so nothing needs unwinding.
+// Deleting the row is the whole reversal — balances are recomputed on every read.
 export function useDeleteSettlement(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({

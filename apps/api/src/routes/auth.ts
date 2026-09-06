@@ -27,11 +27,11 @@ function publicUser(user: { id: string; googleSub: string | null; email: string 
   };
 }
 
-// A guest and an established account for the same human, on two devices. The
-// account wins: ownership stamps always follow it, and a Person row only moves
-// across when the account has no person in that group yet -- otherwise the
-// unique (groupId, userId) index would reject it, and the guest's row is left
-// unclaimed rather than deleted, since expenses and splits still reference it.
+// Folds a guest's data into an established account for the same human. The
+// account wins ownership; a guest Person row moves across only when the account
+// has none in that group (the unique (groupId, userId) index forbids two), and
+// is otherwise left unclaimed rather than deleted since expenses and splits
+// still reference it.
 async function mergeGuestInto(guestId: string, targetUserId: string): Promise<void> {
   await prisma.$transaction(async (tx) => {
     const claimed = await tx.person.findMany({ where: { userId: targetUserId }, select: { groupId: true } });
@@ -51,11 +51,9 @@ async function mergeGuestInto(guestId: string, targetUserId: string): Promise<vo
   });
 }
 
-// The browser gets an authorization code from Google's OAuth popup (our own
-// button, not Google's rendered one, triggers it) and hands that to us, not
-// an ID token directly -- so the first step here is exchanging it
-// server-side. `redirect_uri: 'postmessage'` is Google's documented value for
-// exactly this popup-from-a-browser exchange, not a real URI.
+// The browser sends an authorization code from Google's OAuth popup, not an ID
+// token, so exchange it server-side first. `redirect_uri: 'postmessage'` is
+// Google's documented value for the popup-from-a-browser exchange, not a real URI.
 authRouter.post('/auth/google', authRateLimit, async (request, response) => {
   const { code } = request.body as { code?: unknown };
   if (typeof code !== 'string' || code.length === 0) {
@@ -106,8 +104,8 @@ authRouter.post('/auth/google', authRateLimit, async (request, response) => {
   }
 
   if (established) {
-    // Only a guest can be folded in. A different signed-in account just gets
-    // swapped out -- merging two real accounts is not something to guess at.
+    // Only a guest can be folded in; a different signed-in account is just
+    // swapped out, since merging two real accounts is not safe to guess at.
     if (caller && caller.googleSub === null) {
       await mergeGuestInto(caller.id, established.id);
     }
@@ -116,8 +114,8 @@ authRouter.post('/auth/google', authRateLimit, async (request, response) => {
     return;
   }
 
-  // First sign-in for this Google account. Promote the guest in place so
-  // everything they created while anonymous keeps its owner id.
+  // First sign-in for this Google account: promote the guest in place so their
+  // anonymous-era rows keep their owner id.
   if (caller && caller.googleSub === null) {
     const promoted = await prisma.user.update({ where: { id: caller.id }, data: profile });
     issueSession(response, promoted.id);
@@ -150,10 +148,9 @@ authRouter.post('/auth/logout', (_request, response) => {
   response.status(204).send();
 });
 
-// Backfill for the groups this browser already remembers, sent once right
-// after sign-in. A person someone else has claimed is skipped in silence:
-// never steal a claim, and never raise an error for something the user did
-// not do.
+// Backfill for the groups this browser already remembers, sent once after
+// sign-in. A person someone else has claimed is skipped silently rather than
+// erroring.
 authRouter.post('/auth/claim', writeRateLimit, requireActor, async (request, response) => {
   const { entries } = request.body as { entries?: unknown };
   if (!Array.isArray(entries)) {
@@ -167,10 +164,9 @@ authRouter.post('/auth/claim', writeRateLimit, requireActor, async (request, res
     .map((entry) => (entry ?? {}) as { code?: unknown; personId?: unknown })
     .filter((entry): entry is { code: string; personId: string } => typeof entry.code === 'string' && typeof entry.personId === 'string');
 
-  // One batched read for every entry's person instead of one findUnique per
-  // entry -- the "already claimed in this group" check below still has to run
-  // per-entry, since claiming one person can rule out another entry for the
-  // same group later in this same loop.
+  // One batched read for all entries; the per-group "already claimed" check
+  // still runs per-entry, since claiming one person can rule out a later entry
+  // for the same group in this loop.
   const people = validEntries.length
     ? await prisma.person.findMany({
         where: { id: { in: validEntries.map((entry) => entry.personId) } },

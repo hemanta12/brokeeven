@@ -12,9 +12,8 @@ interface TabsProps {
   label: string;
 }
 
-// Semantic tablist with arrow-key navigation and aria-selected
-// (DESIGN_SYSTEM.md §7, §10) — same behavior GroupPage hand-rolled in
-// Sprint 2.3, extracted here so 4.2 can wire the real screen to it directly.
+// Semantic tablist: arrow-key navigation, roving tabindex, aria-selected
+// (DESIGN_SYSTEM.md §7, §10).
 export function Tabs({ items, activeId, onChange, label }: TabsProps) {
   function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;

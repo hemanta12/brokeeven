@@ -21,11 +21,8 @@ interface ExpenseDetailProps {
   deleteError?: string;
 }
 
-// Read-only view opened by tapping an expense row — editing is a deliberate
-// second step, so Edit is a quiet icon beside the close control, not a sticky
-// primary button. Presented as a receipt: date under the title, the
-// description as a pulled quote, then one row pairing who paid with the total
-// so neither side leaves dead space.
+// Read-only receipt view opened from an expense row. Edit is a quiet header icon,
+// not a primary button — editing is a deliberate second step.
 export function ExpenseDetail({
   expense,
   people,
@@ -39,9 +36,7 @@ export function ExpenseDetail({
 }: ExpenseDetailProps) {
   const payer = people.find((person) => person.id === expense.payerId);
   const editable = canEdit(expense.createdByUserId, viewerUserId);
-  // Trash tap asks first, same two-step inline pattern as removing a person
-  // (EditPersonForm) — this is the only irreversible action reachable from
-  // the receipt view, so it doesn't get a plain one-tap button.
+  // Two-step inline confirm for delete, same pattern as EditPersonForm.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
@@ -81,8 +76,6 @@ export function ExpenseDetail({
           </p>
         )}
 
-        {/* Who paid on the left, the total on the right — one row so neither
-            the payer nor the figure sits alone above dead space. */}
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0">
             <span className="block font-sans text-micro text-dim">Paid by</span>
@@ -123,8 +116,7 @@ export function ExpenseDetail({
           </ul>
         </div>
 
-        {/* No Edit/Delete affordance for non-owners (the header icon is
-            hidden): an action that only ever 403s is worse than none. */}
+        {/* Non-owners get no Edit/Delete — an action that only ever 403s is worse than none. */}
         {!editable && (
           <div className="modal-footer">
             <p className="w-full text-center font-sans text-label text-dim">

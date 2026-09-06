@@ -1,14 +1,10 @@
-// Layout-matched loading placeholder for GroupPage (UIUX_rules.md Core §1:
-// "layout-matched skeleton screens instead of centered loading spinners").
-// Mirrors GroupPage's actual structure so there's no layout shift when the
-// real content arrives; decorative, so screen readers get a plain status
-// announcement instead of reading through empty blocks.
+// Layout-matched skeleton for GroupPage: mirrors its structure to avoid layout
+// shift, and is aria-hidden behind a plain status announcement.
 function Block({ className }: { className: string }) {
   return <div className={`rounded-md bg-ink/10 ${className}`} />;
 }
 
-// On the band, a placeholder has to be a light scrim rather than an ink tint,
-// or it disappears into the dark surface it sits on.
+// Light scrim, not an ink tint: an ink block vanishes into the dark band.
 function BandBlock({ className }: { className: string }) {
   return <div className={`rounded-md bg-white/12 ${className}`} />;
 }

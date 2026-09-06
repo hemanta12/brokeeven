@@ -1,9 +1,8 @@
 import type { Balance } from '../group/types';
 
 // What the selected From owes the selected To right now, in cents. Recomputed
-// from the live balance list rather than the row the modal was opened from,
-// because From and To both stay editable — swap them and the original row's
-// amount is answering a different question.
+// from the live balance list because From/To stay editable — the opened row's
+// amount answers a different question once they change.
 export function owedCents(balances: Balance[], fromPersonId: string, toPersonId: string): number {
   const match = balances.find(
     (balance) => balance.fromPersonId === fromPersonId && balance.toPersonId === toPersonId
@@ -16,14 +15,9 @@ export interface Overpayment {
   excess: number;
 }
 
-// Settling MORE than is owed is legitimate (rounding up, paying ahead) but is
-// also exactly what a decimal typo looks like: 6667 instead of 66.67 silently
-// creates a $6,600 debt in the opposite direction. Partial settlement being
-// allowed is what makes the amount alone ambiguous — an amount *under* the
-// balance is ordinary, so only the excess is worth flagging.
-//
-// Returns null when there is nothing to warn about; cents throughout, so the
-// comparison never trips over floating-point drift.
+// Overpaying is legitimate (paying ahead) but also what a decimal typo looks
+// like — 6667 for 66.67 silently creates a large reverse debt, so the excess is
+// flagged. Cents throughout to avoid float drift; null when nothing to warn about.
 export function checkOverpayment(
   balances: Balance[],
   fromPersonId: string,

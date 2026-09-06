@@ -9,13 +9,8 @@ import { CornerDecor } from '../../components/CornerDecor';
 import { capitalizeFirst, formatUpdatedLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 
-// Plain coloured text, not a pill: a pill shape reads as a tappable button,
-// especially sitting inside a row that already is a link. The caption above
-// the figure is what carries the direction now, so colour is never the only
-// cue and the sign is no longer doing that job alone.
+// Plain text, not a pill — a pill inside a row that's already a link reads as a button.
 function BalanceAmount({ direction, amount }: { direction: MyGroup['netDirection']; amount: string }) {
-  // The only place in the app, besides the settled receipt, where the product
-  // name appears as a status.
   if (direction === 'settled') {
     return <span className="font-sans text-row-amount font-semibold text-dim">Even.</span>;
   }
@@ -35,12 +30,6 @@ function totalFor(groups: MyGroup[], direction: MyGroup['netDirection']): number
     .reduce((sum, group) => sum + Number(group.netAmount), 0);
 }
 
-// The screen's dark device, the same --color-band the landing proof band and
-// the group header use, so all three read as one product. Unlike the group
-// page nothing straddles its lower edge: the two running totals sit on a pair
-// of white cards fully inside the band, side by side, and the list starts
-// clean below. Amounts use the documented accent / down tokens ("You're owed"
-// / "You owe"), which are contrast-verified on white.
 function BandHeader({ groups }: { groups?: MyGroup[] }) {
   const owed = groups ? totalFor(groups, 'owed') : null;
   const owe = groups ? totalFor(groups, 'owe') : null;
@@ -70,9 +59,6 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
         </div>
       )}
 
-      {/* A pair of white cards, side by side, fully inside the band. White is
-          the app's card surface and pops hard on the forest; the amounts take
-          the documented accent / down tokens. */}
       {groups && !settled && (
         <dl className="relative mt-7 grid grid-cols-2 gap-2.5">
           <div className="rounded-card bg-surface px-4 py-3 shadow-sheet">
@@ -93,9 +79,7 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
   );
 }
 
-// Every group the signed-in account has a live person in. A plain reverse-
-// chronological list, not a card grid: these are records, and the useful
-// comparison between rows is the balance, which only lines up in a column.
+// The signed-in account's groups, newest activity first.
 export function MyGroupsPage() {
   const { isSignedIn, isPending: sessionPending } = useSession();
   const { data, isPending, isError, error, refetch } = useMyGroups(isSignedIn);
@@ -154,11 +138,7 @@ export function MyGroupsPage() {
         {hasGroups && (
           <ul className="mt-4 flex flex-col gap-2.5 px-4 sm:px-6">
             {groups.map((group) => (
-              /* nikita's group card (sketch 013): name, direction and amount on
-                 the top row; a full-bleed hairline over a footer that carries
-                 the next step and the member cluster + count. Two sibling links
-                 rather than a button nested inside a link, so both targets stay
-                 real anchors. */
+              /* Two sibling links, not a button nested in a link, so both targets are real anchors. */
               <li
                 key={group.id}
                 className="rounded-card border border-line bg-surface px-4 pb-3 pt-3.5 shadow-card transition-shadow duration-150 hover:shadow-card-hover"
@@ -167,16 +147,13 @@ export function MyGroupsPage() {
                   to={`/g/${group.joinCode}`}
                   className="focus-ring flex min-h-11 items-start gap-3 rounded-inner"
                 >
-                  {/* min-w-0 is what lets the name clamp instead of shoving the
-                      amount off its own column. Members live in the footer next
-                      to the count, so the name gets the full row width here. */}
+                  {/* min-w-0 lets the name clamp instead of pushing the amount off its column. */}
                   <span className="min-w-0 flex-1">
                     <span className="flex items-start gap-2">
                       <span className="min-w-0 font-sans text-body font-semibold leading-snug text-ink line-clamp-2">
                         {group.name}
                       </span>
-                      {/* "Individual" is auto-set on every quick 1:1 group and says
-                          nothing the name and people count don't already. */}
+                      {/* "Individual" is auto-set on quick 1:1 groups; not worth showing. */}
                       {group.label && group.label !== 'Individual' && (
                         <span className="mt-0.5 shrink-0 rounded-full border border-accent px-2 py-0.5 font-sans text-micro leading-none text-accent">
                           {capitalizeFirst(group.label)}
@@ -192,12 +169,8 @@ export function MyGroupsPage() {
                   </span>
                 </Link>
                 <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
-                  {/* The one behaviour change in the redesign: the most common
-                      next step no longer costs a navigation through the group
-                      page. GroupPage reads ?add=expense and opens the modal. */}
-                  {/* Ink, not accent: an accent-green link sitting next to an
-                      accent-green balance figure made colour ambiguous between
-                      "money" and "tap me". The + icon keeps the accent cue. */}
+                  {/* GroupPage reads ?add=expense and opens the modal directly. */}
+                  {/* Ink link, not accent: accent next to the accent balance figure is ambiguous. */}
                   <Link
                     to={`/g/${group.joinCode}?add=expense`}
                     className="focus-ring flex min-h-11 items-center gap-1.5 rounded-full pr-2 font-sans text-label font-semibold text-ink"

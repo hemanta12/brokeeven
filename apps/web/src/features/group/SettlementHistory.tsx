@@ -11,9 +11,6 @@ interface SettlementHistoryProps {
   identityPersonId: string | null;
 }
 
-// Recording a settlement was, until now, the only irreversible write in the
-// app — expenses and people can both be edited and deleted. These rows were
-// already being sent with every group fetch and rendered nowhere.
 export function SettlementHistory({ code, settlements, people, identityPersonId }: SettlementHistoryProps) {
   const deleteSettlement = useDeleteSettlement(code);
 

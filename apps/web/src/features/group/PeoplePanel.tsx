@@ -20,9 +20,8 @@ interface PeoplePanelProps {
   onClose: () => void;
 }
 
-// Its own component so edit-mode, add-person-form, and the typed name never
-// outlive the panel: closing it unmounts everything here and there is
-// nothing left for the parent to reset by hand.
+// Own component so edit-mode, the add-person form, and the typed name unmount
+// with the panel — nothing for the parent to reset.
 export function PeoplePanel({ code, people, identityPersonId, pulsingIds, onClose }: PeoplePanelProps) {
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);

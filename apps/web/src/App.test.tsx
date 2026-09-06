@@ -13,9 +13,8 @@ describe('App routing', () => {
     vi.unstubAllGlobals();
   });
 
-  // "/" now branches on the session, so it renders nothing until /auth/me
-  // answers — the landing is what a signed-out visitor gets, the group list
-  // is what a signed-in one gets.
+  // "/" branches on the session: nothing until /auth/me answers, then the landing
+  // (signed out) or the group list (signed in).
   it('renders the signed-out landing at /', async () => {
     vi.stubGlobal(
       'fetch',

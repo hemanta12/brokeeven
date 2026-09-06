@@ -15,23 +15,17 @@ interface EditPersonFormProps {
 
 const SAVED_MESSAGE_MS = 3000;
 
-// Inline replacement for the chip while renaming — not a modal, since
-// changing one person's name doesn't warrant leaving the group view. Exiting
-// edit mode happens via the top-level toggle, not from this row.
+// Inline chip replacement while renaming (not a modal). Edit mode is exited via
+// the panel's top-level toggle, not from this row.
 export function EditPersonForm({ code, person, onRemove, removePending, removeError }: EditPersonFormProps) {
   const renamePerson = useRenamePerson(code);
   const [name, setName] = useState(person.name);
-  // Saving alone leaves nothing visibly different on screen — the input
-  // already shows the name that was just typed. The background borrows the
-  // app's existing realtime-pulse color for the same one-shot 250ms
-  // (DESIGN_SYSTEM.md §6) it uses everywhere else; the text message runs on
-  // its own longer timer since a status line needs real dwell time to read,
-  // not a motion-cue duration.
+  // A successful rename changes nothing visible, so confirm it two ways: a 250ms
+  // background pulse (DESIGN_SYSTEM.md §6) and a "Saved" line on a longer timer
+  // for real dwell time.
   const [justSaved, setJustSaved] = useState(false);
   const [showSavedMessage, setShowSavedMessage] = useState(false);
-  // Trash tap asks first — removing a person isn't reversible from here (the
-  // API's own guard aside), so it gets the same two-step pattern as any other
-  // destructive action, inline rather than a browser confirm() or a modal.
+  // Two-step inline confirm for remove (not confirm(), not a modal).
   const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   async function handleSubmit(event: FormEvent) {

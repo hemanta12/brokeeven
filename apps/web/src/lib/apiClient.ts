@@ -8,9 +8,9 @@ export class ApiError extends Error {
   }
 }
 
-// Every successful write means the API issued a session cookie. If a later
-// response still reports no viewer, the browser is refusing to store it --
-// which is worth telling the user, since their entries will not stay editable.
+// A successful write means the API issued a session cookie; if a later response
+// still reports no viewer, the browser is refusing to store it (entries won't
+// stay editable).
 let completedWrite = false;
 
 export function hasCompletedWrite(): boolean {
@@ -20,8 +20,7 @@ export function hasCompletedWrite(): boolean {
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${import.meta.env.VITE_API_URL}${path}`, {
     ...init,
-    // Carries the session cookie that identifies the actor (guest or signed
-    // in) so the API can tell who created what.
+    // Session cookie identifies the actor (guest or signed in) for ownership.
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',

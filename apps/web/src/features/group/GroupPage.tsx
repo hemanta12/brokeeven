@@ -46,9 +46,8 @@ export function GroupPage() {
     refetch,
   } = useGroupByCode(code);
 
-  // My groups' inline "Add expense" links straight here with ?add=expense, so
-  // the most common next step costs no extra tap. Read once into state and
-  // stripped from the URL, or a refresh would reopen the modal forever.
+  // My Groups deep-links here with ?add=expense. Strip it once handled, or a
+  // refresh reopens the modal forever.
   const [searchParams, setSearchParams] = useSearchParams();
   const openAddExpense = searchParams.get("add") === "expense";
 
@@ -63,8 +62,7 @@ export function GroupPage() {
   const [editingExpense, setEditingExpense] = useState<Expense | "new" | null>(
     null,
   );
-  // Derived, not copied into state: the modal is open because the URL says so
-  // until something closes it, which is also what clears the parameter.
+  // Derived, not state: open while the URL says so; closing clears the param.
   const expenseModal = editingExpense ?? (openAddExpense ? "new" : null);
 
   function closeExpenseModal() {
@@ -110,19 +108,16 @@ export function GroupPage() {
     return null;
   }
 
-  // The account's claim outranks this browser's local hint. Derived per
-  // render rather than written back: the claim arrives with every group
-  // fetch, so mirroring it into localStorage would add a write and a way for
-  // the two to drift, and buy nothing.
+  // The account's claim outranks the local hint. Derived per render, not mirrored
+  // to localStorage: the claim arrives with every fetch, so a copy would only drift.
   const resolvedIdentityPersonId = resolveIdentityPersonId(
     group.people,
     group.viewerUserId,
     identityPersonId,
   );
 
-  // A write always mints a session, so a still-empty viewer id here means the
-  // cookie never stuck (private mode, blocked third-party cookies, an
-  // extension). Their entries will be uneditable, so say so plainly.
+  // A write always mints a session, so an empty viewer id after one means the
+  // cookie never stuck (private mode, blocked cookies) — entries will be uneditable.
   const cookiesBlocked = hasCompletedWrite() && group.viewerUserId === null;
 
   const shouldShowWhoAreYou =
@@ -142,10 +137,6 @@ export function GroupPage() {
           Your browser is blocking cookies, so entries you add here can&apos;t be edited later.
         </p>
       )}
-      {/* The band, settled in sketch 013. The same --color-band as the landing
-          page's proof band, so the app has one dark device used twice rather
-          than two unrelated dark areas. The summary card straddles its lower
-          edge, which is depth with no gradient and no shadow trick. */}
       <div className="flex flex-1 flex-col">
         <header
           className={`relative -mx-4 -mt-2 overflow-hidden bg-band px-4 pt-3 text-white sm:rounded-t-card sm:px-6 ${
@@ -213,8 +204,7 @@ export function GroupPage() {
           </h1>
         </header>
 
-        {/* Only meaningful once the viewer has said which person they are:
-            without that, none of these figures are "yours". */}
+        {/* Only meaningful once the viewer has claimed a person. */}
         {resolvedIdentityPersonId && (
           <GroupSummary
             balances={group.balances}
@@ -254,8 +244,6 @@ export function GroupPage() {
                 </p>
                 {groupExpensesByDate(group.expenses).map((dateGroup) => (
                   <div key={dateGroup.date} className="mt-4 first:mt-0">
-                    {/* Quiet organiser, not a headline — mono keeps it in the
-                        ledger's data voice and distinct from the sans cards. */}
                     <h3 className="mb-1.5 font-sans text-label font-medium text-dim">
                       {formatDateGroupLabel(dateGroup.date)}
                     </h3>
@@ -296,8 +284,7 @@ export function GroupPage() {
             className="mt-2 px-4 sm:px-6"
           >
             {group.balances.length === 0 ? (
-              /* A fully settled group has no balances but may well have a
-                 settlement to undo, so the history renders either way. */
+              /* Settled group: no balances, but a settlement may still need undoing. */
               <EmptyState message="No balances yet. Add an expense to get started." />
             ) : (
               <div>
@@ -325,9 +312,7 @@ export function GroupPage() {
                           }
                           toIsViewer={balance.toPersonId === resolvedIdentityPersonId}
                           onSettle={
-                            /* A debt between two other people stays visible as
-                               context, but the action to clear it is theirs,
-                               not the viewer's. */
+                            /* Others' debt is visible as context; clearing it isn't the viewer's action. */
                             balanceDirection(balance) === "neutral"
                               ? undefined
                               : () => setSettlingBalance(balance)

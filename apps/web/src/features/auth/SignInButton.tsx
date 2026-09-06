@@ -34,8 +34,7 @@ declare global {
   }
 }
 
-// Google's script is fetched only when this button is actually rendered, so
-// anonymous visitors never pay for a third-party request they will not use.
+// Fetched only when this button renders, so anonymous visitors never pay for it.
 function loadGoogleScript(): Promise<void> {
   if (window.google) return Promise.resolve();
 
@@ -80,27 +79,19 @@ function GoogleGlyph() {
   );
 }
 
-// Our own button triggers Google's OAuth popup (initCodeClient) instead of
-// embedding Google's iframe-rendered one. That iframe pops in asynchronously
-// once its own script loads -- the empty reserved space before it appears is
-// what read as broken -- and Google's brand rules mean it can never match the
-// app's own buttons anyway (fixed font, shape, colour). A popup opened
-// directly from this click has neither problem: nothing is injected into the
-// page, and the button looks and behaves exactly like every other button
-// here. The code client is created once the script loads and stashed in a
-// ref so the click handler can call requestCode() synchronously -- Google's
-// popup, like window.open, only survives inside the original user gesture.
+// Our own button drives Google's OAuth popup (initCodeClient), not Google's
+// iframe-rendered button. The code client is built once on script load and
+// stashed in a ref so the click handler can call requestCode() synchronously —
+// the popup, like window.open, only survives inside the original user gesture.
 export function SignInButton({ onSuccess }: { onSuccess?: () => void } = {}) {
   const signIn = useSignIn();
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   const codeClientRef = useRef<CodeClient | null>(null);
-  // The GSI callback closure below is created once, when the script loads
-  // (deps are [clientId] only), so it reaches onSuccess through a ref rather
-  // than capturing the prop directly -- otherwise a caller passing a fresh
-  // arrow function each render (Navbar does) would be calling whichever
-  // version existed the moment the script finished loading.
+  // The GSI callback is created once on script load, so it reaches onSuccess via
+  // a ref; capturing the prop directly would freeze whichever value existed when
+  // the script finished loading.
   const onSuccessRef = useRef(onSuccess);
   onSuccessRef.current = onSuccess;
 

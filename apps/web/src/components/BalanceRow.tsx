@@ -13,22 +13,16 @@ interface BalanceRowProps {
   onSettle?: () => void;
 }
 
-// Down and accent sit at 1.03:1 against each other, near-identical luminance
-// separated only by hue, and ~1.2:1 under deuteranopia. The sign is therefore
-// what actually carries the direction; the colour only reinforces it. Amount
-// owns both. Neutral rows take no sign and a muted colour, because a balance
-// between two other people is context, not your business: at equal weight a
-// five-person group buries your own two rows among everyone else's.
+// `down` and `accent` are near-identical in luminance (~1.2:1 under deuteranopia),
+// so the sign carries the direction and colour only reinforces it. Neutral rows
+// (a balance between two others) take no sign and a muted colour.
 const AMOUNT_DIRECTIONS: Record<Direction, AmountDirection> = {
   owe: 'down',
   owed: 'up',
   neutral: 'flat',
 };
 
-// "Name owes Name" + amount (colored by direction, never color alone — the
-// sign already carries the direction) + optional Settle button
-// (DESIGN_SYSTEM.md §7). Color is relative to who's asking, so the caller
-// (which knows the viewer's identity) resolves `direction`; this stays dumb.
+// The caller resolves `direction` relative to the viewer; this component stays dumb.
 export function BalanceRow({
   fromName,
   toName,
@@ -40,11 +34,8 @@ export function BalanceRow({
 }: BalanceRowProps) {
   return (
     <div className="flex min-h-11 items-center justify-between gap-3 px-4 py-3">
-      {/* Wraps rather than truncates. Two real names plus "owes" doesn't fit
-          beside the amount and the Settle button on a 360px screen, and a
-          balance whose second name is cut off ("priyanka owes hem…") is
-          unreadable in the one place it has to be exact. The row only grows
-          for the pairs that actually need it. */}
+      {/* Wraps, never truncates: a cut-off second name ("priyanka owes hem…") is
+          unreadable where the balance has to be exact. */}
       <span
         className={`min-w-0 flex-1 font-sans text-body ${
           direction === 'neutral' ? 'text-dim' : 'text-ink'

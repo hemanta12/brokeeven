@@ -31,8 +31,7 @@ export function useSignIn() {
         method: 'POST',
         body: JSON.stringify({ code })
       });
-      // Claim the groups this browser already knows about, so the account
-      // starts with the history it should have rather than nothing.
+      // Claim the groups this browser already knows, so the account starts with its history.
       const entries = listLocalIdentities();
       if (entries.length > 0) {
         await apiFetch<{ claimed: number }>('/auth/claim', {
@@ -53,12 +52,9 @@ export function useSignOut() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
-    // invalidateQueries, not clear(): clear() drops the cache outright, which
-    // does not make an already-mounted useQuery (e.g. the page you're still
-    // on) refetch -- it just keeps showing its last in-memory result until
-    // something remounts it, which read as a stale screen until a hard
-    // refresh. invalidateQueries marks the same keys stale and refetches any
-    // still-active observer immediately, matching useSignIn just above.
+    // invalidateQueries, not clear(): clear() won't refetch an already-mounted
+    // useQuery, leaving a stale screen until remount. invalidate refetches active
+    // observers immediately.
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
       await queryClient.invalidateQueries({ queryKey: myGroupsQueryKey });
@@ -87,9 +83,8 @@ export function useMyGroups(enabled: boolean) {
   });
 }
 
-// Tells the server which person the viewer is, so their entries stay theirs on
-// every device. Best-effort: identifying yourself is optional, and a 409 just
-// means someone got there first.
+// Tells the server which person the viewer is, for cross-device ownership.
+// Best-effort: a 409 just means someone claimed it first.
 export async function claimPerson(personId: string): Promise<void> {
   try {
     await apiFetch<unknown>(`/people/${personId}/claim`, { method: 'POST' });

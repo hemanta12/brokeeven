@@ -33,8 +33,8 @@ function withBalances(group: GroupWithRelations) {
   return { ...group, balances };
 }
 
-// Shared by GET /groups/:code (client's own fetch) and the realtime broadcast
-// (every other client in the room) so both always compute state the same way.
+// Shared by GET /groups/:code and the realtime broadcast so both compute state
+// identically.
 export async function getGroupStateByCode(code: string) {
   const group = await prisma.group.findUnique({
     where: { joinCode: code.toUpperCase() },

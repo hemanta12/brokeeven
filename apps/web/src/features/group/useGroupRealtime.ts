@@ -29,13 +29,9 @@ function changedRowIds(previous: GroupWithPeople, next: GroupWithPeople): string
   return ids;
 }
 
-// Joins this group's realtime room on mount (TECH_STACK.md §4): applies
-// incoming `group:update` payloads straight to the cache (same shape
-// GET /groups/:code returns), refetches via REST on reconnect rather than
-// trusting whatever happened during the disconnect window, and returns the
-// row ids that just changed so the caller can apply a one-shot pulse cue
-// (Design System §6 — pulse color itself is a placeholder until Phase 4's
-// tokens land).
+// Joins the group's realtime room on mount, applies `group:update` payloads to
+// the cache, and refetches via REST on reconnect rather than trusting the
+// disconnect window. Returns the ids of rows that just changed for a pulse cue.
 export function useGroupRealtime(code: string | undefined, groupId: string | undefined): Set<string> {
   const queryClient = useQueryClient();
   const [pulsingIds, setPulsingIds] = useState<Set<string>>(new Set());
@@ -62,8 +58,8 @@ export function useGroupRealtime(code: string | undefined, groupId: string | und
 
     function applyUpdate(next: GroupWithPeople) {
       const previous = queryClient.getQueryData<GroupWithPeople>(groupQueryKey(code));
-      // The broadcast is viewer-agnostic by design, so keep the viewer id the
-      // REST fetch established -- dropping it would hide every edit control.
+      // Broadcast is viewer-agnostic; keep the REST fetch's viewer id or every
+      // edit control disappears.
       queryClient.setQueryData(groupQueryKey(code), {
         ...next,
         viewerUserId: previous?.viewerUserId ?? null

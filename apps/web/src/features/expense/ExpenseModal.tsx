@@ -16,8 +16,7 @@ import { dollarsToCents, equalSplitCents } from './splitPreview';
 const selectClassName =
   'focus-ring min-h-12 w-full rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink';
 
-// The split-amount inputs stay sans with tabular figures: mono is for money
-// the app is *showing*, not money you are typing.
+// Split-amount inputs: sans + tabular, not mono (mono is for money the app shows).
 const inlineAmountClassName =
   'focus-ring h-11 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-2 font-sans text-body tabular-nums text-ink';
 
@@ -43,8 +42,7 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [title, setTitle] = useState(expense ? formatExpenseTitle(expense.title) : '');
   const [description, setDescription] = useState(expense?.description ?? '');
-  // Seed already at two decimals so editing an expense shows "20.00", not the
-  // raw "20" that only settled once the field was focused and blurred.
+  // Seed at two decimals so an edit shows "20.00", not raw "20" until blurred.
   const [amount, setAmount] = useState(expense ? Number(expense.amount).toFixed(2) : '');
   const [date, setDate] = useState(expense?.date.slice(0, 10) ?? todayIsoDate());
   const [payerId, setPayerId] = useState(
@@ -126,15 +124,8 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
   return (
     <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
-        {/* Amount first and at display scale: it is why the screen is open.
-            The $ is a separate adornment rather than part of the value, so
-            nothing has to be parsed back out of the field. Sans with tabular
-            figures, not mono: mono is for money the app shows. */}
-        {/* One tall bordered field with the value centred big inside it
-            (spliteroo food-split reference): label top-left, muted accent-wash
-            fill and accent border — the same "active" treatment a selected
-            split row gets. Focus shows on the box the way the split rows and
-            the segmented control show it, not as a ring around the bare input. */}
+        {/* $ is a separate adornment, not part of the value, so nothing has to
+            be parsed back out of the field. */}
         <div className="flex flex-col gap-1.5">
           <label htmlFor="expense-amount" className="font-sans text-label font-medium text-ink">
             Amount
@@ -151,8 +142,8 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
               onChange={(event) => touch(setAmount)(event.target.value)}
               onBlur={() => {
                 markBlurred('amount');
-                // Settle to two decimals once the field is left, not while
-                // typing (reformatting mid-entry fights the caret).
+                // Settle to two decimals on blur, not while typing —
+                // reformatting mid-entry fights the caret.
                 if (amount.trim() !== '' && !Number.isNaN(Number(amount))) {
                   setAmount(Number(amount).toFixed(2));
                 }
@@ -192,12 +183,9 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
         />
 
         <div className="paid-by-date">
-          {/* Paid by reads as a person, not a dropdown: avatar, name, chevron.
-              The control underneath is still the native <select>, laid over
-              the drawing at zero opacity, so the label, the keyboard and the
-              platform's own picker all keep working. A custom listbox here
-              would be a real accessibility regression for a purely visual
-              gain. The select stays a direct child of this div because
+          {/* The visible row is decorative; the real control is a native <select>
+              overlaid at zero opacity so a11y, keyboard and the platform picker
+              all work. Keep the select a direct child of this div —
               ExpenseModal.test.tsx walks two parents up to .paid-by-date. */}
           <div className="relative flex flex-col gap-1.5">
             <label htmlFor="expense-payer" className="font-sans text-label font-medium text-ink">
@@ -280,12 +268,9 @@ export function ExpenseModal({ code, people, identityPersonId, expense, onClose 
 
         <fieldset className="flex flex-col gap-2">
           <legend className="font-sans text-label font-medium text-ink">Split between</legend>
-          {/* Full-width rows, wash fill plus an accent border when on, and
-              the tick on the RIGHT: selection has to survive with the tick
-              column covered up, which it does not when the fill is the only
-              cue. Two labels point at one checkbox so the name and the tick
-              are both hit targets without wrapping the inline amount inputs
-              in a label that would toggle it. */}
+          {/* Two labels point at one checkbox so name and tick are both hit
+              targets — wrapping the inline amount inputs in a label would toggle
+              the checkbox. */}
           <div className="flex flex-col gap-2">
           {people.map((person) => {
             const checked = participantIds.includes(person.id);

@@ -21,8 +21,8 @@ describe('useBlurValidation', () => {
     expect(result.current.isRequiredError('name', 'Alice')).toBe(false);
   });
 
-  // A form that clears its own value after a successful submit (ready for
-  // the next entry) shouldn't have that reset read as a validation failure.
+  // A form that clears its own value post-submit shouldn't have that reset read
+  // as a validation failure.
   it('untouch clears a stale touched flag so a since-cleared value stops erroring', () => {
     const { result } = renderHook(() => useBlurValidation());
     act(() => result.current.touch('name'));

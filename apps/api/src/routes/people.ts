@@ -16,8 +16,8 @@ const NAME_MAX_LENGTH = 60;
 
 export const peopleRouter = Router();
 
-// PRD §6.2: deletes the removed person's ExpenseSplit row on each of their
-// expenses and recalculates the remaining rows per that expense's split method.
+// PRD §6.2: on person removal, drop their ExpenseSplit from each expense and
+// recompute the remaining splits per that expense's split method.
 async function redistributeSplitsForRemoval(tx: Prisma.TransactionClient, personId: string): Promise<void> {
   const removedSplits = await tx.expenseSplit.findMany({
     where: { personId },
@@ -25,8 +25,7 @@ async function redistributeSplitsForRemoval(tx: Prisma.TransactionClient, person
   });
   if (removedSplits.length === 0) return;
 
-  // One batched read for every affected expense's remaining splits instead of
-  // one findMany per expense the removed person was part of.
+  // Batched read of all remaining splits, not one findMany per affected expense.
   const allRemaining = await tx.expenseSplit.findMany({
     where: { expenseId: { in: removedSplits.map((split) => split.expenseId) }, personId: { not: personId } },
     orderBy: { id: 'asc' }
@@ -78,8 +77,8 @@ async function redistributeSplitsForRemoval(tx: Prisma.TransactionClient, person
   }
 }
 
-// Separate route from the soft-delete PATCH below so the two actions can
-// never be confused by a missing/extra body field.
+// Separate route from the soft-delete PATCH so a missing or extra body field
+// cannot confuse the two actions.
 peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid person id' });
@@ -155,9 +154,8 @@ peopleRouter.patch('/people/:id', writeRateLimit, requireActor, async (request: 
   void broadcastGroupUpdate(updated.groupId);
 });
 
-// "Who are you?" identifying itself to the server. Links this person to the
-// caller -- guest or signed-in -- which is what makes My Groups possible and
-// what an account inherits when the guest is promoted at sign-in.
+// Links this person to the caller (guest or signed-in): the basis for My Groups,
+// and inherited by the account when a guest is promoted at sign-in.
 peopleRouter.post('/people/:id/claim', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid person id' });

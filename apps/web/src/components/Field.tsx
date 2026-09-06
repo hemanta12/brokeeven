@@ -7,9 +7,7 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   helpText?: string;
 }
 
-// Persistent label above input, on-blur error, help text (DESIGN_SYSTEM.md
-// §9): the shared shape every form field in the app should render as. 48px
-// on radius-inner, matching both selects and the split rows.
+// Shared form-field shape: persistent label, on-blur error, help text (DESIGN_SYSTEM.md §9).
 export function Field({ label, id, error, helpText, className = '', ...inputProps }: FieldProps) {
   const describedBy = error ? `${id}-error` : helpText ? `${id}-help` : undefined;
   return (

@@ -5,8 +5,7 @@ interface GroupSummaryProps {
   balances: Balance[];
   expenses: Expense[];
   personId: string;
-  // Passed only when the viewer is not already on the Balances tab. When
-  // absent the settle row is hidden — it points where you already are.
+  // Passed only when the viewer isn't on the Balances tab; absent hides the settle jump.
   onSettleUp?: () => void;
 }
 
@@ -16,10 +15,8 @@ function sum(values: string[]): number {
 
 const DOT_CAP = 5;
 
-// Two coloured chips for the position you act on, the spend it sits against,
-// and a jump to the Balances tab to clear it. The per-side totals (owed / owe)
-// exist nowhere else: the Balances tab lists them per person but never sums
-// either side.
+// The owed/owe per-side totals exist nowhere else — the Balances tab lists them
+// per person but never sums either side.
 export function GroupSummary({ balances, expenses, personId, onSettleUp }: GroupSummaryProps) {
   const total = sum(expenses.map((e) => e.amount));
   const share = sum(
@@ -31,14 +28,13 @@ export function GroupSummary({ balances, expenses, personId, onSettleUp }: Group
   // Not in a single split, no open balance: none of this is theirs.
   if (share === 0 && owed === 0 && owe === 0) return null;
 
-  // Only the balances the viewer is a party to. A debt between two other
-  // people is the group's business, not a payment *they* have left to make.
+  // Only balances the viewer is a party to; others' debts aren't theirs to settle.
   const pending = balances.filter(
     (b) => b.fromPersonId === personId || b.toPersonId === personId,
   ).length;
 
   return (
-    /* Straddles the band's lower edge (sketch 013). */
+    /* Straddles the band's lower edge. */
     <section
       aria-label="Your position in this group"
       className="relative z-1 mx-4 -mt-16 flex flex-col gap-3 overflow-hidden rounded-card bg-surface p-4 shadow-sheet sm:mx-6"
@@ -63,8 +59,7 @@ export function GroupSummary({ balances, expenses, personId, onSettleUp }: Group
         </div>
       </dl>
 
-      {/* Always rendered so the card is the same height on every tab — only
-          the "Settle up" jump drops away once you're already on Balances. */}
+      {/* Always rendered so the card keeps its height across tabs. */}
       <div className="flex min-h-6 items-center justify-between gap-3 border-t border-line pt-3">
         {pending > 0 ? (
           <span className="flex min-w-0 items-center gap-2 font-sans text-label text-dim">
@@ -116,11 +111,8 @@ export function GroupSummary({ balances, expenses, personId, onSettleUp }: Group
   );
 }
 
-// Deposit / withdraw over a small tray: "in" drops an arrow into the tray
-// (money coming back to you), "out" lifts one out. The tray shape keeps it
-// from reading as a rising / falling trend line. It sits on a plain sunken
-// chip rather than a coloured fill — that fill was the loud part — but the
-// icon and the figure still take the direction colour (accent / down).
+// 'in' = arrow into a tray (money back to you), 'out' = arrow out. The tray shape
+// stops it reading as a trend line.
 function FlowArrow({ variant, className }: { variant: 'in' | 'out'; className: string }) {
   return (
     <svg

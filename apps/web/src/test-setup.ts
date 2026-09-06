@@ -5,10 +5,8 @@ import '@testing-library/jest-dom/vitest';
 
 afterEach(cleanup);
 
-// jsdom doesn't implement matchMedia at all — components that feature-detect
-// prefers-reduced-motion (e.g. Overlay's enter/exit transition) would throw
-// without this. Defaults to "no preference" (matches: false), same as a
-// default browser profile.
+// jsdom has no matchMedia, so components that feature-detect
+// prefers-reduced-motion (e.g. Overlay) would throw. Defaults to "no preference".
 window.matchMedia ??= (query: string) =>
   ({
     matches: false,

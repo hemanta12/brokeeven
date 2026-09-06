@@ -1,13 +1,8 @@
 import { Link } from 'react-router-dom';
 
-// One back control for every indexed page (create, join, quick, group). Modals
-// keep their own close button and never use this. Two tones:
-//  - `light`: a bordered pill for the plain page ground (create/join/quick),
-//    where nothing else competes and it just needs to be visible.
-//  - `band`: a plain chevron + label link for the group page's dark header.
-//    Deliberately NOT a filled pill there: the band already has filled round
-//    controls (people, info), and a matching pill made the back control read
-//    as just another one of them. A bare link reads as navigation.
+// Back control for indexed pages (create, join, quick, group); modals use their
+// own close button. Two tones: `light` (bordered pill on plain ground), `band`
+// (bare chevron link on the group page's dark header).
 const BASE =
   'focus-ring inline-flex items-center font-sans font-medium transition-transform duration-100';
 
@@ -26,9 +21,8 @@ function Chevron() {
   );
 }
 
-// `to` renders a real anchor; `onClick` a button (for in-page step-back, e.g.
-// CreateGroupPage's people step). `label` names the destination so the control
-// doubles as a "you are here" cue.
+// `to` renders an anchor; `onClick` renders a button (in-page step-back). `label`
+// names the destination.
 export function BackButton({
   to,
   onClick,

@@ -14,8 +14,8 @@ export function useGroupByCode(code: string | undefined) {
     queryKey: groupQueryKey(code),
     queryFn: () => apiFetch<GroupWithPeople>(`/groups/${code}`),
     enabled: Boolean(code),
-    // Names are normalized on write now, but rows created before that stay as
-    // typed — capitalize on read so the whole group view is consistent.
+    // Rows created before write-time normalization stay as typed — capitalize on
+    // read for consistency.
     select: (group): GroupWithPeople => ({
       ...group,
       people: group.people.map((person) => ({ ...person, name: capitalizeFirst(person.name) }))
@@ -39,9 +39,8 @@ export interface ActivityEntry {
   createdAt: string;
 }
 
-// Its own query, not part of the group fetch: the log grows without bound
-// while the rest of the payload doesn't, and it's only wanted once someone
-// opens the Activity tab — hence `enabled`.
+// Own query, not part of the group fetch: the log grows without bound and is
+// only wanted when the Activity tab opens (hence `enabled`).
 export function useGroupActivity(code: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: ['group', code, 'activity'],
