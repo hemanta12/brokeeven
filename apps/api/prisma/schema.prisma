@@ -54,7 +54,6 @@ model Person {
   id              String         @id @default(uuid()) @db.Uuid
   groupId         String         @db.Uuid
   name            String
-  email           String?
   userId          String?        @db.Uuid
   removedAt       DateTime?
   createdAt       DateTime       @default(now())

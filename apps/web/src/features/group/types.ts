@@ -2,7 +2,6 @@ export interface Person {
   id: string;
   groupId: string;
   name: string;
-  email: string | null;
   userId: string | null;
   removedAt: string | null;
   createdAt: string;
