@@ -70,6 +70,9 @@ model Person {
   id              String         @id @default(uuid()) @db.Uuid
   groupId         String         @db.Uuid
   name            String
+  // Free text: a Venmo/UPI id, a payment link, or a note like "cash only".
+  // Displayed at settle time; the app never parses or transacts on it.
+  paymentHandle   String?        @db.VarChar(100)
   userId          String?        @db.Uuid
   removedAt       DateTime?
   createdAt       DateTime       @default(now())

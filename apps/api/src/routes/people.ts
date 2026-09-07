@@ -14,6 +14,7 @@ import { redistributeAmounts } from '../split/redistribution.js';
 import { isNonEmptyString, UUID_PATTERN } from '../validation.js';
 
 const NAME_MAX_LENGTH = 60;
+const PAYMENT_HANDLE_MAX_LENGTH = 100;
 
 export const peopleRouter = Router();
 
@@ -112,6 +113,46 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (requ
       await actorNameInGroup(tx, renamed.groupId, request.actorId)
     );
     return renamed;
+  });
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(updated.groupId);
+});
+
+// Separate from PATCH /people/:id, which is soft-delete: an unrecognised body
+// there must never mean "edit the person". No ActivityLog entry — a payment
+// handle isn't a ledger event.
+peopleRouter.patch('/people/:id/handle', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
+  if (!UUID_PATTERN.test(request.params.id)) {
+    response.status(400).json({ error: 'Invalid person id' });
+    return;
+  }
+
+  const { paymentHandle } = request.body as { paymentHandle?: unknown };
+  if (paymentHandle !== null && typeof paymentHandle !== 'string') {
+    response.status(400).json({ error: 'paymentHandle must be a string or null' });
+    return;
+  }
+  // Clearing it is an empty string from the input, or an explicit null.
+  const trimmed = typeof paymentHandle === 'string' ? paymentHandle.trim() : '';
+  if (trimmed.length > PAYMENT_HANDLE_MAX_LENGTH) {
+    response.status(400).json({ error: `paymentHandle must be ${PAYMENT_HANDLE_MAX_LENGTH} characters or fewer` });
+    return;
+  }
+  const nextHandle = trimmed === '' ? null : trimmed;
+
+  const person = await prisma.person.findUnique({
+    where: { id: request.params.id },
+    include: { group: { select: { closedAt: true } } }
+  });
+  if (!person || person.removedAt) {
+    response.status(404).json({ error: 'Person not found' });
+    return;
+  }
+  if (rejectIfGroupClosed(response, person.group.closedAt)) return;
+
+  const updated = await prisma.person.update({
+    where: { id: person.id },
+    data: { paymentHandle: nextHandle }
   });
   response.status(200).json(updated);
   void broadcastGroupUpdate(updated.groupId);

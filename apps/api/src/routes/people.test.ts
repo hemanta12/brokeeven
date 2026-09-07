@@ -67,6 +67,71 @@ describe('PATCH /people/:id/name', () => {
   });
 });
 
+describe('PATCH /people/:id/handle', () => {
+  function activePerson() {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({
+      id: VALID_ID, groupId: 'g1', name: 'Alice', removedAt: null, group: { closedAt: null }
+    } as never);
+    vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, groupId: 'g1' } as never);
+  }
+
+  it('sets a trimmed handle', async () => {
+    activePerson();
+
+    const response = await request(app).patch(`/people/${VALID_ID}/handle`).send({ paymentHandle: '  @alice  ' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.person.update).toHaveBeenCalledWith({ where: { id: VALID_ID }, data: { paymentHandle: '@alice' } });
+  });
+
+  it('clears the handle on an empty string', async () => {
+    activePerson();
+
+    const response = await request(app).patch(`/people/${VALID_ID}/handle`).send({ paymentHandle: '' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.person.update).toHaveBeenCalledWith({ where: { id: VALID_ID }, data: { paymentHandle: null } });
+  });
+
+  it('rejects a handle over 100 characters', async () => {
+    activePerson();
+
+    const response = await request(app).patch(`/people/${VALID_ID}/handle`).send({ paymentHandle: 'a'.repeat(101) });
+
+    expect(response.status).toBe(400);
+    expect(prisma.person.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-string handle', async () => {
+    activePerson();
+
+    const response = await request(app).patch(`/people/${VALID_ID}/handle`).send({ paymentHandle: 42 });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('rejects the edit when the trip is closed', async () => {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({
+      id: VALID_ID, groupId: 'g1', name: 'Alice', removedAt: null, group: { closedAt: new Date() }
+    } as never);
+
+    const response = await request(app).patch(`/people/${VALID_ID}/handle`).send({ paymentHandle: '@alice' });
+
+    expect(response.status).toBe(409);
+    expect(prisma.person.update).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 for a removed person', async () => {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({
+      id: VALID_ID, removedAt: new Date(), group: { closedAt: null }
+    } as never);
+
+    const response = await request(app).patch(`/people/${VALID_ID}/handle`).send({ paymentHandle: '@alice' });
+
+    expect(response.status).toBe(404);
+  });
+});
+
 describe('PATCH /people/:id', () => {
   it('soft-deletes a person with no expenses as payer', async () => {
     vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null, group: { closedAt: null } } as never);
