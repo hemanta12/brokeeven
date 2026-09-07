@@ -5,8 +5,8 @@ import { ExpenseDetail } from './ExpenseDetail';
 import type { Expense } from '../group/types';
 
 const people = [
-  { id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' },
-  { id: 'p2', groupId: 'g1', name: 'Bob', userId: null, removedAt: null, createdAt: '2026-01-01' }
+  { id: 'p1', groupId: 'g1', name: 'Alice', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' },
+  { id: 'p2', groupId: 'g1', name: 'Bob', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
 ];
 
 const expense: Expense = {

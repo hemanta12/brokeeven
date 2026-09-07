@@ -12,9 +12,12 @@ import { formatCurrency } from '../../shared/format';
 import type { Balance, Person } from '../group/types';
 import { useCreateSettlement } from './api';
 import { checkOverpayment, owedCents } from './overpayment';
+import { paymentCopyText } from './paymentHandle';
 
 const selectClassName =
   'focus-ring min-h-12 w-full rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink';
+
+const COPIED_MESSAGE_MS = 2000;
 
 // Field fill, not white: on desktop the sheet behind it is already white.
 const cardClassName =
@@ -61,6 +64,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
   const [toPersonId, setToPersonId] = useState(balance.toPersonId);
   const [amount, setAmount] = useState(balance.amount);
   const [note, setNote] = useState('');
+  const [copied, setCopied] = useState(false);
   const [settled, setSettled] = useState(false);
   const [confirmedOverpayment, setConfirmedOverpayment] = useState(false);
   const { touch: markBlurred, isRequiredError } = useBlurValidation();
@@ -68,6 +72,22 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
   const nameOf = (id: string) => people.find((person) => person.id === id)?.name ?? 'they';
   const fromPersonName = nameOf(fromPersonId);
   const toPersonName = nameOf(toPersonId);
+  const payeeHandle = people.find((person) => person.id === toPersonId)?.paymentHandle ?? null;
+
+  // Handle and amount together: what you paste into the payment app is both.
+  async function copyHandle() {
+    if (!payeeHandle) return;
+    try {
+      await navigator.clipboard.writeText(paymentCopyText(payeeHandle, amount, currency));
+    } catch {
+      // No clipboard (insecure origin, denied permission): the handle is on
+      // screen and selectable, so there is nothing to recover from.
+      return;
+    }
+    vibrateConfirm();
+    setCopied(true);
+    setTimeout(() => setCopied(false), COPIED_MESSAGE_MS);
+  }
 
   const owedBefore = owedCents(balances, fromPersonId, toPersonId) / 100;
   const paying = Number(amount);
@@ -241,6 +261,18 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
             </p>
           </div>
         </div>
+
+        {payeeHandle && (
+          <div className="flex items-center gap-3 rounded-inner border border-line-strong px-3 py-2.5">
+            <div className="min-w-0 flex-1">
+              <p className="font-sans text-label text-dim">Pay {toPersonName} at</p>
+              <p className="truncate font-mono text-body text-ink">{payeeHandle}</p>
+            </div>
+            <Button type="button" variant="secondary" size="sm" onClick={copyHandle} className="shrink-0">
+              {copied ? '✓ Copied' : 'Copy'}
+            </Button>
+          </div>
+        )}
 
         <Field
           id="settle-note"

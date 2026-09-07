@@ -65,8 +65,18 @@ export function useCreateGroup() {
 export function useAddPerson(code?: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ code: groupCode, name }: { code: string; name: string }) =>
-      apiFetch<Person>(`/groups/${groupCode}/people`, { method: 'POST', body: JSON.stringify({ name }) }),
+    // No create-time API for the handle — chains into the existing PATCH once the person exists.
+    mutationFn: async ({ code: groupCode, name, paymentHandle }: { code: string; name: string; paymentHandle?: string }) => {
+      const person = await apiFetch<Person>(`/groups/${groupCode}/people`, {
+        method: 'POST',
+        body: JSON.stringify({ name })
+      });
+      if (!paymentHandle?.trim()) return person;
+      return apiFetch<Person>(`/people/${person.id}/handle`, {
+        method: 'PATCH',
+        body: JSON.stringify({ paymentHandle })
+      });
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
   });
 }
@@ -131,6 +141,18 @@ export function useReopenGroup(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => apiFetch<Group>(`/groups/${code}/reopen`, { method: 'POST' }),
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
+  });
+}
+
+export function useUpdatePaymentHandle(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, paymentHandle }: { id: string; paymentHandle: string }) =>
+      apiFetch<Person>(`/people/${id}/handle`, { method: 'PATCH', body: JSON.stringify({ paymentHandle }) }),
     onSuccess: () => {
       vibrateConfirm();
       return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });

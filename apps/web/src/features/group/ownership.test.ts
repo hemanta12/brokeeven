@@ -23,7 +23,7 @@ describe('canEdit', () => {
 
 describe('resolveIdentityPersonId', () => {
   const people = [
-    { id: 'p1', userId: null },
+    { id: 'p1', paymentHandle: null, userId: null },
     { id: 'p2', userId: 'u1' }
   ];
 

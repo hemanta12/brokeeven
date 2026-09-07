@@ -2,6 +2,8 @@ export interface Person {
   id: string;
   groupId: string;
   name: string;
+  // Free text shown to whoever is paying this person at settle time. Null = not set.
+  paymentHandle: string | null;
   userId: string | null;
   removedAt: string | null;
   createdAt: string;

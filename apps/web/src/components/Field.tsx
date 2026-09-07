@@ -19,7 +19,8 @@ export function Field({ label, id, error, helpText, className = '', ...inputProp
         id={id}
         aria-invalid={Boolean(error)}
         aria-describedby={describedBy}
-        className={`focus-ring min-h-12 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink ${className}`}
+        // Placeholder one step down the type scale from typed content (text-body → text-label).
+        className={`focus-ring min-h-12 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink placeholder:text-label ${className}`}
         {...inputProps}
       />
       {error ? (

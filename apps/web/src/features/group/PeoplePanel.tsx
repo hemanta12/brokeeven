@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from "react";
 
+import { Avatar } from "../../components/Avatar";
 import { Button } from "../../components/Button";
 import { Field } from "../../components/Field";
-import { MemberChip } from "../../components/MemberChip";
 import { ErrorState } from "../../shared/RouteStates";
 import { Overlay } from "../../shared/Overlay";
 import { useBlurValidation } from "../../shared/useBlurValidation";
@@ -33,41 +33,59 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
   const isEditingMembers = isEditingMembersState && !readOnly;
   const [showAddPersonForm, setShowAddPersonForm] = useState(false);
   const [personName, setPersonName] = useState("");
+  const [personHandle, setPersonHandle] = useState("");
 
   async function handleAddPerson(event: FormEvent) {
     event.preventDefault();
     if (!personName.trim()) return;
     try {
-      await addPerson.mutateAsync({ code, name: personName });
+      await addPerson.mutateAsync({ code, name: personName, paymentHandle: personHandle });
       setPersonName("");
+      setPersonHandle("");
       untouch("personName");
     } catch {
-      // Rendered from addPerson.isError; the typed name stays for a retry.
+      // Rendered from addPerson.isError; the typed name (and handle) stay for a retry.
     }
   }
 
   return (
-    <Overlay title="People" isDirty={false} compact onClose={onClose}>
-      <div className="flex flex-1 flex-col gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <p className="font-sans text-label text-dim">{people.length} in this group</p>
-          {!readOnly && (
-            <Button
-              variant={isEditingMembers ? "primary" : "tertiary"}
-              aria-label={isEditingMembers ? "Cancel editing members" : "Edit members"}
-              onClick={() => setIsEditingMembers((current) => !current)}
-              disabled={showAddPersonForm}
-              size="sm"
-              className="shrink-0"
-            >
-              {isEditingMembers ? "Done" : "Edit"}
-            </Button>
-          )}
-        </div>
-        <ul className="flex flex-wrap items-center gap-2">
+    <Overlay
+      title="People"
+      isDirty={false}
+      compact
+      centerTitle
+      onClose={onClose}
+      // A plain headerAction button, not Close's own animated exit — that
+      // animation assumes the overlay unmounts once it fires, which exiting
+      // edit mode doesn't do.
+      headerAction={
+        isEditingMembers ? (
+          <Button variant="primary" size="sm" onClick={() => setIsEditingMembers(false)}>
+            Done
+          </Button>
+        ) : undefined
+      }
+      hideClose={isEditingMembers}
+    >
+      <div className="-mt-2 flex items-center justify-between gap-3">
+        <p className="font-sans text-label text-dim">{people.length} in this group</p>
+        {!readOnly && !isEditingMembers && (
+          <Button
+            variant="tertiary"
+            aria-label="Edit members"
+            onClick={() => setIsEditingMembers(true)}
+            disabled={showAddPersonForm}
+            size="sm"
+          >
+            Edit
+          </Button>
+        )}
+      </div>
+      <div className="mt-3 flex flex-1 flex-col gap-3">
+        <ul className={isEditingMembers ? "flex flex-col gap-3" : "flex flex-col gap-2"}>
           {people.map((person) =>
             isEditingMembers ? (
-              <li key={person.id} className="w-full">
+              <li key={person.id}>
                 <EditPersonForm
                   code={code}
                   person={person}
@@ -83,9 +101,15 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
             ) : (
               <li
                 key={person.id}
-                className={`flex min-h-11 items-center rounded-full ${pulsingIds.has(person.id) ? "row-pulse" : ""}`}
+                className={`flex min-h-11 items-center gap-3 rounded-inner px-1 py-1 ${pulsingIds.has(person.id) ? "row-pulse" : ""}`}
               >
-                <MemberChip name={person.name} isYou={person.id === identityPersonId} />
+                <Avatar name={person.name} isYou={person.id === identityPersonId} />
+                <p className="min-w-0 flex-1 truncate font-sans text-body font-medium text-ink">{person.name}</p>
+                {person.paymentHandle && (
+                  <p className="min-w-0 max-w-[45%] shrink-0 truncate font-mono text-label text-dim">
+                    ({person.paymentHandle})
+                  </p>
+                )}
               </li>
             ),
           )}
@@ -109,6 +133,14 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
               error={isRequiredError("personName", personName) ? "Name is required." : undefined}
               required
             />
+            <Field
+              id="add-person-handle"
+              label="Payment handle (optional)"
+              helpText="Shown to whoever settles up with them"
+              value={personHandle}
+              onChange={(event) => setPersonHandle(event.target.value)}
+              maxLength={100}
+            />
             {addPerson.isError && <ErrorState message={addPerson.error.message} />}
             <div className="flex gap-3">
               <Button type="submit" variant="secondary" disabled={addPerson.isPending} className="flex-1">
@@ -121,6 +153,7 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
                 onClick={() => {
                   setShowAddPersonForm(false);
                   setPersonName("");
+                  setPersonHandle("");
                 }}
               >
                 Cancel

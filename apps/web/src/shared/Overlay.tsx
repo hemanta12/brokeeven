@@ -22,6 +22,10 @@ interface OverlayProps {
   compact?: boolean;
   // Secondary control shown left of the close button (e.g. an Edit icon).
   headerAction?: ReactNode;
+  // Swaps Close out for headerAction alone, bypassing Close's exit animation
+  // (which assumes the overlay unmounts once it fires). Only meaningful
+  // together with headerAction; Escape still runs the real close underneath.
+  hideClose?: boolean;
   // Controls on the first row, title centered on its own row beneath.
   stackedHeader?: boolean;
   children: ReactNode;
@@ -30,7 +34,18 @@ interface OverlayProps {
 // Full-page overlay shell (Add/Edit Expense, Settle Up, Who Are You): focus trap,
 // scroll lock, focus restoration, Escape, safe-area insets, and in-app dirty-form
 // discard confirmation (never window.confirm).
-export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerTitle = false, compact = false, headerAction, stackedHeader = false, children }: OverlayProps) {
+export function Overlay({
+  title,
+  isDirty,
+  onClose,
+  closeLabel = 'Close',
+  centerTitle = false,
+  compact = false,
+  headerAction,
+  hideClose = false,
+  stackedHeader = false,
+  children
+}: OverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const requestCloseRef = useRef<() => void>(() => {});
   const performCloseRef = useRef<() => void>(() => {});
@@ -116,14 +131,18 @@ export function Overlay({ title, isDirty, onClose, closeLabel = 'Close', centerT
     <div className="overlay-header-actions">
       {/* Hidden under the discard prompt so it can't be tabbed to behind the scrim. */}
       {headerAction && !confirmingDiscard ? headerAction : null}
-      <button
-        type="button"
-        aria-label={confirmingDiscard ? 'Back to editing' : closeLabel}
-        onClick={() => (confirmingDiscard ? setConfirmingDiscard(false) : requestCloseRef.current())}
-        className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-xl text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
-      >
-        {closeLabel === 'Close' ? '×' : closeLabel}
-      </button>
+      {/* confirmingDiscard can only exist if Close was reachable to start a
+          close in the first place, so it's exempt from hideClose. */}
+      {(!hideClose || confirmingDiscard) && (
+        <button
+          type="button"
+          aria-label={confirmingDiscard ? 'Back to editing' : closeLabel}
+          onClick={() => (confirmingDiscard ? setConfirmingDiscard(false) : requestCloseRef.current())}
+          className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-xl text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+        >
+          {closeLabel === 'Close' ? '×' : closeLabel}
+        </button>
+      )}
     </div>
   );
 

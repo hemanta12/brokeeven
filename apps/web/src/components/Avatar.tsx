@@ -16,9 +16,9 @@ const SIZE_CLASSES = {
   lg: 'size-13 text-section',
 } as const;
 
-// Hue derived from the name so the same person is the same colour everywhere,
-// with nothing stored.
-function hueFor(name: string): string {
+// Hue derived from the name, with nothing stored. Exported so other
+// per-person UI can reuse this exact hash instead of a second palette.
+export function hueFor(name: string): string {
   let hash = 0;
   for (let i = 0; i < name.length; i += 1) hash = (hash + name.charCodeAt(i) * (i + 1)) % 9973;
   return PALETTE[hash % PALETTE.length]!;

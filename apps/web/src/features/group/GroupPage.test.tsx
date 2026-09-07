@@ -25,8 +25,8 @@ const baseGroup = {
   settleMode: 'direct',
   createdAt: '2026-01-01',
   people: [
-    { id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' },
-    { id: 'p2', groupId: 'g1', name: 'Bob', userId: null, removedAt: null, createdAt: '2026-01-01' }
+    { id: 'p1', groupId: 'g1', name: 'Alice', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' },
+    { id: 'p2', groupId: 'g1', name: 'Bob', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' }
   ],
   expenses: [
     {
@@ -75,7 +75,7 @@ describe('GroupPage', () => {
             label: null,
             joinCode: 'ABC123',
             createdAt: '2026-01-01',
-            people: [{ id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' }],
+            people: [{ id: 'p1', groupId: 'g1', name: 'Alice', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' }],
             expenses: [],
             settlements: [],
             balances: []
@@ -138,7 +138,7 @@ describe('GroupPage', () => {
       ...baseGroup,
       people: [
         ...baseGroup.people,
-        { id: 'p3', groupId: 'g1', name: 'Cara', userId: null, removedAt: null, createdAt: '2026-01-01' },
+        { id: 'p3', groupId: 'g1', name: 'Cara', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' },
       ],
       balances: [{ fromPersonId: 'p1', toPersonId: 'p2', amount: '10.00' }],
     });
@@ -231,7 +231,7 @@ describe('GroupPage', () => {
     // In edit mode the add trigger is removed entirely, not just disabled.
     expect(screen.queryByRole('button', { name: 'Add new member' })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel editing members' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add new member' }));
     expect(screen.getByRole('button', { name: 'Edit members' })).toBeDisabled();
   });
@@ -261,9 +261,10 @@ describe('GroupPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
 
-    const aliceInput = screen.getByLabelText('Edit Alice');
+    const aliceGroup = screen.getByRole('group', { name: 'Edit Alice' });
+    const aliceInput = within(aliceGroup).getByLabelText('Name');
     fireEvent.change(aliceInput, { target: { value: 'Alicia' } });
-    fireEvent.click(within(aliceInput.closest('form')!).getByRole('button', { name: 'Save name' }));
+    fireEvent.click(within(aliceGroup).getByRole('button', { name: 'Save name' }));
 
     expect(await screen.findByText('✓ Saved')).toBeInTheDocument();
   });
@@ -280,7 +281,7 @@ describe('GroupPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByText('Remove Alice?')).not.toBeInTheDocument();
-    expect(screen.getByLabelText('Edit Alice')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Edit Alice' })).toBeInTheDocument();
   });
 
   it('toggles bulk member edit mode, editing every person at once, then cancels', async () => {
@@ -291,12 +292,51 @@ describe('GroupPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
 
-    expect(screen.getByLabelText('Edit Alice')).toBeInTheDocument();
-    expect(screen.getByLabelText('Edit Bob')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Edit Alice' })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Edit Bob' })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel editing members' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
 
-    expect(screen.queryByLabelText('Edit Alice')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Edit Alice' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Edit members' })).toBeInTheDocument();
+  });
+
+  it('shows a member\'s payment handle in the roster without opening Edit, and hides the row for members with none', async () => {
+    stubGroupFetch({
+      ...baseGroup,
+      people: [
+        { ...baseGroup.people[0], paymentHandle: '@alice' },
+        baseGroup.people[1]
+      ]
+    });
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
+
+    expect(screen.getByText('(@alice)')).toBeInTheDocument();
+  });
+
+  it('saves the name and payment handle fields independently', async () => {
+    stubGroupFetch();
+    renderWithProviders(<GroupPage />, { route: '/g/ABC123', path: '/g/:code' });
+    fireEvent.click(await screen.findByRole('button', { name: 'Just looking' }));
+    fireEvent.click(screen.getByRole('button', { name: 'People (2)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit members' }));
+
+    const aliceGroup = screen.getByRole('group', { name: 'Edit Alice' });
+    // Name unchanged: its Save button stays disabled.
+    expect(within(aliceGroup).getByRole('button', { name: 'Save name' })).toBeDisabled();
+
+    const handleInput = within(aliceGroup).getByLabelText('Handle (opt)');
+    fireEvent.change(handleInput, { target: { value: '@alice' } });
+    const saveHandle = within(aliceGroup).getByRole('button', { name: 'Save handle' });
+    expect(saveHandle).toBeEnabled();
+    fireEvent.click(saveHandle);
+
+    expect(await within(aliceGroup).findByText('✓ Saved')).toBeInTheDocument();
+    // Renaming was never touched, so only the handle route should have been called.
+    const calledUrls = vi.mocked(fetch).mock.calls.map((call) => String(call[0]));
+    expect(calledUrls.some((url) => url.endsWith('/people/p1/handle'))).toBe(true);
+    expect(calledUrls.some((url) => url.endsWith('/people/p1/name'))).toBe(false);
   });
 });

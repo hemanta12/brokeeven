@@ -273,6 +273,10 @@
   width: 100%;
   max-width: 26rem;
   max-height: calc(100vh - 3rem);
+  /* height:auto sizes to content up to max-height; without this the excess
+     spilled past the card's own rounded edge instead of scrolling inside it
+     once content (e.g. a long People list) outgrew the cap. */
+  overflow-y: auto;
   height: auto;
   margin: auto;
   border-radius: var(--radius-card);

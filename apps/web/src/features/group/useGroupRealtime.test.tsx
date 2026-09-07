@@ -27,7 +27,7 @@ vi.mock('socket.io-client', () => ({
   }))
 }));
 
-const alice: Person = { id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' };
+const alice: Person = { id: 'p1', groupId: 'g1', name: 'Alice', paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' };
 
 function baseGroup(overrides: Partial<GroupWithPeople> = {}): GroupWithPeople {
   return {
