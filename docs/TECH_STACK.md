@@ -59,6 +59,10 @@ Added 2026-08-30. One row per actor, signed in or not.
 | name | string | User-facing name, e.g. "Home", "Cancun Trip" |
 | label | string, nullable | Free-text org label (Home/Trip/Individual/etc.) — cosmetic only, no behavior tied to it |
 | joinCode | string, unique | See §2 |
+| currency | string, default `"USD"` | ISO 4217, validated against a 10-code allowlist (USD/EUR/GBP/CAD/AUD/JPY/INR/NPR/SGD/AED). **Display-only** — amounts are stored as plain decimals and balances derive from them, so changing it relabels figures and recomputes nothing. Editable after creation via `PATCH /groups/:code/currency` (Sprint 6.1) |
+| closedAt | timestamp, nullable | Non-null = the ledger is closed. A closed group is **fully read-only**: every ledger write 409s (§3, close-out rules below). Cleared by `POST /groups/:code/reopen`, which clears this column and nothing else (Sprint 6.3) |
+| forgiveThreshold | decimal, default 0 | The per-balance write-off cut-off chosen at close time, persisted so the closed group can explain itself later |
+| settleMode | enum (`direct`, `simplified`), default `direct` | Group-level choice of which set of payments `Settle Up` writes against — raw pairwise, or the minimized plan. Group-level, not per-device, so two people can never follow two different instruction sets against the same debt (Sprint 6.3 amendment) |
 | createdAt | timestamp | |
 
 ### `Person`
@@ -67,7 +71,7 @@ Added 2026-08-30. One row per actor, signed in or not.
 | id | uuid (PK) | |
 | groupId | uuid (FK → Group) | People are scoped per group, no cross-group identity in MVP |
 | name | string | |
-| email | string, nullable | **Still unused.** Google sign-in keeps the address on `User`; left in place because dropping it buys nothing |
+| paymentHandle | string(100), nullable | Added in Sprint 6.4. Free text — a Venmo/UPI id, a payment link, or a note like "cash only" — shown to whoever is paying this person at settle time. The app never parses or transacts on it; still record-keeping only, per PRD §6.4. Set via its own route `PATCH /people/:id/handle` for the same reason renaming has one: `PATCH /people/:id` **is** the soft-delete, so a body it does not recognise must never be able to mean "edit the person". Not written to `ActivityLog` — a contact detail is not a ledger event |
 | userId | uuid (FK → User), nullable | Set when someone identifies as this person via "Who are you?". Unique per `(groupId, userId)`: one account claims at most one person per group. Null = unclaimed, which is every pre-existing row |
 | removedAt | timestamp, nullable | **Soft delete.** Removing someone sets this instead of deleting the row, so historical expenses/splits that reference them stay intact. A non-null `removedAt` hides them from "current members" and blocks adding them to new expenses. |
 | createdAt | timestamp | |
@@ -77,8 +81,9 @@ Added 2026-08-30. One row per actor, signed in or not.
 |---|---|---|
 | id | uuid (PK) | |
 | groupId | uuid (FK → Group) | |
-| description | string | |
-| amount | decimal | USD only |
+| title | string | Required. The original `description` field, renamed |
+| description | string, nullable | Optional free-text notes, added alongside the rename |
+| amount | decimal | Denominated in the group's `currency` — a single base currency per group, no per-expense currency and no rate conversion (PRD §11) |
 | date | date | |
 | payerId | uuid (FK → Person) | Freely reassignable via edit; removal of a payer is blocked until reassigned (per PRD §6.2) |
 | splitMethod | enum (`equal`, `percent`, `custom`) | Kept for display/edit purposes — see `ExpenseSplit` for how it's actually resolved |
@@ -121,12 +126,16 @@ Added 2026-08-30. One row per actor, signed in or not.
 
 **Balances are never stored** — they're computed on read from `ExpenseSplit` (what each person owes) minus `Settlement` (what's already been paid) between each pair of people in a group. This keeps the data an append-only ledger, the same principle real accounting systems use, and means there's no running-total field that can ever drift out of sync with reality.
 
+**Debt simplification never mutates history (Sprint 6.3).** `apps/api/src/settleUp.ts` holds both simplification functions as pure code over plain types, no Prisma: `forgiveBelow(balances, thresholdCents)` drops balances under the write-off cut-off, and `minimizeTransactions(balances)` nets each person then greedily matches largest creditor to largest debtor (deliberately not a provably minimal solver — that's the documented upgrade path). Both operate on the computed balance list, never on stored rows, so simplification is a *view* of the ledger everywhere except one place: `POST /groups/:code/close` **materializes** each forgiven balance as a real `Settlement` row (`note: 'Forgiven at close-out'`) rather than editing or deleting any expense. That's why reopening cannot un-forgive automatically — a written-off row is indistinguishable in kind from a real cash payment, and the reversal path is the existing per-settlement Undo. The same math is mirrored client-side in `apps/web/src/features/group/settleUp.ts` so the close-out review screen recomputes per keystroke without a round-trip (same pattern as `splitPreview.ts`).
+
+**Close-out invariants (Sprint 6.3).** A group can only be closed when its ledger balances after forgiveness — `POST /groups/:code/close` 409s otherwise, because closing blocks settlements and would otherwise strand live debt with no surface left to clear it. The balance check runs against the *minimized* plan, so a debt cycle that nets to zero and needs no payments is closeable. Every ledger write routes through one of two guards in `apps/api/src/group/groupState.ts` — `resolveGroupForWrite` or `rejectIfGroupClosed`; **any new ledger write must go through one of them.** `POST /people/:id/claim` is the one deliberate exception: identifying yourself is not a ledger mutation.
+
 ### `ActivityLog`
 | Field | Type | Notes |
 |---|---|---|
 | id | uuid (PK) | |
 | groupId | uuid (FK → Group) | |
-| action | enum (`expense_add`, `expense_edit`, `expense_delete`, `person_add`, `person_remove`, `settlement`) | |
+| action | enum (`expense_add`, `expense_edit`, `expense_delete`, `person_add`, `person_remove`, `settlement`, `group_edit`, `group_close`, `group_reopen`) | The last three added in Sprint 6.3. `group_edit` covers group-level setting changes (currency, settle mode) |
 | actorName | string, nullable | The acting browser's "who am I" name if set (App Flow §2.5); null if that browser skipped identification |
 | detail | text, nullable | Short human-readable summary, e.g. "deleted 'Groceries' ($42.10)" |
 | createdAt | timestamp | |
@@ -137,7 +146,7 @@ Write-only audit trail for the flat-permissions model (§2) — not read for bal
 
 - Socket.io server runs inside the same Express process on Railway.
 - One "room" per `Group.id`. On loading a group (via join code), the client joins that room.
-- Any mutation (add/edit/delete expense, add/remove person, settle up) writes to Postgres first, then broadcasts the updated state to everyone in that room.
+- Any mutation (add/edit/delete expense, add/remove person, settle up, and the group-level currency / settle-mode / close / reopen writes) writes to Postgres first, then broadcasts the updated state to everyone in that room.
 - No polling needed; clients just listen for room events.
 - **Reconnect behavior (confirmed):** on socket reconnect (phone locks, wifi blip), the client refetches the group's full current state via the existing REST `GET /groups/:code`, then resumes listening for live events. No event-sequencing/replay logic — simplest correct fix, and group payloads are small enough that a full refetch is cheap.
 

@@ -141,7 +141,7 @@ The MVP is feature-complete but has no reason-to-exist next to Splitwise beyond 
 
 ### What this adds to §6
 
-- **§6.3 Expenses** — the split methods become **equal / percentage / custom dollar amount / weighted**. Weighted is the deferred "split-by-shares" item from §7, promoted. Its value is *persistence*: `Person.weight` lives on the person and `Group.defaultSplitMethod` on the group, so a group configures its ratio once instead of re-entering it per expense. It is deliberately a named method rather than a redefinition of "equal" — a UI that says "equal" while producing unequal numbers is a lie, and this is a money app. Amount stays single-currency **per group**, no longer USD-hardcoded.
+- **§6.3 Expenses** — the split methods were to become **equal / percentage / custom dollar amount / weighted**. **Weighted was dropped on 2026-09-06** and deferred back to post-MVP, so the shipped set stays equal / percentage / custom; the paragraph below is kept as the plan of record if it returns. Its value is *persistence*: `Person.weight` lives on the person and `Group.defaultSplitMethod` on the group, so a group configures its ratio once instead of re-entering it per expense. It is deliberately a named method rather than a redefinition of "equal" — a UI that says "equal" while producing unequal numbers is a lie, and this is a money app. Amount stays single-currency **per group**, no longer USD-hardcoded.
 - **§6.4 Balances & Settling** — adds **closing a ledger**: a group-level forgiveness threshold, a one-tap close that forgives sub-threshold balances and presents a minimum-transaction settle-up, and a reversible closed state. Forgiven balances are materialized as `Settlement` rows, so **the record is preserved and nothing is deleted**.
   - "No debt-simplification algorithm" in §6.4 **still holds for the Balances tab**, which continues to show raw pairwise amounts. Simplification happens *only* inside the close-out view.
   - "No payment integration" in §6.4 **is unchanged**. Sprint 6.4 adds a per-person payment *handle* — free text, surfaced at settle time with copy and a QR. No money moves through the app; it remains record-keeping.
@@ -153,7 +153,7 @@ The MVP is feature-complete but has no reason-to-exist next to Splitwise beyond 
 |---|---|
 | Debt simplification | Partially promoted — close-out only |
 | Multi-currency support | Partially promoted — per-group base currency only; per-expense currency and conversion stay deferred |
-| Split-by-shares | Promoted, as `weighted` |
+| Split-by-shares | Promoted as `weighted`, then **dropped 2026-09-06** and deferred again (decision-log 2026-09-06) |
 | Payment integration | **Unchanged — still out of scope.** A handle is not an integration |
 | Recurring expenses | Still deferred, but it was the best-evidenced finding not picked up (Spliit GitHub #114, 27 👍). Held back as an audience call — it serves roommates, not travelers. Revisit if household use dominates |
 
@@ -163,6 +163,6 @@ The MVP is feature-complete but has no reason-to-exist next to Splitwise beyond 
 
 Phase 5 gets the MVP deployed and smoke-tested. Phase 6 builds the differentiation. Phase 7 puts it in front of people — and is deliberately gated: Sprint 7.1 (real usage with a known circle) must precede Sprint 7.2 (public launch), because the story `MARKETING.md` tells is the close-the-ledger story, and a launch post landing while the app has never been used burns its one shot.
 
-An earlier draft wedged this work between hardening and launch, which would have shipped four features before any real user touched the app — inverting V2's own recommendation that usage data should gate the close-out investment. The phase split resolves that: the app is live from Phase 5, and 7.1 provides the usage signal before anything goes wide. Watch specifically whether anyone closes a trip or sets a weight; those two are the bet, and if nobody touches them the differentiation didn't land.
+An earlier draft wedged this work between hardening and launch, which would have shipped four features before any real user touched the app — inverting V2's own recommendation that usage data should gate the close-out investment. The phase split resolves that: the app is live from Phase 5, and 7.1 provides the usage signal before anything goes wide. Watch specifically whether anyone closes a trip or uses the simplified settle mode; with weighted splits dropped, those are the bet, and if nobody touches them the differentiation didn't land.
 
 Tasks: `ROADMAP.md` Phase 6 (Sprints 6.1–6.5). Launch and feedback: Phase 7. Launch angle: `MARKETING.md`.

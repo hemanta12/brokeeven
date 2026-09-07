@@ -108,9 +108,25 @@
   - Otherwise, confirm removal → their splits on remaining expenses are redistributed automatically per the rules already defined → Group View updates live for everyone.
 
 ### 2.9 Settle Up (full-page overlay over Group View)
-- Pick "From" and "To" (prefilled with the largest outstanding pair, editable), amount (prefilled with the full owed amount, editable for a partial settlement), and a required free-text note ("Venmo", "cash", etc.).
+- Opened from a specific balance row, so "From" and "To" are prefilled from **that pair** (editable behind a pencil disclosure); amount is prefilled with the full owed amount, editable for a partial settlement; a free-text note ("Venmo", "cash", etc.) is required. The old "largest outstanding pair" prefill was removed in Phase 4 when every balance row gained its own Settle Up button.
+- In `simplified` settle mode (§2.11) the row comes from the minimized plan rather than the raw pairwise list, so the overpayment check measures against the plan the viewer is actually following.
 - The overlay uses the same one-X exit, focus, scroll, safe-area, Escape, and dirty-form confirmation behavior as Add/Edit Expense.
+- **Payment handle (added 2026-09-06, Sprint 6.4):** when the payee has one set, a row above the Note field shows it with a Copy action. Copy puts the **handle and the amount together** on the clipboard, since that is what has to be retyped into the payment app, and confirms with a haptic plus a visible "Copied" label. Where the clipboard is unavailable (insecure origin, denied permission) nothing fails loudly — the handle is on screen and selectable. No QR code: a handle is free text, so a QR of "@alice" scans to the literal string and opens nothing.
 - Confirm writes a `Settlement` record; balances recompute and update live for everyone (record-keeping only — no money actually moves, per PRD §6.4).
+
+### 2.10 Close the Ledger / Reopen — added 2026-09-06 (Sprint 6.3)
+- Entry point is the Balances tab, alongside the balances themselves. No new screen in the nav and no new share surface — the existing join link is still the shareable summary.
+- Closing opens a review screen before anything is written: a forgive threshold (prefilled from the group, editable), the list of balances that would be **written off** at that threshold, and the minimum-transaction plan for whatever is left. The list recomputes per keystroke, locally, so the number and the consequence are always on screen together.
+- **A group can only be closed when it balances.** While real payments remain, the Confirm action is disabled and the threshold is the dial you raise until it clears — leaving two honest exits: settle it for real, or write it off on the record. A balanced ledger renders the zero figure in `--text-zero`.
+- Confirming writes one `Settlement` per forgiven balance (note: "Forgiven at close-out"), stamps `closedAt`, logs `group_close`, and broadcasts. Nothing is deleted; the record is preserved.
+- A closed group renders **fully read-only** — no add expense, no settle, no member add/remove/rename, no currency change; the API 409s each one rather than relying on the UI to hide it. Identifying yourself ("Who are you?") still works.
+- **Reopen** clears `closedAt` and nothing else. The close-out settlements stay, because a forgiven row is indistinguishable in kind from a real cash payment; over-forgiving is undone one settlement at a time with the existing Undo, after reopening.
+
+### 2.11 Settle Mode (Balances tab) — added 2026-09-06 (Sprint 6.3 amendment)
+- The Balances tab offers a group-level choice between **direct** (raw pairwise "who owes whom", the default) and **simplified** (the minimized payment plan). It renders as a radio group, not a view tab — it is a setting that changes what `Settle Up` writes against, and tabs cannot describe an option before you pick it.
+- **Self-suppressing:** the choice does not render at all unless simplifying actually reduces the number of payments.
+- The mode is stored on the group and shared over the existing realtime broadcast, deliberately **not** per-device: with both surfaces settleable, a per-device preference would let two people follow two instruction sets against the same debt and double-record the work.
+- Balance rows read "pays" in simplified mode and "owes" in direct mode, since a plan transfer is often a synthetic pair rather than a debt that literally exists between those two people.
 
 ## 3. Real-Time Behavior Notes
 
