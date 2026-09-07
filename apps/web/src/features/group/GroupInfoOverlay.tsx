@@ -9,10 +9,12 @@ interface GroupInfoOverlayProps {
   joinCode: string;
   inviteLink: string;
   currency: string;
+  // Closed group: currency is locked like the rest of the ledger.
+  readOnly?: boolean;
   onClose: () => void;
 }
 
-export function GroupInfoOverlay({ joinCode, inviteLink, currency, onClose }: GroupInfoOverlayProps) {
+export function GroupInfoOverlay({ joinCode, inviteLink, currency, readOnly = false, onClose }: GroupInfoOverlayProps) {
   const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
   const updateCurrency = useUpdateGroupCurrency(joinCode);
   const [savedCurrency, setSavedCurrency] = useState(false);
@@ -86,7 +88,7 @@ export function GroupInfoOverlay({ joinCode, inviteLink, currency, onClose }: Gr
             <select
               id="group-currency-edit"
               value={currency}
-              disabled={updateCurrency.isPending}
+              disabled={updateCurrency.isPending || readOnly}
               onChange={(event) =>
                 updateCurrency.mutate(event.target.value, { onSuccess: () => setSavedCurrency(true) })
               }
@@ -102,7 +104,9 @@ export function GroupInfoOverlay({ joinCode, inviteLink, currency, onClose }: Gr
           <p className="mt-1.5 font-sans text-micro text-dim">
             {updateCurrency.isError
               ? updateCurrency.error.message
-              : "Changes how amounts are shown, does not convert them."}
+              : readOnly
+                ? "Locked while the group is closed."
+                : "Changes how amounts are shown, does not convert them."}
           </p>
         </div>
         <p className="mt-auto border-t border-line pt-4 font-sans text-label text-dim">

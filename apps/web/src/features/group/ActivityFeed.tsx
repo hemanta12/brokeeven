@@ -13,6 +13,9 @@ const ACTION_LABELS: Record<ActivityEntry['action'], string> = {
   person_rename: 'Person renamed',
   settlement: 'Settled',
   settlement_delete: 'Settlement undone',
+  group_edit: 'Group updated',
+  group_close: 'Group closed',
+  group_reopen: 'Group reopened',
 };
 
 // Tag colour by kind (add/remove/edit); never the only cue — the tag text names
@@ -23,6 +26,9 @@ const ACTION_TONE: Record<ActivityEntry['action'], string> = {
   settlement: 'text-accent',
   expense_edit: 'text-notice',
   person_rename: 'text-notice',
+  group_edit: 'text-notice',
+  group_close: 'text-notice',
+  group_reopen: 'text-accent',
   expense_delete: 'text-down',
   person_remove: 'text-down',
   settlement_delete: 'text-down',

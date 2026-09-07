@@ -15,6 +15,8 @@ interface ExpenseDetailProps {
   identityPersonId: string | null;
   viewerUserId: string | null;
   currency: string;
+  // Closed group: hide Edit/Delete regardless of ownership.
+  readOnly?: boolean;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -30,6 +32,7 @@ export function ExpenseDetail({
   identityPersonId,
   viewerUserId,
   currency,
+  readOnly = false,
   onClose,
   onEdit,
   onDelete,
@@ -37,7 +40,7 @@ export function ExpenseDetail({
   deleteError
 }: ExpenseDetailProps) {
   const payer = people.find((person) => person.id === expense.payerId);
-  const editable = canEdit(expense.createdByUserId, viewerUserId);
+  const editable = !readOnly && canEdit(expense.createdByUserId, viewerUserId);
   // Two-step inline confirm for delete, same pattern as EditPersonForm.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -123,7 +126,7 @@ export function ExpenseDetail({
         {!editable && (
           <div className="modal-footer">
             <p className="w-full text-center font-sans text-label text-dim">
-              Only the person who added this can edit it.
+              {readOnly ? 'This group is closed.' : 'Only the person who added this can edit it.'}
             </p>
           </div>
         )}

@@ -15,8 +15,16 @@ export interface Group {
   // ISO 4217 group base currency (Sprint 6.1). Always present — the API defaults
   // it to "USD".
   currency: string;
+  // Set once the group is closed out (Sprint 6.3); null while open.
+  closedAt: string | null;
+  // Balances at or below this (currency units, decimal string) are forgiven at close.
+  forgiveThreshold: string;
+  // Which surface the group settles from. Shared, so everyone follows one plan.
+  settleMode: SettleMode;
   createdAt: string;
 }
+
+export type SettleMode = 'direct' | 'simplified';
 
 export type SplitMethod = 'equal' | 'percent' | 'custom';
 

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from '../../lib/apiClient';
 import { capitalizeFirst } from '../../shared/format';
 import { vibrateConfirm } from '../../shared/haptics';
-import type { Group, GroupWithPeople, Person } from './types';
+import type { Group, GroupWithPeople, Person, SettleMode } from './types';
 
 export function groupQueryKey(code: string | undefined) {
   return ['group', code];
@@ -18,6 +18,9 @@ export function useGroupByCode(code: string | undefined) {
     // read for consistency.
     select: (group): GroupWithPeople => ({
       ...group,
+      // An API that predates the field would otherwise leave settleMode undefined,
+      // which reads as "no surface is live" and hides every Settle button.
+      settleMode: group.settleMode ?? 'direct',
       people: group.people.map((person) => ({ ...person, name: capitalizeFirst(person.name) }))
     })
   });
@@ -33,7 +36,10 @@ export interface ActivityEntry {
     | 'person_remove'
     | 'person_rename'
     | 'settlement'
-    | 'settlement_delete';
+    | 'settlement_delete'
+    | 'group_edit'
+    | 'group_close'
+    | 'group_reopen';
   actorName: string | null;
   detail: string | null;
   createdAt: string;
@@ -84,6 +90,47 @@ export function useUpdateGroupCurrency(code: string | undefined) {
         method: 'PATCH',
         body: JSON.stringify({ currency })
       }),
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
+  });
+}
+
+export function useUpdateSettleMode(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (settleMode: SettleMode) =>
+      apiFetch<Group>(`/groups/${code}/settle-mode`, {
+        method: 'PATCH',
+        body: JSON.stringify({ settleMode })
+      }),
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
+  });
+}
+
+export function useCloseGroup(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (forgiveThreshold: number) =>
+      apiFetch<Group>(`/groups/${code}/close`, {
+        method: 'POST',
+        body: JSON.stringify({ forgiveThreshold })
+      }),
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
+  });
+}
+
+export function useReopenGroup(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => apiFetch<Group>(`/groups/${code}/reopen`, { method: 'POST' }),
     onSuccess: () => {
       vibrateConfirm();
       return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });

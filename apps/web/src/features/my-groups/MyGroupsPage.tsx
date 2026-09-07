@@ -6,7 +6,7 @@ import { useMyGroups, useSession, type MyGroup } from '../auth/api';
 import { Amount } from '../../components/Amount';
 import { AvatarCluster } from '../../components/Avatar';
 import { CornerDecor } from '../../components/CornerDecor';
-import { capitalizeFirst, formatUpdatedLabel } from '../../shared/format';
+import { capitalizeFirst, formatDate, formatUpdatedLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 
 // Plain text, not a pill — a pill inside a row that's already a link reads as a button.
@@ -30,6 +30,93 @@ function BalanceAmount({
       label={direction === 'owed' ? 'you’re owed' : 'you owe'}
       className="text-row-amount font-semibold"
     />
+  );
+}
+
+function LockGlyph() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      aria-hidden="true"
+      className="h-3 w-3 shrink-0"
+    >
+      <rect x="4.5" y="8.75" width="11" height="7.25" rx="1.75" />
+      <path d="M7.25 8.75V6.5a2.75 2.75 0 0 1 5.5 0v2.25" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// A closed group keeps its figures but loses its lift and its action; Add expense
+// would only 409.
+function GroupCard({ group }: { group: MyGroup }) {
+  const closed = Boolean(group.closedAt);
+
+  return (
+    <li
+      className={`rounded-card border border-line px-4 pb-3 pt-3.5 ${
+        closed ? 'bg-surface/70' : 'bg-surface shadow-card transition-shadow duration-150 hover:shadow-card-hover'
+      }`}
+    >
+      <Link to={`/g/${group.joinCode}`} className="focus-ring flex min-h-11 items-start gap-3 rounded-inner">
+        {/* min-w-0 lets the name clamp instead of pushing the amount off its column. */}
+        <span className="min-w-0 flex-1">
+          <span className="flex items-start gap-2">
+            <span
+              className={`min-w-0 font-sans text-body font-semibold leading-snug line-clamp-2 ${
+                closed ? 'text-dim' : 'text-ink'
+              }`}
+            >
+              {group.name}
+            </span>
+            {/* "Individual" is auto-set on quick 1:1 groups; not worth showing. */}
+            {group.label && group.label !== 'Individual' && (
+              <span
+                className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 font-sans text-micro leading-none ${
+                  closed ? 'border-line-strong text-dim' : 'border-accent text-accent'
+                }`}
+              >
+                {capitalizeFirst(group.label)}
+              </span>
+            )}
+          </span>
+          <span className="mt-0.5 block truncate font-sans text-micro text-dim">
+            Updated {formatUpdatedLabel(group.lastActivityAt)}
+          </span>
+        </span>
+        <span className="shrink-0">
+          <BalanceAmount direction={group.netDirection} amount={group.netAmount} currency={group.currency} />
+        </span>
+      </Link>
+      <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
+        {closed ? (
+          <span className="flex min-h-11 items-center gap-1.5 font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
+            <LockGlyph />
+            Closed {formatDate(group.closedAt as string)}
+          </span>
+        ) : (
+          /* GroupPage reads ?add=expense and opens the modal directly. */
+          /* Ink link, not accent: accent next to the accent balance figure is ambiguous. */
+          <Link
+            to={`/g/${group.joinCode}?add=expense`}
+            className="focus-ring flex min-h-11 items-center gap-1.5 rounded-full pr-2 font-sans text-label font-semibold text-ink"
+          >
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3.5 w-3.5 text-accent">
+              <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+            </svg>
+            Add expense
+          </Link>
+        )}
+        <span className="flex shrink-0 items-center gap-2">
+          <AvatarCluster names={group.members} total={group.memberCount} />
+          <span className="font-sans text-micro text-dim">
+            {group.memberCount} {group.memberCount === 1 ? 'person' : 'people'}
+          </span>
+        </span>
+      </div>
+    </li>
   );
 }
 
@@ -129,6 +216,8 @@ export function MyGroupsPage() {
 
   const groups = data?.groups ?? [];
   const hasGroups = groups.length > 0;
+  const openGroups = groups.filter((group) => !group.closedAt);
+  const closedGroups = groups.filter((group) => group.closedAt);
 
   return (
     <main className="flex flex-col pt-2">
@@ -152,61 +241,47 @@ export function MyGroupsPage() {
           </div>
         )}
 
-        {hasGroups && (
+        {openGroups.length > 0 && (
           <ul className="mt-4 flex flex-col gap-2.5 px-4 sm:px-6">
-            {groups.map((group) => (
-              /* Two sibling links, not a button nested in a link, so both targets are real anchors. */
-              <li
-                key={group.id}
-                className="rounded-card border border-line bg-surface px-4 pb-3 pt-3.5 shadow-card transition-shadow duration-150 hover:shadow-card-hover"
-              >
-                <Link
-                  to={`/g/${group.joinCode}`}
-                  className="focus-ring flex min-h-11 items-start gap-3 rounded-inner"
-                >
-                  {/* min-w-0 lets the name clamp instead of pushing the amount off its column. */}
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-start gap-2">
-                      <span className="min-w-0 font-sans text-body font-semibold leading-snug text-ink line-clamp-2">
-                        {group.name}
-                      </span>
-                      {/* "Individual" is auto-set on quick 1:1 groups; not worth showing. */}
-                      {group.label && group.label !== 'Individual' && (
-                        <span className="mt-0.5 shrink-0 rounded-full border border-accent px-2 py-0.5 font-sans text-micro leading-none text-accent">
-                          {capitalizeFirst(group.label)}
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-0.5 block truncate font-sans text-micro text-dim">
-                      Updated {formatUpdatedLabel(group.lastActivityAt)}
-                    </span>
-                  </span>
-                  <span className="shrink-0">
-                    <BalanceAmount direction={group.netDirection} amount={group.netAmount} currency={group.currency} />
-                  </span>
-                </Link>
-                <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
-                  {/* GroupPage reads ?add=expense and opens the modal directly. */}
-                  {/* Ink link, not accent: accent next to the accent balance figure is ambiguous. */}
-                  <Link
-                    to={`/g/${group.joinCode}?add=expense`}
-                    className="focus-ring flex min-h-11 items-center gap-1.5 rounded-full pr-2 font-sans text-label font-semibold text-ink"
-                  >
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3.5 w-3.5 text-accent">
-                      <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-                    </svg>
-                    Add expense
-                  </Link>
-                  <span className="flex shrink-0 items-center gap-2">
-                    <AvatarCluster names={group.members} total={group.memberCount} />
-                    <span className="font-sans text-micro text-dim">
-                      {group.memberCount} {group.memberCount === 1 ? 'person' : 'people'}
-                    </span>
-                  </span>
-                </div>
-              </li>
+            {openGroups.map((group) => (
+              <GroupCard key={group.id} group={group} />
             ))}
           </ul>
+        )}
+
+        {hasGroups && openGroups.length === 0 && (
+          <p className="mt-4 px-4 font-sans text-label text-dim sm:px-6">
+            Every group is closed. Start a new one below.
+          </p>
+        )}
+
+        {/* Native <details>: closed groups are archive, so they cost a tap by default.
+            Defaulted open when there is nothing else on the page, so the list never
+            renders empty with content one tap away. */}
+        {closedGroups.length > 0 && (
+          <details open={openGroups.length === 0} className="group mt-6 px-4 sm:px-6">
+            <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-inner font-sans text-label font-medium text-dim [&::-webkit-details-marker]:hidden">
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+                className="h-3.5 w-3.5 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none"
+              >
+                <path d="M7.5 4.5l6 5.5-6 5.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Closed groups
+              <span className="rounded-full bg-sunken px-2 py-0.5 font-sans text-micro font-semibold text-dim">
+                {closedGroups.length}
+              </span>
+            </summary>
+            <ul className="mt-2.5 flex flex-col gap-2.5">
+              {closedGroups.map((group) => (
+                <GroupCard key={group.id} group={group} />
+              ))}
+            </ul>
+          </details>
         )}
 
         <div className="bottom-bar mt-auto">

@@ -2,25 +2,26 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { BackButton } from "../../components/BackButton";
-import { BalanceRow } from "../../components/BalanceRow";
 import { Button } from "../../components/Button";
 import { CornerDecor } from "../../components/CornerDecor";
 import { ExpenseRow } from "../../components/ExpenseRow";
 import { Tabs } from "../../components/Tabs";
 import { ApiError, hasCompletedWrite } from "../../lib/apiClient";
 import { EmptyState, ErrorState, NotFoundState } from "../../shared/RouteStates";
-import { capitalizeFirst, formatDateGroupLabel } from "../../shared/format";
+import { capitalizeFirst, formatDate, formatDateGroupLabel } from "../../shared/format";
 import { getIdentity } from "../../shared/identity";
 import { resolveIdentityPersonId, viewerNetOnExpense } from "./ownership";
 import { useDeleteExpense } from "../expense/api";
 import { ExpenseDetail } from "../expense/ExpenseDetail";
 import { ExpenseModal } from "../expense/ExpenseModal";
 import { SettleUpModal } from "../settlement/SettleUpModal";
-import { useGroupByCode } from "./api";
+import { useGroupByCode, useReopenGroup } from "./api";
+import { CloseGroupModal } from "./CloseGroupModal";
 import { groupExpensesByDate } from "./expenseGroups";
 import { GroupInfoOverlay } from "./GroupInfoOverlay";
 import { GroupPageSkeleton } from "./GroupPageSkeleton";
 import { GroupSummary } from "./GroupSummary";
+import { BalancesPanel } from "./BalancesPanel";
 import { PeoplePanel } from "./PeoplePanel";
 import { SettlementHistory } from "./SettlementHistory";
 import { ActivityFeed } from "./ActivityFeed";
@@ -29,12 +30,6 @@ import { useGroupRealtime } from "./useGroupRealtime";
 import { WhoAreYouPrompt } from "./WhoAreYouPrompt";
 
 type Tab = "expenses" | "balances" | "activity";
-
-function balanceKey(
-  balance: Pick<Balance, "fromPersonId" | "toPersonId">,
-): string {
-  return `${balance.fromPersonId}:${balance.toPersonId}`;
-}
 
 export function GroupPage() {
   const { code } = useParams<{ code: string }>();
@@ -63,15 +58,24 @@ export function GroupPage() {
     null,
   );
   // Derived, not state: open while the URL says so; closing clears the param.
-  const expenseModal = editingExpense ?? (openAddExpense ? "new" : null);
+  // A closed group takes no new expenses, so the deep link is inert there.
+  const expenseModal =
+    editingExpense ?? (openAddExpense && !group?.closedAt ? "new" : null);
 
   function closeExpenseModal() {
     setEditingExpense(null);
     if (openAddExpense) setSearchParams({}, { replace: true });
   }
-  const [settlingBalance, setSettlingBalance] = useState<Balance | null>(null);
+  // Settle Up measures "already owed" against the list the row came from, so the
+  // simplified plan and the raw balances each stay internally consistent.
+  const [settling, setSettling] = useState<{
+    balance: Balance;
+    reference: Balance[];
+  } | null>(null);
+  const [showCloseGroup, setShowCloseGroup] = useState(false);
 
   const deleteExpense = useDeleteExpense(code);
+  const reopenGroup = useReopenGroup(code);
   const pulsingIds = useGroupRealtime(code, group?.id);
 
   function closeWhoAreYou() {
@@ -123,12 +127,7 @@ export function GroupPage() {
   const shouldShowWhoAreYou =
     !resolvedIdentityPersonId && group.people.length > 0 && !dismissedWhoAreYou;
   const inviteLink = `${window.location.origin}/g/${code}`;
-
-  function balanceDirection(balance: Balance): "owe" | "owed" | "neutral" {
-    if (balance.fromPersonId === resolvedIdentityPersonId) return "owe";
-    if (balance.toPersonId === resolvedIdentityPersonId) return "owed";
-    return "neutral";
-  }
+  const closed = Boolean(group.closedAt);
 
   return (
     <main className="flex flex-col pt-2">
@@ -138,10 +137,12 @@ export function GroupPage() {
         </p>
       )}
       <div className="flex flex-1 flex-col">
+        {/* Closed state drains the band's green rather than adding a banner: a
+            banner pushes the header down and breaks the straddling summary card. */}
         <header
-          className={`relative -mx-4 -mt-2 overflow-hidden bg-band px-4 pt-3 text-white sm:rounded-t-card sm:px-6 ${
-            resolvedIdentityPersonId ? "pb-20" : "pb-11"
-          }`}
+          className={`relative -mx-4 -mt-2 overflow-hidden px-4 pt-3 text-white sm:rounded-t-card sm:px-6 ${
+            closed ? "bg-band-closed" : "bg-band"
+          } ${resolvedIdentityPersonId ? "pb-20" : "pb-11"}`}
         >
           <CornerDecor />
           <div className="relative flex items-center justify-between gap-3">
@@ -190,18 +191,45 @@ export function GroupPage() {
             </button>
             </div>
           </div>
-          {group.label && group.label !== 'Individual' && (
-            <p className="relative mt-4 font-sans text-micro uppercase tracking-wide text-band-dim">
-              {capitalizeFirst(group.label)}
-            </p>
+          {(closed || (group.label && group.label !== 'Individual')) && (
+            <div className="relative mt-4 flex flex-wrap items-center gap-2">
+              {/* Filled, not outlined: punched out of the band so it reads as a
+                  stamp on the record rather than one more control. */}
+              {closed && (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-band-dim px-2.5 py-1 font-sans text-micro font-bold uppercase tracking-[0.08em] text-band-closed">
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    aria-hidden="true"
+                    className="h-3 w-3"
+                  >
+                    <rect x="4.5" y="8.75" width="11" height="7.25" rx="1.75" />
+                    <path d="M7.25 8.75V6.5a2.75 2.75 0 0 1 5.5 0v2.25" strokeLinecap="round" />
+                  </svg>
+                  Closed
+                </span>
+              )}
+              {group.label && group.label !== 'Individual' && (
+                <span className="font-sans text-micro uppercase tracking-wide text-band-dim">
+                  {capitalizeFirst(group.label)}
+                </span>
+              )}
+            </div>
           )}
           <h1
             className={`relative heading text-display text-white ${
-              group.label && group.label !== 'Individual' ? 'mt-1' : 'mt-3'
+              closed || (group.label && group.label !== 'Individual') ? 'mt-1' : 'mt-3'
             }`}
           >
             {group.name}
           </h1>
+          {closed && (
+            <p className="relative mt-1.5 font-sans text-label text-band-dim">
+              Closed {formatDate(group.closedAt as string)}. Nothing can be added or changed.
+            </p>
+          )}
         </header>
 
         {/* Only meaningful once the viewer has claimed a person. */}
@@ -285,48 +313,17 @@ export function GroupPage() {
             aria-labelledby="tab-balances"
             className="mt-2 px-4 sm:px-6"
           >
-            {group.balances.length === 0 ? (
-              /* Settled group: no balances, but a settlement may still need undoing. */
-              <EmptyState message="No balances yet. Add an expense to get started." />
-            ) : (
-              <div>
-                <ul className="flex flex-col gap-2">
-                  {group.balances.map((balance) => {
-                    const from = group.people.find(
-                      (p) => p.id === balance.fromPersonId,
-                    );
-                    const to = group.people.find(
-                      (p) => p.id === balance.toPersonId,
-                    );
-                    const key = balanceKey(balance);
-                    return (
-                      <li
-                        key={key}
-                        className={`entry-card ${pulsingIds.has(key) ? "row-pulse" : ""}`}
-                      >
-                        <BalanceRow
-                          fromName={from?.name ?? "Someone"}
-                          toName={to?.name ?? "someone"}
-                          amount={Number(balance.amount)}
-                          currency={group.currency}
-                          direction={balanceDirection(balance)}
-                          fromIsViewer={
-                            balance.fromPersonId === resolvedIdentityPersonId
-                          }
-                          toIsViewer={balance.toPersonId === resolvedIdentityPersonId}
-                          onSettle={
-                            /* Others' debt is visible as context; clearing it isn't the viewer's action. */
-                            balanceDirection(balance) === "neutral"
-                              ? undefined
-                              : () => setSettlingBalance(balance)
-                          }
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
+            <BalancesPanel
+              code={code}
+              balances={group.balances}
+              people={group.people}
+              currency={group.currency}
+              settleMode={group.settleMode}
+              identityPersonId={resolvedIdentityPersonId}
+              closed={closed}
+              pulsingIds={pulsingIds}
+              onSettle={(balance, reference) => setSettling({ balance, reference })}
+            />
 
             <SettlementHistory
               code={code}
@@ -334,7 +331,22 @@ export function GroupPage() {
               people={group.people}
               identityPersonId={resolvedIdentityPersonId}
               currency={group.currency}
+              readOnly={closed}
             />
+
+            {/* Terminal action of the tab, so it sits last and centered, below a
+                rule. Secondary, not danger: closing is reversible, and red would
+                overstate it. Full size, not sm — sm is 36px, under the 44pt floor. */}
+            {!closed && group.people.length > 0 && (
+              <div className="mt-8 flex flex-col items-center gap-2 border-t border-line pt-6">
+                <Button variant="secondary" onClick={() => setShowCloseGroup(true)}>
+                  Close group
+                </Button>
+                <p className="text-center font-sans text-micro text-dim">
+                  Locks the ledger once everything reaches zero. You can reopen it.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -349,20 +361,37 @@ export function GroupPage() {
           </div>
         )}
 
+        {/* The bar stays in both states; removing it on close collapses the
+            page's shape. Reopen takes the slot Add Expense had. */}
         <div className="bottom-bar mt-auto">
-          <Button onClick={() => setEditingExpense("new")}>
-            <svg
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-              className="h-4 w-4"
-            >
-              <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-            </svg>
-            Add Expense
-          </Button>
+          {closed ? (
+            <>
+              <p className="text-center font-sans text-label text-dim">
+                Reopen to add expenses or settle up again.
+              </p>
+              <Button
+                variant="secondary"
+                onClick={() => reopenGroup.mutate()}
+                disabled={reopenGroup.isPending}
+              >
+                {reopenGroup.isPending ? "Reopening…" : "Reopen group"}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setEditingExpense("new")}>
+              <svg
+                viewBox="0 0 20 20"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+                className="h-4 w-4"
+              >
+                <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+              </svg>
+              Add Expense
+            </Button>
+          )}
         </div>
       </div>
 
@@ -373,6 +402,7 @@ export function GroupPage() {
           identityPersonId={resolvedIdentityPersonId}
           viewerUserId={group.viewerUserId}
           currency={group.currency}
+          readOnly={closed}
           onClose={() => setViewingExpense(null)}
           onEdit={() => {
             setEditingExpense(viewingExpense);
@@ -397,14 +427,25 @@ export function GroupPage() {
         />
       )}
 
-      {settlingBalance && (
+      {settling && (
         <SettleUpModal
           code={code}
           people={group.people}
-          balance={settlingBalance}
+          balance={settling.balance}
+          balances={settling.reference}
+          currency={group.currency}
+          onClose={() => setSettling(null)}
+        />
+      )}
+
+      {showCloseGroup && !closed && (
+        <CloseGroupModal
+          code={code}
+          people={group.people}
           balances={group.balances}
           currency={group.currency}
-          onClose={() => setSettlingBalance(null)}
+          defaultThreshold={group.forgiveThreshold}
+          onClose={() => setShowCloseGroup(false)}
         />
       )}
 
@@ -413,6 +454,7 @@ export function GroupPage() {
           joinCode={group.joinCode}
           inviteLink={inviteLink}
           currency={group.currency}
+          readOnly={closed}
           onClose={() => setShowInfo(false)}
         />
       )}
@@ -423,6 +465,7 @@ export function GroupPage() {
           people={group.people}
           identityPersonId={resolvedIdentityPersonId}
           pulsingIds={pulsingIds}
+          readOnly={closed}
           onClose={() => setShowPeople(false)}
         />
       )}

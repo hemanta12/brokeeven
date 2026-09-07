@@ -17,17 +17,20 @@ interface PeoplePanelProps {
   people: Person[];
   identityPersonId: string | null;
   pulsingIds: Set<string>;
+  // Closed group: roster view only — no add, rename, or remove.
+  readOnly?: boolean;
   onClose: () => void;
 }
 
 // Own component so edit-mode, the add-person form, and the typed name unmount
 // with the panel — nothing for the parent to reset.
-export function PeoplePanel({ code, people, identityPersonId, pulsingIds, onClose }: PeoplePanelProps) {
+export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOnly = false, onClose }: PeoplePanelProps) {
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);
   const { touch, untouch, isRequiredError } = useBlurValidation();
 
-  const [isEditingMembers, setIsEditingMembers] = useState(false);
+  const [isEditingMembersState, setIsEditingMembers] = useState(false);
+  const isEditingMembers = isEditingMembersState && !readOnly;
   const [showAddPersonForm, setShowAddPersonForm] = useState(false);
   const [personName, setPersonName] = useState("");
 
@@ -48,16 +51,18 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, onClos
       <div className="flex flex-1 flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <p className="font-sans text-label text-dim">{people.length} in this group</p>
-          <Button
-            variant={isEditingMembers ? "primary" : "tertiary"}
-            aria-label={isEditingMembers ? "Cancel editing members" : "Edit members"}
-            onClick={() => setIsEditingMembers((current) => !current)}
-            disabled={showAddPersonForm}
-            size="sm"
-            className="shrink-0"
-          >
-            {isEditingMembers ? "Done" : "Edit"}
-          </Button>
+          {!readOnly && (
+            <Button
+              variant={isEditingMembers ? "primary" : "tertiary"}
+              aria-label={isEditingMembers ? "Cancel editing members" : "Edit members"}
+              onClick={() => setIsEditingMembers((current) => !current)}
+              disabled={showAddPersonForm}
+              size="sm"
+              className="shrink-0"
+            >
+              {isEditingMembers ? "Done" : "Edit"}
+            </Button>
+          )}
         </div>
         <ul className="flex flex-wrap items-center gap-2">
           {people.map((person) =>
@@ -86,7 +91,11 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, onClos
           )}
         </ul>
 
-        {showAddPersonForm ? (
+        {readOnly ? (
+          <p className="mt-auto pt-2 font-sans text-label text-dim">
+            This group is closed. Reopen it to change who&apos;s in the group.
+          </p>
+        ) : showAddPersonForm ? (
           <form onSubmit={handleAddPerson} className="flex flex-col gap-3">
             <Field
               id="add-person-name"

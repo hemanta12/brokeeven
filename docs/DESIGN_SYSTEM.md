@@ -50,6 +50,7 @@ ratio still governs text and control boundaries, where WCAG defines it.
 | `notice` | `#7A5E12` | Semantic amber only: the overpayment warning and the activity edit/rename tags |
 | `notice-wash` | `#F4EBD3` | Overpayment warning fill |
 | `band` | `#123322` | **One device, used twice**: the landing proof band and the GroupPage header. Anything dark added later uses this token or it reads as an accident |
+| `band-closed` | `#2e322f` | The same band with the green drained out: a **closed group** (Sprint 6.3). Matched to `band`'s weight rather than lightened, so the header keeps its structural role instead of degrading into a banner. White 13.0:1, `band-dim` 6.5:1, so every child of the band still passes on it |
 | `band-dim` | `#A9BBAE` | Secondary text on the band, and the **only** colour for a control boundary sitting on it. White at 22% composites to `#465F53`, which is 2.0:1 and fails WCAG 1.4.11 |
 | `focus` | `#12140F` | Focus ring. Deliberately not the accent |
 | `scrim` | ink at 45% | Behind a compact overlay |
@@ -222,6 +223,7 @@ the new ones.
   --color-notice-wash:  #f4ebd3;
 
   --color-band:         #123322;   /* landing proof band + GroupPage header */
+  --color-band-closed:  #2e322f;   /* the band, green drained: a closed group */
   --color-band-dim:     #a9bbae;   /* 6.8:1 on band; the ONLY control
                                       boundary colour on the band */
 

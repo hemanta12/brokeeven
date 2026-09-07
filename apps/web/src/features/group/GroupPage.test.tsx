@@ -22,6 +22,7 @@ const baseGroup = {
   label: null,
   joinCode: 'ABC123',
   currency: 'USD',
+  settleMode: 'direct',
   createdAt: '2026-01-01',
   people: [
     { id: 'p1', groupId: 'g1', name: 'Alice', userId: null, removedAt: null, createdAt: '2026-01-01' },

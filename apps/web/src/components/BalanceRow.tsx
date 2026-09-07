@@ -11,6 +11,9 @@ interface BalanceRowProps {
   direction?: Direction;
   fromIsViewer?: boolean;
   toIsViewer?: boolean;
+  // `owes` states a debt the expenses created; `pays` states a move the
+  // simplified plan suggests. A plan pair often owes each other nothing.
+  verb?: 'owes' | 'pays';
   onSettle?: () => void;
 }
 
@@ -32,6 +35,7 @@ export function BalanceRow({
   direction = 'neutral',
   fromIsViewer = false,
   toIsViewer = false,
+  verb = 'owes',
   onSettle,
 }: BalanceRowProps) {
   return (
@@ -43,7 +47,8 @@ export function BalanceRow({
           direction === 'neutral' ? 'text-dim' : 'text-ink'
         }`}
       >
-        {fromIsViewer ? 'You owe' : `${fromName} owes`} {toIsViewer ? 'you' : toName}
+        {fromIsViewer ? (verb === 'pays' ? 'You pay' : 'You owe') : `${fromName} ${verb}`}{' '}
+        {toIsViewer ? 'you' : toName}
       </span>
       <span className="flex shrink-0 items-center gap-3">
         <Amount

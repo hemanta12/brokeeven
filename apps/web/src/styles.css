@@ -66,6 +66,9 @@
 
   --color-band:         #123322;   /* Two surfaces: the landing proof band and
                                       the GroupPage header. */
+  --color-band-closed:  #2e322f;   /* Band with the green drained out: a closed
+                                      group. Matched to band's weight, not
+                                      lightened. White 13.0:1, band-dim 6.5:1. */
   --color-band-dim:     #a9bbae;   /* 6.8:1 on band. Also the ONLY colour for a
                                       control boundary sitting on the band:
                                       white at 22% composites to #465F53 = 2.0:1
@@ -78,9 +81,14 @@
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --text-zero:         3.25rem;    /* the two "big zero" moments and nothing
-                                      else: the landing hero counting down,
-                                      and the settled receipt. */
+  --text-zero:         3.25rem;    /* the "big zero" moments and nothing else:
+                                      the landing hero counting down, the
+                                      settled receipt, and (Sprint 6.3) the
+                                      close-group review once the whole ledger
+                                      balances. The third was added rather than
+                                      faked at a smaller size: it is the same
+                                      finality, and closing now REQUIRES zero,
+                                      so it is the most earned of the three. */
   --text-display:      2rem;
   --text-title:        1.375rem;   /* overlay h2, navbar wordmark */
   --text-section:      1.125rem;

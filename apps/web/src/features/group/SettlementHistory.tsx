@@ -10,9 +10,18 @@ interface SettlementHistoryProps {
   people: Person[];
   identityPersonId: string | null;
   currency: string;
+  // Closed group: show the history, drop the Undo control.
+  readOnly?: boolean;
 }
 
-export function SettlementHistory({ code, settlements, people, identityPersonId, currency }: SettlementHistoryProps) {
+export function SettlementHistory({
+  code,
+  settlements,
+  people,
+  identityPersonId,
+  currency,
+  readOnly = false
+}: SettlementHistoryProps) {
   const deleteSettlement = useDeleteSettlement(code);
 
   if (settlements.length === 0) return null;
@@ -44,15 +53,17 @@ export function SettlementHistory({ code, settlements, people, identityPersonId,
                     {formatDateGroupLabel(settlement.settledAt)} · {settlement.note}
                   </span>
                 </span>
-                <Button
-                  variant="secondary"
-                  onClick={() => deleteSettlement.mutate(settlement.id)}
-                  disabled={isUndoing}
-                  size="sm"
-                  className="shrink-0"
-                >
-                  {isUndoing ? 'Undoing…' : 'Undo'}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    variant="secondary"
+                    onClick={() => deleteSettlement.mutate(settlement.id)}
+                    disabled={isUndoing}
+                    size="sm"
+                    className="shrink-0"
+                  >
+                    {isUndoing ? 'Undoing…' : 'Undo'}
+                  </Button>
+                )}
               </div>
             </li>
           );
