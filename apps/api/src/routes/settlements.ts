@@ -3,6 +3,7 @@ import { Router } from 'express';
 
 import { activeMembers } from '../group/activeMembers.js';
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { rejectIfGroupClosed, resolveGroupForWrite } from '../group/groupState.js';
 import { requireActor } from '../auth/middleware.js';
 import { centsToAmount, formatMoney, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
@@ -36,11 +37,12 @@ settlementsRouter.post('/groups/:code/settlements', writeRateLimit, requireActor
     return;
   }
 
-  const group = await prisma.group.findUnique({ where: { joinCode: String(request.params.code).toUpperCase() } });
-  if (!group) {
-    response.status(404).json({ error: 'Group not found' });
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
     return;
   }
+  const { group } = resolved;
 
   const members = await activeMembers(group.id);
   const memberById = new Map(members.map((member) => [member.id, member]));
@@ -96,12 +98,14 @@ settlementsRouter.delete(
 
     const existing = await prisma.settlement.findUnique({
       where: { id: request.params.id },
-      include: { group: { select: { currency: true } } }
+      include: { group: { select: { currency: true, closedAt: true } } }
     });
     if (!existing) {
       response.status(404).json({ error: 'Settlement not found' });
       return;
     }
+
+    if (rejectIfGroupClosed(response, existing.group.closedAt)) return;
 
     const people = await prisma.person.findMany({
       where: { id: { in: [existing.fromPersonId, existing.toPersonId] } },

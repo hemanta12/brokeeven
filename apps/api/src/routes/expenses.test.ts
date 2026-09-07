@@ -38,6 +38,26 @@ beforeEach(() => {
 });
 
 describe('POST /groups/:code/expenses', () => {
+  it('rejects a write to a closed trip', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: GROUP_ID,
+      joinCode: 'ABCD2345',
+      closedAt: new Date()
+    } as never);
+
+    const response = await request(app).post('/groups/ABCD2345/expenses').send({
+      title: 'Dinner',
+      amount: 10,
+      date: '2026-08-23',
+      payerId: ALICE,
+      splitMethod: 'equal',
+      splits: [{ personId: ALICE }, { personId: BOB }]
+    });
+
+    expect(response.status).toBe(409);
+    expect(prisma.expense.create).not.toHaveBeenCalled();
+  });
+
   it('creates an expense with equal splits', async () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: GROUP_ID, joinCode: 'ABCD2345' } as never);
     vi.mocked(prisma.expense.create).mockResolvedValue({
@@ -193,6 +213,7 @@ describe('PATCH /expenses/:id', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
+      group: { closedAt: null },
       createdByUserId: null
     } as never);
     vi.mocked(prisma.expense.update).mockResolvedValue({
@@ -236,6 +257,27 @@ describe('PATCH /expenses/:id', () => {
     expect(response.status).toBe(400);
     expect(prisma.expense.findUnique).not.toHaveBeenCalled();
   });
+
+  it('rejects an edit when the trip is closed', async () => {
+    vi.mocked(prisma.expense.findUnique).mockResolvedValue({
+      id: EXPENSE_ID,
+      groupId: GROUP_ID,
+      group: { closedAt: new Date() },
+      createdByUserId: null
+    } as never);
+
+    const response = await request(app).patch(`/expenses/${EXPENSE_ID}`).send({
+      title: 'Dinner',
+      amount: 10,
+      date: '2026-08-23',
+      payerId: ALICE,
+      splitMethod: 'equal',
+      splits: [{ personId: ALICE }]
+    });
+
+    expect(response.status).toBe(409);
+    expect(prisma.expense.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('DELETE /expenses/:id', () => {
@@ -243,6 +285,7 @@ describe('DELETE /expenses/:id', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
+      group: { closedAt: null },
       title: 'Dinner',
       createdByUserId: null
     } as never);
@@ -307,6 +350,7 @@ describe('expense ownership', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
+      group: { closedAt: null },
       title: 'Dinner',
       createdByUserId: GUEST_ID
     } as never);
@@ -322,6 +366,7 @@ describe('expense ownership', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
+      group: { closedAt: null },
       title: 'Dinner',
       createdByUserId: 'someone-else'
     } as never);
@@ -336,6 +381,7 @@ describe('expense ownership', () => {
     vi.mocked(prisma.expense.findUnique).mockResolvedValue({
       id: EXPENSE_ID,
       groupId: GROUP_ID,
+      group: { closedAt: null },
       title: 'Dinner',
       createdByUserId: null
     } as never);

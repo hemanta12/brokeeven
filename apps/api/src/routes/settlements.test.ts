@@ -137,7 +137,7 @@ describe('DELETE /settlements/:id', () => {
       amount: '20.00',
       note: 'Venmo',
       createdByUserId: 'someone-else',
-      group: { currency: 'USD' }
+      group: { currency: 'USD', closedAt: null }
     };
   }
 
@@ -179,5 +179,17 @@ describe('DELETE /settlements/:id', () => {
 
     expect(response.status).toBe(400);
     expect(prisma.settlement.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('refuses to undo a settlement on a closed trip', async () => {
+    vi.mocked(prisma.settlement.findUnique).mockResolvedValue({
+      ...existingSettlement(),
+      group: { currency: 'USD', closedAt: new Date() }
+    } as never);
+
+    const response = await request(app).delete(`/settlements/${SETTLEMENT_ID}`);
+
+    expect(response.status).toBe(409);
+    expect(prisma.settlement.delete).not.toHaveBeenCalled();
   });
 });

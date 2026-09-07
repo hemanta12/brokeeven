@@ -13,6 +13,13 @@ enum SplitMethod {
   custom
 }
 
+// Group-level, never per-device: two members on different modes reach the same
+// debt through two framings and double-record the payment.
+enum SettleMode {
+  direct
+  simplified
+}
+
 enum ActivityAction {
   expense_add
   expense_edit
@@ -22,6 +29,9 @@ enum ActivityAction {
   person_rename
   settlement
   settlement_delete
+  group_edit
+  group_close
+  group_reopen
 }
 
 // One row per actor. A guest is a User with googleSub = null; sign-in promotes
@@ -44,6 +54,11 @@ model Group {
   joinCode     String        @unique
   // ISO 4217, validated against an allowlist at the API (see split/money.ts).
   currency     String        @default("USD")
+  // Set once the group is closed out. Reversible via POST /groups/:code/reopen.
+  closedAt     DateTime?
+  // Balances at or below this (in currency units) are written off at close-out.
+  forgiveThreshold Decimal   @default(0) @db.Decimal(12, 2)
+  settleMode   SettleMode    @default(direct)
   createdAt    DateTime      @default(now())
   people       Person[]
   expenses     Expense[]

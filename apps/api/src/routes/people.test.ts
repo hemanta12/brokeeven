@@ -34,7 +34,7 @@ beforeEach(() => {
 
 describe('PATCH /people/:id/name', () => {
   it('renames an active person', async () => {
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, name: 'Alise', removedAt: null } as never);
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, name: 'Alise', removedAt: null, group: { closedAt: null } } as never);
     vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, groupId: 'g1', name: 'Alice' } as never);
 
     const response = await request(app).patch(`/people/${VALID_ID}/name`).send({ name: 'Alice' });
@@ -69,7 +69,7 @@ describe('PATCH /people/:id/name', () => {
 
 describe('PATCH /people/:id', () => {
   it('soft-deletes a person with no expenses as payer', async () => {
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null, group: { closedAt: null } } as never);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
     vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, removedAt: new Date() } as never);
 
@@ -97,7 +97,7 @@ describe('PATCH /people/:id', () => {
   });
 
   it('blocks removal when the person is a payer on an expense', async () => {
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null, group: { closedAt: null } } as never);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([{ title: 'Dinner' }, { title: 'Rent' }] as never);
 
     const response = await request(app).patch(`/people/${VALID_ID}`);
@@ -105,6 +105,19 @@ describe('PATCH /people/:id', () => {
     expect(response.status).toBe(409);
     expect(response.body.error).toContain('"Dinner"');
     expect(response.body.error).toContain('"Rent"');
+    expect(prisma.person.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects removal when the trip is closed', async () => {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({
+      id: VALID_ID,
+      removedAt: null,
+      group: { closedAt: new Date() }
+    } as never);
+
+    const response = await request(app).patch(`/people/${VALID_ID}`);
+
+    expect(response.status).toBe(409);
     expect(prisma.person.update).not.toHaveBeenCalled();
   });
 
@@ -120,7 +133,7 @@ describe('PATCH /people/:id', () => {
   });
 
   it('redistributes an equal-split expense across the remaining participants on removal', async () => {
-    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null } as never);
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, removedAt: null, group: { closedAt: null } } as never);
     vi.mocked(prisma.expense.findMany).mockResolvedValue([]);
     vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, groupId: 'g1', removedAt: new Date() } as never);
 

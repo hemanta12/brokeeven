@@ -6,6 +6,7 @@ import { activeMembers } from '../group/activeMembers.js';
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
 import { rejectIfNotOwner } from '../auth/ownership.js';
+import { rejectIfGroupClosed, resolveGroupForWrite } from '../group/groupState.js';
 import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
@@ -124,11 +125,12 @@ expensesRouter.post('/groups/:code/expenses', writeRateLimit, requireActor, asyn
   const body = request.body as Record<string, unknown>;
   const idempotencyKey = (request.header('Idempotency-Key') ?? body.idempotencyKey) as string | undefined;
 
-  const group = await prisma.group.findUnique({ where: { joinCode: String(request.params.code).toUpperCase() } });
-  if (!group) {
-    response.status(404).json({ error: 'Group not found' });
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
     return;
   }
+  const { group } = resolved;
 
   if (idempotencyKey) {
     const existing = await prisma.expense.findUnique({ where: { idempotencyKey }, include: { splits: true } });
@@ -195,12 +197,16 @@ expensesRouter.patch('/expenses/:id', writeRateLimit, requireActor, async (reque
     return;
   }
 
-  const existing = await prisma.expense.findUnique({ where: { id: request.params.id } });
+  const existing = await prisma.expense.findUnique({
+    where: { id: request.params.id },
+    include: { group: { select: { closedAt: true } } }
+  });
   if (!existing) {
     response.status(404).json({ error: 'Expense not found' });
     return;
   }
 
+  if (rejectIfGroupClosed(response, existing.group.closedAt)) return;
   if (rejectIfNotOwner(response, existing.createdByUserId, request.actorId)) return;
 
   const body = request.body as Record<string, unknown>;
@@ -251,12 +257,16 @@ expensesRouter.delete('/expenses/:id', writeRateLimit, requireActor, async (requ
     return;
   }
 
-  const existing = await prisma.expense.findUnique({ where: { id: request.params.id } });
+  const existing = await prisma.expense.findUnique({
+    where: { id: request.params.id },
+    include: { group: { select: { closedAt: true } } }
+  });
   if (!existing) {
     response.status(404).json({ error: 'Expense not found' });
     return;
   }
 
+  if (rejectIfGroupClosed(response, existing.group.closedAt)) return;
   if (rejectIfNotOwner(response, existing.createdByUserId, request.actorId)) return;
 
   await prisma.$transaction(async (tx) => {

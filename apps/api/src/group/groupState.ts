@@ -1,4 +1,5 @@
-import type { Prisma } from '@prisma/client';
+import type { Group, Prisma } from '@prisma/client';
+import type { Response } from 'express';
 
 import { computeBalances } from '../split/balances.js';
 import { centsToAmount, toCents } from '../split/money.js';
@@ -49,4 +50,25 @@ export async function getGroupStateById(groupId: string) {
     include: groupInclude
   });
   return group ? withBalances(group) : null;
+}
+
+const CLOSED_MESSAGE = 'This group is closed. Reopen it to make changes.';
+
+// The gate both write routes (POST expenses, POST settlements) funnel through, so
+// the closed-group guard lives in one place (roadmap 6.3.4).
+export async function resolveGroupForWrite(
+  code: string
+): Promise<{ error: string; status: 404 | 409 } | { group: Group }> {
+  const group = await prisma.group.findUnique({ where: { joinCode: code.toUpperCase() } });
+  if (!group) return { error: 'Group not found', status: 404 as const };
+  if (group.closedAt) return { error: CLOSED_MESSAGE, status: 409 as const };
+  return { group };
+}
+
+// Same guard for routes keyed by entity id (expense/settlement edit + delete),
+// which already load the row's group. Returns true when it has sent the 409.
+export function rejectIfGroupClosed(response: Response, closedAt: Date | null): boolean {
+  if (!closedAt) return false;
+  response.status(409).json({ error: CLOSED_MESSAGE });
+  return true;
 }

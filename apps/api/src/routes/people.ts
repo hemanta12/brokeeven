@@ -3,6 +3,7 @@ import type { Request } from 'express';
 import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
+import { rejectIfGroupClosed } from '../group/groupState.js';
 import { normalizePersonName } from '../group/personName.js';
 import { requireActor } from '../auth/middleware.js';
 import { centsToAmount, toCents } from '../split/money.js';
@@ -91,11 +92,15 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (requ
     return;
   }
 
-  const person = await prisma.person.findUnique({ where: { id: request.params.id } });
+  const person = await prisma.person.findUnique({
+    where: { id: request.params.id },
+    include: { group: { select: { closedAt: true } } }
+  });
   if (!person || person.removedAt) {
     response.status(404).json({ error: 'Person not found' });
     return;
   }
+  if (rejectIfGroupClosed(response, person.group.closedAt)) return;
 
   const updated = await prisma.$transaction(async (tx) => {
     const renamed = await tx.person.update({ where: { id: person.id }, data: { name: normalizePersonName(name) } });
@@ -119,7 +124,10 @@ peopleRouter.patch('/people/:id', writeRateLimit, requireActor, async (request: 
     return;
   }
 
-  const person = await prisma.person.findUnique({ where: { id: request.params.id } });
+  const person = await prisma.person.findUnique({
+    where: { id: request.params.id },
+    include: { group: { select: { closedAt: true } } }
+  });
   if (!person) {
     response.status(404).json({ error: 'Person not found' });
     return;
@@ -128,6 +136,7 @@ peopleRouter.patch('/people/:id', writeRateLimit, requireActor, async (request: 
     response.status(200).json(person);
     return;
   }
+  if (rejectIfGroupClosed(response, person.group.closedAt)) return;
 
   const payerExpenses = await prisma.expense.findMany({ where: { payerId: person.id }, select: { title: true } });
   if (payerExpenses.length > 0) {

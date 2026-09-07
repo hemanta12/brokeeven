@@ -70,6 +70,7 @@ meRouter.get('/me/groups', async (request, response) => {
       label: group.label,
       joinCode: group.joinCode,
       currency: group.currency,
+      closedAt: group.closedAt?.toISOString() ?? null,
       personId,
       members,
       memberCount: group.people.length,

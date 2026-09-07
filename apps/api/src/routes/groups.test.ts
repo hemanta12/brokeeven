@@ -9,6 +9,7 @@ vi.mock('../prisma.js', () => {
   const prismaMock = {
     group: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     person: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn() },
+    settlement: { createMany: vi.fn() },
     activityLog: { create: vi.fn() },
     user: { findUnique: vi.fn(), create: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof prismaMock) => unknown) => fn(prismaMock))
@@ -176,6 +177,178 @@ describe('GET /groups/:code', () => {
   });
 });
 
+describe('PATCH /groups/:code/settle-mode', () => {
+  it('switches the group to the simplified plan and logs it', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      settleMode: 'direct',
+      closedAt: null
+    } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({ id: 'g1', settleMode: 'simplified' } as never);
+
+    const response = await request(app).patch('/groups/ABCD2345/settle-mode').send({ settleMode: 'simplified' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'g1' }, data: { settleMode: 'simplified' } })
+    );
+    expect(prisma.activityLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: 'group_edit' }) })
+    );
+  });
+
+  it('rejects an unknown mode without touching the group', async () => {
+    const response = await request(app).patch('/groups/ABCD2345/settle-mode').send({ settleMode: 'whatever' });
+
+    expect(response.status).toBe(400);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('409s on a closed group', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      settleMode: 'direct',
+      closedAt: new Date()
+    } as never);
+
+    const response = await request(app).patch('/groups/ABCD2345/settle-mode').send({ settleMode: 'simplified' });
+
+    expect(response.status).toBe(409);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /groups/:code/close', () => {
+  // b owes a $5.00, c owes a $0.40.
+  const openGroup = {
+    id: 'g1',
+    joinCode: 'ABCD2345',
+    currency: 'USD',
+    closedAt: null,
+    forgiveThreshold: '0',
+    people: [],
+    settlements: [],
+    expenses: [
+      {
+        id: 'e1',
+        payerId: 'a',
+        splits: [
+          { personId: 'b', amount: '5.00' },
+          { personId: 'c', amount: '0.40' }
+        ]
+      }
+    ]
+  };
+
+  // Threshold 1 covers the $0.40 but not the $5.00, so a payment is still owed.
+  it('refuses to close while a payment is still owed', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue(openGroup as never);
+
+    const response = await request(app).post('/groups/ABCD2345/close').send({ forgiveThreshold: 1 });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain('does not balance');
+    expect(prisma.settlement.createMany).not.toHaveBeenCalled();
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('forgives every remaining balance at or below the threshold and closes', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue(openGroup as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({} as never);
+
+    const response = await request(app).post('/groups/ABCD2345/close').send({ forgiveThreshold: 5 });
+
+    expect(response.status).toBe(200);
+    expect(prisma.settlement.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({ fromPersonId: 'b', toPersonId: 'a', amount: '5.00', note: 'Forgiven at close-out' }),
+        expect.objectContaining({ fromPersonId: 'c', toPersonId: 'a', amount: '0.40', note: 'Forgiven at close-out' })
+      ]
+    });
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ closedAt: expect.any(Date), forgiveThreshold: '5.00' }) })
+    );
+  });
+
+  it('closes an already-even trip with nothing forgiven', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ ...openGroup, expenses: [] } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({} as never);
+
+    const response = await request(app).post('/groups/ABCD2345/close').send({});
+
+    expect(response.status).toBe(200);
+    expect(prisma.settlement.createMany).not.toHaveBeenCalled();
+  });
+
+  // Nets to zero all round, so nobody owes a payment even though three raw
+  // pairwise rows exist. Closeable.
+  it('closes a debt cycle that needs no payments', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      ...openGroup,
+      expenses: [
+        { id: 'e1', payerId: 'a', splits: [{ personId: 'b', amount: '5.00' }] },
+        { id: 'e2', payerId: 'b', splits: [{ personId: 'c', amount: '5.00' }] },
+        { id: 'e3', payerId: 'c', splits: [{ personId: 'a', amount: '5.00' }] }
+      ]
+    } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({} as never);
+
+    const response = await request(app).post('/groups/ABCD2345/close').send({});
+
+    expect(response.status).toBe(200);
+    expect(prisma.settlement.createMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects a negative threshold', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue(openGroup as never);
+
+    const response = await request(app).post('/groups/ABCD2345/close').send({ forgiveThreshold: -5 });
+
+    expect(response.status).toBe(400);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('409s when the group is already closed', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ ...openGroup, closedAt: new Date() } as never);
+
+    const response = await request(app).post('/groups/ABCD2345/close').send({});
+
+    expect(response.status).toBe(409);
+  });
+});
+
+describe('POST /groups/:code/reopen', () => {
+  it('clears closedAt and keeps the forgiven settlements', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: new Date(),
+      people: [],
+      expenses: [],
+      settlements: []
+    } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({} as never);
+
+    const response = await request(app).post('/groups/ABCD2345/reopen').send({});
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { closedAt: null } })
+    );
+    expect(prisma.settlement.createMany).not.toHaveBeenCalled();
+  });
+
+  it('409s when the group is not closed', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345', closedAt: null } as never);
+
+    const response = await request(app).post('/groups/ABCD2345/reopen').send({});
+
+    expect(response.status).toBe(409);
+  });
+});
+
 describe('POST /groups/:code/people', () => {
   it('adds a person to the group', async () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345' } as never);
@@ -194,6 +367,19 @@ describe('POST /groups/:code/people', () => {
     const response = await request(app).post('/groups/NOPE0000/people').send({ name: 'Alex' });
 
     expect(response.status).toBe(404);
+    expect(prisma.person.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects adding a person to a closed trip', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: new Date()
+    } as never);
+
+    const response = await request(app).post('/groups/ABCD2345/people').send({ name: 'Alex' });
+
+    expect(response.status).toBe(409);
     expect(prisma.person.create).not.toHaveBeenCalled();
   });
 

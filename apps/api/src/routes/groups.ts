@@ -3,13 +3,14 @@ import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
-import { getGroupStateByCode } from '../group/groupState.js';
+import { getGroupStateByCode, resolveGroupForWrite } from '../group/groupState.js';
 import { generateJoinCode } from '../group/joinCode.js';
 import { normalizePersonName } from '../group/personName.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
-import { isSupportedCurrency } from '../split/money.js';
+import { forgiveBelow, minimizeTransactions } from '../settleUp.js';
+import { centsToAmount, formatMoney, isSupportedCurrency, toCents } from '../split/money.js';
 import { isNonEmptyString } from '../validation.js';
 
 const MEMBER_CAP = 20;
@@ -62,8 +63,7 @@ groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, respo
 });
 
 // Currency is display-only: amounts are stored as decimals and balances derive
-// from them, so a change only relabels figures. No recompute; no ActivityLog
-// entry (needs a new enum value).
+// from them, so a change only relabels figures. No recompute.
 groupsRouter.patch('/groups/:code/currency', writeRateLimit, requireActor, async (request, response) => {
   const { currency } = request.body as { currency?: unknown };
 
@@ -72,6 +72,148 @@ groupsRouter.patch('/groups/:code/currency', writeRateLimit, requireActor, async
     return;
   }
 
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
+    return;
+  }
+  const { group } = resolved;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const next = await tx.group.update({ where: { id: group.id }, data: { currency } });
+    if (currency !== group.currency) {
+      await logActivity(
+        tx,
+        group.id,
+        'group_edit',
+        `Currency changed to ${currency}`,
+        await actorNameInGroup(tx, group.id, request.actorId)
+      );
+    }
+    return next;
+  });
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(group.id);
+});
+
+// Group-level and broadcast: two members on different modes would reach the same
+// debt through two framings and double-record the payment.
+groupsRouter.patch('/groups/:code/settle-mode', writeRateLimit, requireActor, async (request, response) => {
+  const { settleMode } = request.body as { settleMode?: unknown };
+
+  if (settleMode !== 'direct' && settleMode !== 'simplified') {
+    response.status(400).json({ error: 'settleMode must be direct or simplified' });
+    return;
+  }
+
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
+    return;
+  }
+  const { group } = resolved;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const next = await tx.group.update({ where: { id: group.id }, data: { settleMode } });
+    if (settleMode !== group.settleMode) {
+      await logActivity(
+        tx,
+        group.id,
+        'group_edit',
+        settleMode === 'simplified'
+          ? 'Switched to settling with the fewest payments'
+          : 'Switched to settling each balance directly',
+        await actorNameInGroup(tx, group.id, request.actorId)
+      );
+    }
+    return next;
+  });
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(group.id);
+});
+
+// Forgiven balances become Settlement rows rather than deletions, so the ledger
+// keeps the record.
+groupsRouter.post('/groups/:code/close', writeRateLimit, requireActor, async (request, response) => {
+  const state = await getGroupStateByCode(String(request.params.code));
+  if (!state) {
+    response.status(404).json({ error: 'Group not found' });
+    return;
+  }
+  if (state.closedAt) {
+    response.status(409).json({ error: 'This group is already closed' });
+    return;
+  }
+
+  // Omitted => keep the group's current threshold; otherwise it must be a
+  // non-negative number of currency units.
+  const rawThreshold = (request.body as { forgiveThreshold?: unknown }).forgiveThreshold;
+  let thresholdDollars: number;
+  if (rawThreshold === undefined) {
+    thresholdDollars = Number(state.forgiveThreshold);
+  } else if (typeof rawThreshold === 'number' && Number.isFinite(rawThreshold) && rawThreshold >= 0) {
+    thresholdDollars = rawThreshold;
+  } else {
+    response.status(400).json({ error: 'forgiveThreshold must be a non-negative number' });
+    return;
+  }
+  const thresholdCents = toCents(thresholdDollars);
+  const { forgiven, remaining } = forgiveBelow(
+    state.balances.map((balance) => ({
+      fromPersonId: balance.fromPersonId,
+      toPersonId: balance.toPersonId,
+      amountCents: balance.amountCents
+    })),
+    thresholdCents
+  );
+
+  // Closing blocks settlements, so outstanding debt would be stranded with no
+  // surface left to clear it. Gated on the minimized plan, not `remaining`: a
+  // cycle (A->B->C->A) leaves pairwise rows but nets to zero and is closeable.
+  if (minimizeTransactions(remaining).length > 0) {
+    response.status(409).json({
+      error: 'This group does not balance yet. Settle what is left, or raise the forgive amount to write it off.'
+    });
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (forgiven.length > 0) {
+      await tx.settlement.createMany({
+        data: forgiven.map((balance) => ({
+          groupId: state.id,
+          fromPersonId: balance.fromPersonId,
+          toPersonId: balance.toPersonId,
+          amount: centsToAmount(balance.amountCents),
+          note: 'Forgiven at close-out',
+          createdByUserId: request.actorId ?? null
+        }))
+      });
+    }
+    await tx.group.update({
+      where: { id: state.id },
+      data: { closedAt: new Date(), forgiveThreshold: centsToAmount(thresholdCents) }
+    });
+    const forgivenTotal = forgiven.reduce((sum, balance) => sum + balance.amountCents, 0);
+    await logActivity(
+      tx,
+      state.id,
+      'group_close',
+      forgiven.length > 0
+        ? `Closed the group, forgave ${formatMoney(forgivenTotal, state.currency)} across ${forgiven.length} ${
+            forgiven.length === 1 ? 'balance' : 'balances'
+          }`
+        : 'Closed the group',
+      await actorNameInGroup(tx, state.id, request.actorId)
+    );
+  });
+
+  const updated = await getGroupStateByCode(String(request.params.code));
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(state.id);
+});
+
+groupsRouter.post('/groups/:code/reopen', writeRateLimit, requireActor, async (request, response) => {
   const group = await prisma.group.findUnique({
     where: { joinCode: String(request.params.code).toUpperCase() }
   });
@@ -79,8 +221,24 @@ groupsRouter.patch('/groups/:code/currency', writeRateLimit, requireActor, async
     response.status(404).json({ error: 'Group not found' });
     return;
   }
+  if (!group.closedAt) {
+    response.status(409).json({ error: 'This group is not closed' });
+    return;
+  }
 
-  const updated = await prisma.group.update({ where: { id: group.id }, data: { currency } });
+  // Forgiven Settlement rows stay: deleting them resurrects written-off debts.
+  await prisma.$transaction(async (tx) => {
+    await tx.group.update({ where: { id: group.id }, data: { closedAt: null } });
+    await logActivity(
+      tx,
+      group.id,
+      'group_reopen',
+      'Reopened the group',
+      await actorNameInGroup(tx, group.id, request.actorId)
+    );
+  });
+
+  const updated = await getGroupStateByCode(String(request.params.code));
   response.status(200).json(updated);
   void broadcastGroupUpdate(group.id);
 });
@@ -130,13 +288,12 @@ groupsRouter.post('/groups/:code/people', writeRateLimit, requireActor, async (r
     return;
   }
 
-  const group = await prisma.group.findUnique({
-    where: { joinCode: String(request.params.code).toUpperCase() }
-  });
-  if (!group) {
-    response.status(404).json({ error: 'Group not found' });
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
     return;
   }
+  const { group } = resolved;
 
   const activeMemberCount = await prisma.person.count({
     where: { groupId: group.id, removedAt: null }
