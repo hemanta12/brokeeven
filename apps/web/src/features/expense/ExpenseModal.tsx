@@ -125,40 +125,41 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
   return (
     <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
-        {/* The currency symbol is a separate adornment, not part of the value, so
-            nothing has to be parsed back out of the field. */}
+        {/* Currency symbol is a display adornment, not part of the amount value. */}
         <div className="flex flex-col gap-1.5">
-          <label htmlFor="expense-amount" className="font-sans text-label font-medium text-ink">
-            Amount
-          </label>
-          <div className="flex items-baseline justify-center gap-1 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-4 py-3.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
-            <span aria-hidden="true" className="font-sans text-section font-semibold tabular-nums text-dim">
-              {currencySymbol(currency)}
-            </span>
-            <input
-              id="expense-amount"
-              type="text"
-              inputMode="decimal"
-              value={amount}
-              onChange={(event) => touch(setAmount)(event.target.value)}
-              onBlur={() => {
-                markBlurred('amount');
-                // Settle to two decimals on blur, not while typing —
-                // reformatting mid-entry fights the caret.
-                if (amount.trim() !== '' && !Number.isNaN(Number(amount))) {
-                  setAmount(Number(amount).toFixed(2));
-                }
-              }}
-              aria-invalid={isRequiredError('amount', amount)}
-              aria-describedby={isRequiredError('amount', amount) ? 'expense-amount-error' : undefined}
-              required
-              placeholder="0.00"
-              size={Math.max(amount.length, 4)}
-              className="w-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-center font-sans text-hero-balance font-semibold tabular-nums text-ink outline-none placeholder:text-line-strong"
-            />
+          {/* Row/label match every other field; only the value inside runs larger. */}
+          <div className="flex items-center gap-3">
+            <label htmlFor="expense-amount" className="font-sans text-label font-medium text-ink">
+              Amount
+            </label>
+            <div className="flex flex-1 items-baseline justify-center gap-1 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3.5 py-3 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
+              <span aria-hidden="true" className="font-sans text-title font-semibold tabular-nums text-dim">
+                {currencySymbol(currency)}
+              </span>
+              <input
+                id="expense-amount"
+                type="text"
+                inputMode="decimal"
+                value={amount}
+                onChange={(event) => touch(setAmount)(event.target.value)}
+                onBlur={() => {
+                  markBlurred('amount');
+                  // Reformat on blur, not while typing — it fights the caret mid-entry.
+                  if (amount.trim() !== '' && !Number.isNaN(Number(amount))) {
+                    setAmount(Number(amount).toFixed(2));
+                  }
+                }}
+                aria-invalid={isRequiredError('amount', amount)}
+                aria-describedby={isRequiredError('amount', amount) ? 'expense-amount-error' : undefined}
+                required
+                placeholder="0.00"
+                size={Math.max(amount.length, 4)}
+                className="w-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-center font-sans text-title font-semibold tabular-nums text-ink outline-none placeholder:text-line-strong"
+              />
+            </div>
           </div>
           {isRequiredError('amount', amount) && (
-            <p id="expense-amount-error" className="text-label text-down">
+            <p id="expense-amount-error" className="text-right text-label text-down">
               Amount is required.
             </p>
           )}
@@ -184,10 +185,8 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
         />
 
         <div className="paid-by-date">
-          {/* The visible row is decorative; the real control is a native <select>
-              overlaid at zero opacity so a11y, keyboard and the platform picker
-              all work. Keep the select a direct child of this div —
-              ExpenseModal.test.tsx walks two parents up to .paid-by-date. */}
+          {/* Row is decorative; a zero-opacity native <select> below is the real control. */}
+          {/* Keep the select a direct child here — ExpenseModal.test.tsx walks up two parents from it. */}
           <div className="relative flex flex-col gap-1.5">
             <label htmlFor="expense-payer" className="font-sans text-label font-medium text-ink">
               Paid by
@@ -269,9 +268,7 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
 
         <fieldset className="flex flex-col gap-2">
           <legend className="font-sans text-label font-medium text-ink">Split between</legend>
-          {/* Two labels point at one checkbox so name and tick are both hit
-              targets — wrapping the inline amount inputs in a label would toggle
-              the checkbox. */}
+          {/* Two labels, not one wrapping label — that would toggle the checkbox on the amount input too. */}
           <div className="flex flex-col gap-2">
           {people.map((person) => {
             const checked = participantIds.includes(person.id);
