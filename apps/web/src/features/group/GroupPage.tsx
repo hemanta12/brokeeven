@@ -41,8 +41,7 @@ export function GroupPage() {
     refetch,
   } = useGroupByCode(code);
 
-  // My Groups deep-links here with ?add=expense. Strip it once handled, or a
-  // refresh reopens the modal forever.
+  // Strip ?add=expense once handled, or a refresh reopens the modal forever.
   const [searchParams, setSearchParams] = useSearchParams();
   const openAddExpense = searchParams.get("add") === "expense";
 
@@ -57,8 +56,7 @@ export function GroupPage() {
   const [editingExpense, setEditingExpense] = useState<Expense | "new" | null>(
     null,
   );
-  // Derived, not state: open while the URL says so; closing clears the param.
-  // A closed group takes no new expenses, so the deep link is inert there.
+  // Derived, not state — inert on a closed group, which takes no new expenses.
   const expenseModal =
     editingExpense ?? (openAddExpense && !group?.closedAt ? "new" : null);
 
@@ -66,8 +64,7 @@ export function GroupPage() {
     setEditingExpense(null);
     if (openAddExpense) setSearchParams({}, { replace: true });
   }
-  // Settle Up measures "already owed" against the list the row came from, so the
-  // simplified plan and the raw balances each stay internally consistent.
+  // Reference list keeps a simplified-plan settle consistent with the raw balances.
   const [settling, setSettling] = useState<{
     balance: Balance;
     reference: Balance[];
@@ -112,16 +109,14 @@ export function GroupPage() {
     return null;
   }
 
-  // The account's claim outranks the local hint. Derived per render, not mirrored
-  // to localStorage: the claim arrives with every fetch, so a copy would only drift.
+  // Account claim outranks the local hint; derived per render, never cached, so it can't drift.
   const resolvedIdentityPersonId = resolveIdentityPersonId(
     group.people,
     group.viewerUserId,
     identityPersonId,
   );
 
-  // A write always mints a session, so an empty viewer id after one means the
-  // cookie never stuck (private mode, blocked cookies) — entries will be uneditable.
+  // A write always mints a session; a null viewer id after one means the cookie never stuck.
   const cookiesBlocked = hasCompletedWrite() && group.viewerUserId === null;
 
   const shouldShowWhoAreYou =
@@ -137,8 +132,7 @@ export function GroupPage() {
         </p>
       )}
       <div className="flex flex-1 flex-col">
-        {/* Closed state drains the band's green rather than adding a banner: a
-            banner pushes the header down and breaks the straddling summary card. */}
+        {/* No closed banner here — it'd push the header down and break the straddling summary card. */}
         <header
           className={`relative -mx-4 -mt-2 overflow-hidden px-4 pt-3 text-white sm:rounded-t-card sm:px-6 ${
             closed ? "bg-band-closed" : "bg-band"
@@ -193,8 +187,6 @@ export function GroupPage() {
           </div>
           {(closed || (group.label && group.label !== 'Individual')) && (
             <div className="relative mt-4 flex flex-wrap items-center gap-2">
-              {/* Filled, not outlined: punched out of the band so it reads as a
-                  stamp on the record rather than one more control. */}
               {closed && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-band-dim px-2.5 py-1 font-sans text-micro font-bold uppercase tracking-[0.08em] text-band-closed">
                   <svg
@@ -243,7 +235,7 @@ export function GroupPage() {
           />
         )}
 
-        <div className="mt-4 px-4 sm:px-6">
+        <div className="mt-4 sm:px-2">
           <Tabs
             label="Group view"
             items={[
@@ -261,7 +253,7 @@ export function GroupPage() {
             role="tabpanel"
             id="panel-expenses"
             aria-labelledby="tab-expenses"
-            className="mt-2 px-4 sm:px-6"
+            className="mt-2 sm:px-2"
           >
             {group.expenses.length === 0 ? (
               <EmptyState message="No expenses yet. Add the first one." />
@@ -311,7 +303,7 @@ export function GroupPage() {
             role="tabpanel"
             id="panel-balances"
             aria-labelledby="tab-balances"
-            className="mt-2 px-4 sm:px-6"
+            className="mt-2 sm:px-2"
           >
             <BalancesPanel
               code={code}
@@ -334,9 +326,7 @@ export function GroupPage() {
               readOnly={closed}
             />
 
-            {/* Terminal action of the tab, so it sits last and centered, below a
-                rule. Secondary, not danger: closing is reversible, and red would
-                overstate it. Full size, not sm — sm is 36px, under the 44pt floor. */}
+            {/* Secondary, not danger — closing is reversible. Full size: sm is 36px, under the 44pt touch floor. */}
             {!closed && group.people.length > 0 && (
               <div className="mt-8 flex flex-col items-center gap-2 border-t border-line pt-6">
                 <Button variant="secondary" onClick={() => setShowCloseGroup(true)}>
@@ -355,14 +345,13 @@ export function GroupPage() {
             role="tabpanel"
             id="panel-activity"
             aria-labelledby="tab-activity"
-            className="mt-2 px-4 sm:px-6"
+            className="mt-2 sm:px-2"
           >
             <ActivityFeed code={code} isActive={tab === "activity"} />
           </div>
         )}
 
-        {/* The bar stays in both states; removing it on close collapses the
-            page's shape. Reopen takes the slot Add Expense had. */}
+        {/* Stays mounted in both states — removing it on close collapses the page's shape. */}
         <div className="bottom-bar mt-auto">
           {closed ? (
             <>

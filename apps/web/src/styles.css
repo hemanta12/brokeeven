@@ -32,56 +32,60 @@
      delta is what makes a card read as a card — do not flatten it. `sunken` is
      the tinted fill inside a card (entry rows, segmented control); never collapse
      it into bg. */
-  --color-bg:           #f0f2f0;   /* dL* 4.7 from white. #FCFCFB was dL* 0.4
+  --color-bg: #f0f2f0; /* dL* 4.7 from white. #FCFCFB was dL* 0.4
                                       (invisible); #EFF3EF read too green (green
                                       channel +4 over red/blue vs +2 here). */
-  --color-surface:      #ffffff;
-  --color-sunken:       #e7ece7;   /* must still read inside a white card */
-  --color-desk:         #e2e8e2;   /* >=640px, behind the sheet. Darker than bg */
+  --color-surface: #ffffff;
+  --color-sunken: #e7ece7; /* must still read inside a white card */
+  --color-desk: #e2e8e2; /* >=640px, behind the sheet. Darker than bg */
 
-  --color-ink:          #12140f;   /* 16.5:1 on bg */
-  --color-dim:          #5b6360;   /* 5.5:1 on bg */
+  --color-ink: #12140f; /* 16.5:1 on bg */
+  --color-dim: #5b6360; /* 5.5:1 on bg */
 
   /* `line` is decorative only. Anything that BOUNDS a control (input, checkbox,
      outlined button) must use line-strong: WCAG 1.4.11 needs 3:1, `line` is
      1.22:1. line-strong is verified against both the white field fill and the
      tinted page ground; #868F86 was only 2.98:1 on the ground. */
-  --color-line:         #e3e8e3;
-  --color-line-strong:  #7f887f;   /* 3.66:1 on white, 3.26:1 on bg */
+  --color-line: #e3e8e3;
+  --color-line-strong: #7f887f; /* 3.66:1 on white, 3.26:1 on bg */
 
-  --color-accent:       #0a6b42;   /* 5.8:1 on bg; white on it 6.6:1 */
+  --color-accent: #0a6b42; /* 5.8:1 on bg; white on it 6.6:1 */
   --color-accent-hover: #0c7a4c;
-  --color-accent-wash:  #dce9e1;   /* selected-row fill. Pairs with an accent
+  --color-accent-wash: #dce9e1; /* selected-row fill. Pairs with an accent
                                       border; ink on it stays 14:1 */
-  --color-mint:         #3ddc91;   /* 1.77:1 on white. FILLS ON THE BAND ONLY.
+  --color-mint: #3ddc91; /* 1.77:1 on white. FILLS ON THE BAND ONLY.
                                       Never a text colour on a light surface. */
 
-  --color-down:         #be3623;   /* 5.0:1 on bg. NOT #D6432E (4.35, fails)
+  --color-down: #be3623; /* 5.0:1 on bg. NOT #D6432E (4.35, fails)
                                       and NOT #C63B27, which is 4.6 on the
                                       tinted ground: too thin for money */
-  --color-down-wash:    #f7dfdb;   /* the settle-up amount chip */
-  --color-notice:       #7a5e12;   /* 5.4:1 on bg. #8A6A16 was 4.5, a hair
+  --color-down-bright: #e8746a; /* down's band-safe sibling, same pairing as
+                                      mint is to accent. 4.69:1 on --color-band —
+                                      down itself is 2.5:1 there and fails. FILLS
+                                      AND TEXT ON THE BAND ONLY. */
+  --color-down-wash: #f7dfdb; /* the settle-up amount chip */
+  --color-notice: #7a5e12; /* 5.4:1 on bg. #8A6A16 was 4.5, a hair
                                       over the line. Overpayment + edit tag */
-  --color-notice-wash:  #f4ebd3;   /* overpayment warning fill */
+  --color-notice-wash: #f4ebd3; /* overpayment warning fill */
 
-  --color-band:         #123322;   /* Two surfaces: the landing proof band and
+  --color-band: #123322; /* Two surfaces: the landing proof band and
                                       the GroupPage header. */
-  --color-band-closed:  #2e322f;   /* Band with the green drained out: a closed
+  --color-band-closed: #2e322f; /* Band with the green drained out: a closed
                                       group. Matched to band's weight, not
                                       lightened. White 13.0:1, band-dim 6.5:1. */
-  --color-band-dim:     #a9bbae;   /* 6.8:1 on band. Also the ONLY colour for a
+  --color-band-dim: #a9bbae; /* 6.8:1 on band. Also the ONLY colour for a
                                       control boundary sitting on the band:
                                       white at 22% composites to #465F53 = 2.0:1
                                       and fails WCAG 1.4.11. */
 
-  --color-focus:        #12140f;   /* deliberately NOT accent */
-  --color-scrim:        color-mix(in srgb, #12140f 45%, transparent);
+  --color-focus: #12140f; /* deliberately NOT accent */
+  --color-scrim: color-mix(in srgb, #12140f 45%, transparent);
 
   /* No display face: .heading is Geist 600 with negative tracking. */
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --text-zero:         3.25rem;    /* the "big zero" moments and nothing else:
+  --text-zero: 3.25rem; /* the "big zero" moments and nothing else:
                                       the landing hero counting down, the
                                       settled receipt, and (Sprint 6.3) the
                                       close-group review once the whole ledger
@@ -89,29 +93,35 @@
                                       faked at a smaller size: it is the same
                                       finality, and closing now REQUIRES zero,
                                       so it is the most earned of the three. */
-  --text-display:      2rem;
-  --text-title:        1.375rem;   /* overlay h2, navbar wordmark */
-  --text-section:      1.125rem;
-  --text-body:         1rem;
-  --text-row-amount:   1rem;
+  --text-display: 2rem;
+  --text-title: 1.375rem; /* overlay h2, navbar wordmark */
+  --text-section: 1.125rem;
+  --text-body: 1rem;
+  --text-row-amount: 1rem;
   --text-hero-balance: 1.75rem;
-  --text-label:        0.875rem;
-  --text-micro:        0.8125rem;
+  --text-label: 0.875rem;
+  --text-micro: 0.8125rem;
 
-  --radius-card:   14px;
-  --radius-inner:  10px;
+  --radius-card: 14px;
+  --radius-inner: 10px;
 
   /* Resting lift for a list card: enough to peel white off the tinted ground,
      not a floating panel. Pairs with the border. */
-  --shadow-card:   0 1px 2px -1px color-mix(in srgb, var(--color-ink) 10%, transparent),
-                   0 3px 8px -3px color-mix(in srgb, var(--color-ink) 8%, transparent);
+  --shadow-card:
+    0 1px 2px -1px color-mix(in srgb, var(--color-ink) 10%, transparent),
+    0 3px 8px -3px color-mix(in srgb, var(--color-ink) 8%, transparent);
   /* Hover state for a card that is itself a link target. */
-  --shadow-card-hover: 0 2px 4px -2px color-mix(in srgb, var(--color-ink) 12%, transparent),
-                       0 6px 16px -4px color-mix(in srgb, var(--color-ink) 12%, transparent);
-  --shadow-sheet:  0 12px 32px -8px color-mix(in srgb, var(--color-ink) 12%, transparent);
-  --shadow-dialog: 0 12px 32px -8px color-mix(in srgb, var(--color-ink) 18%, transparent);
-  --shadow-float:  0 8px 24px -6px  color-mix(in srgb, var(--color-ink) 22%, transparent);
-  --shadow-press:  0 4px 12px -4px  color-mix(in srgb, var(--color-ink) 22%, transparent);
+  --shadow-card-hover:
+    0 2px 4px -2px color-mix(in srgb, var(--color-ink) 12%, transparent),
+    0 6px 16px -4px color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --shadow-sheet: 0 12px 32px -8px
+    color-mix(in srgb, var(--color-ink) 12%, transparent);
+  --shadow-dialog: 0 12px 32px -8px
+    color-mix(in srgb, var(--color-ink) 18%, transparent);
+  --shadow-float: 0 8px 24px -6px
+    color-mix(in srgb, var(--color-ink) 22%, transparent);
+  --shadow-press: 0 4px 12px -4px
+    color-mix(in srgb, var(--color-ink) 22%, transparent);
 }
 
 @layer base {
@@ -126,6 +136,11 @@
   body {
     margin: 0;
     font-family: var(--font-sans);
+    /* A native control (input[type=date] most reliably) can render wider than its
+       CSS width on some mobile browsers regardless of max-width/box-sizing on the
+       element itself — this is the backstop so that never scrolls the page
+       sideways instead of just clipping the one control that overflowed. */
+    overflow-x: hidden;
   }
 
   /* Browsers default <button> to cursor:default (unlike <a href>). */
@@ -205,6 +220,11 @@
   position: fixed;
   inset: 0;
   overflow-y: auto;
+  /* Explicit, not left to default: with only overflow-y set, the spec computes
+     overflow-x to auto too — which is exactly how a too-wide date input turns
+     into sideways scroll on the modal instead of the body's own overflow-x
+     backstop (fixed elements escape body's containment). */
+  overflow-x: hidden;
   background: var(--color-bg);
   /* Positive-z-index page content would otherwise paint over the modal. */
   z-index: 50;
@@ -359,7 +379,8 @@
 .segment[data-active="true"] {
   background: var(--color-surface);
   color: var(--color-ink);
-  box-shadow: 0 1px 3px -1px color-mix(in srgb, var(--color-ink) 16%, transparent);
+  box-shadow: 0 1px 3px -1px
+    color-mix(in srgb, var(--color-ink) 16%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -426,8 +447,10 @@
 .paid-by-date {
   display: grid;
   /* Proportional tracks, not a fixed date width. minmax(0, …) lets both shrink
-     past their content; the sub-360px rule below stacks them. */
-  grid-template-columns: minmax(0, 55fr) minmax(0, 45fr);
+     past their content; the sub-360px rule below stacks them. Date gets the
+     larger share — its native picker UI runs wider than Paid by's avatar+name
+     on several mobile browsers regardless of this track's own max-width. */
+  grid-template-columns: minmax(0, 48fr) minmax(0, 52fr);
   gap: 1rem;
 }
 

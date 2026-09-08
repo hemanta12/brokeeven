@@ -3,11 +3,17 @@ import { Link } from 'react-router-dom';
 import { buttonClass } from '../../components/Button';
 import { SignInPrompt } from '../auth/SignInPrompt';
 import { useMyGroups, useSession, type MyGroup } from '../auth/api';
-import { Amount } from '../../components/Amount';
 import { AvatarCluster } from '../../components/Avatar';
 import { CornerDecor } from '../../components/CornerDecor';
-import { capitalizeFirst, formatDate, formatUpdatedLabel } from '../../shared/format';
+import { capitalizeFirst, formatCurrency, formatDate, formatUpdatedLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
+
+// Card border and amount label share this map — keep them in sync per direction.
+const DIRECTION_STYLE: Record<MyGroup['netDirection'], { label: string; text: string; border: string }> = {
+  owed: { label: 'You’re owed', text: 'text-accent', border: 'border-l-accent' },
+  owe: { label: 'You owe', text: 'text-down', border: 'border-l-down' },
+  settled: { label: 'Even', text: 'text-ink', border: 'border-l-line-strong' }
+};
 
 // Plain text, not a pill — a pill inside a row that's already a link reads as a button.
 function BalanceAmount({
@@ -19,17 +25,16 @@ function BalanceAmount({
   amount: string;
   currency: string;
 }) {
-  if (direction === 'settled') {
-    return <span className="font-sans text-row-amount font-semibold text-dim">Even.</span>;
-  }
+  const style = DIRECTION_STYLE[direction];
   return (
-    <Amount
-      value={Number(amount)}
-      currency={currency}
-      direction={direction === 'owed' ? 'up' : 'down'}
-      label={direction === 'owed' ? 'you’re owed' : 'you owe'}
-      className="text-row-amount font-semibold"
-    />
+    <span className="block text-right">
+      <span className="block font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
+        {style.label}
+      </span>
+      <span className={`mt-0.5 block font-mono text-row-amount font-semibold ${style.text}`}>
+        {formatCurrency(Number(amount), currency)}
+      </span>
+    </span>
   );
 }
 
@@ -49,38 +54,33 @@ function LockGlyph() {
   );
 }
 
-// A closed group keeps its figures but loses its lift and its action; Add expense
-// would only 409.
+// Closed groups drop Add expense — the server 409s it anyway.
 function GroupCard({ group }: { group: MyGroup }) {
   const closed = Boolean(group.closedAt);
 
+  const border = closed ? 'border-l-line-strong' : DIRECTION_STYLE[group.netDirection].border;
+
   return (
     <li
-      className={`rounded-card border border-line px-4 pb-3 pt-3.5 ${
+      className={`rounded-card border border-line border-l-[3px] px-4 pb-3 pt-3.5 ${border} ${
         closed ? 'bg-surface/70' : 'bg-surface shadow-card transition-shadow duration-150 hover:shadow-card-hover'
       }`}
     >
       <Link to={`/g/${group.joinCode}`} className="focus-ring flex min-h-11 items-start gap-3 rounded-inner">
         {/* min-w-0 lets the name clamp instead of pushing the amount off its column. */}
         <span className="min-w-0 flex-1">
-          <span className="flex items-start gap-2">
-            <span
-              className={`min-w-0 font-sans text-body font-semibold leading-snug line-clamp-2 ${
-                closed ? 'text-dim' : 'text-ink'
-              }`}
-            >
-              {group.name}
+          {/* "Individual" is auto-set on quick 1:1 groups; not worth showing. */}
+          {group.label && group.label !== 'Individual' && (
+            <span className="block font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
+              {capitalizeFirst(group.label)}
             </span>
-            {/* "Individual" is auto-set on quick 1:1 groups; not worth showing. */}
-            {group.label && group.label !== 'Individual' && (
-              <span
-                className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 font-sans text-micro leading-none ${
-                  closed ? 'border-line-strong text-dim' : 'border-accent text-accent'
-                }`}
-              >
-                {capitalizeFirst(group.label)}
-              </span>
-            )}
+          )}
+          <span
+            className={`min-w-0 font-sans text-section font-semibold leading-snug line-clamp-2 ${
+              closed ? 'text-dim' : 'text-ink'
+            }`}
+          >
+            {group.name}
           </span>
           <span className="mt-0.5 block truncate font-sans text-micro text-dim">
             Updated {formatUpdatedLabel(group.lastActivityAt)}
@@ -98,14 +98,15 @@ function GroupCard({ group }: { group: MyGroup }) {
           </span>
         ) : (
           /* GroupPage reads ?add=expense and opens the modal directly. */
-          /* Ink link, not accent: accent next to the accent balance figure is ambiguous. */
           <Link
             to={`/g/${group.joinCode}?add=expense`}
-            className="focus-ring flex min-h-11 items-center gap-1.5 rounded-full pr-2 font-sans text-label font-semibold text-ink"
+            className="focus-ring -my-0.5 flex min-h-10 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink"
           >
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3.5 w-3.5 text-accent">
-              <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-            </svg>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3 w-3 text-accent">
+                <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+              </svg>
+            </span>
             Add expense
           </Link>
         )}
@@ -126,8 +127,7 @@ function totalFor(groups: MyGroup[], direction: MyGroup['netDirection']): number
     .reduce((sum, group) => sum + Number(group.netAmount), 0);
 }
 
-// ponytail: cross-group totals only make sense in one currency. Mixed currencies
-// fall back to USD until the deferred consolidated view (PRD deferred #3).
+// ponytail: mixed currencies fall back to USD until PRD deferred #3 (consolidated view).
 function commonCurrency(groups: MyGroup[]): string {
   const distinct = new Set(groups.map((group) => group.currency));
   return distinct.size === 1 ? ([...distinct][0] ?? 'USD') : 'USD';
@@ -136,16 +136,17 @@ function commonCurrency(groups: MyGroup[]): string {
 function BandHeader({ groups }: { groups?: MyGroup[] }) {
   const owed = groups ? totalFor(groups, 'owed') : null;
   const owe = groups ? totalFor(groups, 'owe') : null;
+  const netPosition = (owed ?? 0) - (owe ?? 0);
   const bandCurrency = groups ? commonCurrency(groups) : 'USD';
   const settled = owed === 0 && owe === 0;
 
   return (
-    <header className="relative -mx-4 -mt-2 overflow-hidden bg-band px-4 pb-7 pt-9 text-white sm:rounded-t-card sm:px-6">
+    <header className="relative -mx-4 -mt-2 overflow-hidden bg-band px-4 pb-6 pt-6 text-white sm:rounded-t-card sm:px-6">
       <CornerDecor />
       <h1 className="relative heading text-display text-white">My groups</h1>
 
       {groups && settled && (
-        <div className="relative mt-7 flex items-center gap-2.5 rounded-card bg-surface px-4 py-3.5 shadow-sheet">
+        <div className="relative mt-5 flex items-center gap-2.5 rounded-card bg-surface px-4 py-3.5 shadow-sheet">
           <svg
             viewBox="0 0 20 20"
             fill="none"
@@ -164,26 +165,46 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
       )}
 
       {groups && !settled && (
-        <dl className="relative mt-7 grid grid-cols-2 gap-2.5">
-          <div className="rounded-card bg-surface px-4 py-3 shadow-sheet">
-            <dt className="font-sans text-micro text-dim">You&rsquo;re owed</dt>
-            <dd className="mt-1">
-              <Amount value={owed ?? 0} currency={bandCurrency} direction="up" className="block truncate text-title font-semibold" />
-            </dd>
+        // text-accent/text-down fail contrast on this dark band — figures stay white here.
+        <div className="relative mt-6">
+          <div className="flex items-start gap-10">
+            <div>
+              <p className="font-sans text-label font-semibold uppercase tracking-[0.08em] text-band-dim">
+                Net position
+              </p>
+              <p
+                className={`mt-1 font-mono text-[2.5rem] font-semibold leading-none ${netPosition >= 0 ? 'text-mint' : 'text-down-bright'}`}
+              >
+                {netPosition >= 0 ? '+' : '−'}
+                {formatCurrency(Math.abs(netPosition), bandCurrency)}
+              </p>
+            </div>
+            {/* Always zero — this is the app's fixed goal, not a per-user target. */}
+            <div className="ml-auto shrink-0 text-right">
+              <p className="font-sans text-label font-semibold uppercase tracking-[0.08em] text-band-dim">Goal</p>
+              <p className="mt-1 font-mono text-hero-balance font-semibold leading-none text-band-dim">
+                {formatCurrency(0, bandCurrency)}
+              </p>
+            </div>
           </div>
-          <div className="rounded-card bg-surface px-4 py-3 shadow-sheet">
-            <dt className="font-sans text-micro text-dim">You owe</dt>
-            <dd className="mt-1">
-              <Amount value={owe ?? 0} currency={bandCurrency} direction="down" className="block truncate text-title font-semibold" />
-            </dd>
+
+          <div className="mt-5 grid grid-cols-2 items-stretch border-t border-white/15 pt-4 font-sans text-section">
+            <span className="flex items-center justify-center gap-2.5 border-r border-white/15">
+              <span className="text-label text-band-dim">You&rsquo;re owed</span>
+              <span className="font-mono font-semibold text-white">{formatCurrency(owed ?? 0, bandCurrency)}</span>
+            </span>
+            <span className="flex items-center justify-center gap-2.5">
+              <span className="text-label text-band-dim">You owe</span>
+              <span className="font-mono font-semibold text-white">{formatCurrency(owe ?? 0, bandCurrency)}</span>
+            </span>
           </div>
-        </dl>
+        </div>
       )}
     </header>
   );
 }
 
-// The signed-in account's groups, newest activity first.
+// API returns groups newest-activity-first; no re-sort here.
 export function MyGroupsPage() {
   const { isSignedIn, isPending: sessionPending } = useSession();
   const { data, isPending, isError, error, refetch } = useMyGroups(isSignedIn);
@@ -242,7 +263,7 @@ export function MyGroupsPage() {
         )}
 
         {openGroups.length > 0 && (
-          <ul className="mt-4 flex flex-col gap-2.5 px-4 sm:px-6">
+          <ul className="mt-4 flex flex-col gap-2.5 sm:px-2">
             {openGroups.map((group) => (
               <GroupCard key={group.id} group={group} />
             ))}
@@ -250,16 +271,14 @@ export function MyGroupsPage() {
         )}
 
         {hasGroups && openGroups.length === 0 && (
-          <p className="mt-4 px-4 font-sans text-label text-dim sm:px-6">
+          <p className="mt-4 font-sans text-label text-dim sm:px-2">
             Every group is closed. Start a new one below.
           </p>
         )}
 
-        {/* Native <details>: closed groups are archive, so they cost a tap by default.
-            Defaulted open when there is nothing else on the page, so the list never
-            renders empty with content one tap away. */}
+        {/* Open by default only when it's the sole content — never an empty page one tap from its list. */}
         {closedGroups.length > 0 && (
-          <details open={openGroups.length === 0} className="group mt-6 px-4 sm:px-6">
+          <details open={openGroups.length === 0} className="group mt-6 sm:px-2">
             <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-inner font-sans text-label font-medium text-dim [&::-webkit-details-marker]:hidden">
               <svg
                 viewBox="0 0 20 20"

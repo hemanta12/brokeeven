@@ -16,8 +16,7 @@ function sum(values: string[]): number {
 
 const DOT_CAP = 5;
 
-// The owed/owe per-side totals exist nowhere else — the Balances tab lists them
-// per person but never sums either side.
+// Balances tab lists these per person but never sums either side — this is the only total.
 export function GroupSummary({ balances, expenses, personId, currency, onSettleUp }: GroupSummaryProps) {
   const total = sum(expenses.map((e) => e.amount));
   const share = sum(
@@ -26,10 +25,10 @@ export function GroupSummary({ balances, expenses, personId, currency, onSettleU
   const owed = sum(balances.filter((b) => b.toPersonId === personId).map((b) => b.amount));
   const owe = sum(balances.filter((b) => b.fromPersonId === personId).map((b) => b.amount));
 
-  // Not in a single split, no open balance: none of this is theirs.
+  // No split, no balance: nothing here is the viewer's.
   if (share === 0 && owed === 0 && owe === 0) return null;
 
-  // Only balances the viewer is a party to; others' debts aren't theirs to settle.
+  // Others' balances aren't the viewer's to settle.
   const pending = balances.filter(
     (b) => b.fromPersonId === personId || b.toPersonId === personId,
   ).length;
@@ -38,7 +37,7 @@ export function GroupSummary({ balances, expenses, personId, currency, onSettleU
     /* Straddles the band's lower edge. */
     <section
       aria-label="Your position in this group"
-      className="relative z-1 mx-4 -mt-16 flex flex-col gap-3 overflow-hidden rounded-card bg-surface p-4 shadow-sheet sm:mx-6"
+      className="relative z-1 -mt-16 flex flex-col gap-3 overflow-hidden rounded-card bg-surface p-4 shadow-sheet sm:mx-2"
     >
       <div className="grid grid-cols-2 gap-2.5">
         <Chip label="You’re owed" value={owed} variant="in" currency={currency} />
@@ -112,8 +111,7 @@ export function GroupSummary({ balances, expenses, personId, currency, onSettleU
   );
 }
 
-// 'in' = arrow into a tray (money back to you), 'out' = arrow out. The tray shape
-// stops it reading as a trend line.
+// 'in' = money back to you, 'out' = money you owe.
 function FlowArrow({ variant, className }: { variant: 'in' | 'out'; className: string }) {
   return (
     <svg
