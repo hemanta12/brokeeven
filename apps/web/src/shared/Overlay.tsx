@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { Button } from '../components/Button';
+import { ErrorState } from './RouteStates';
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 // Restrained exit timing (UIUX_rules.md §10): ease-in, no spring physics.
@@ -22,18 +23,27 @@ interface OverlayProps {
   compact?: boolean;
   // Secondary control shown left of the close button (e.g. an Edit icon).
   headerAction?: ReactNode;
-  // Swaps Close out for headerAction alone, bypassing Close's exit animation
-  // (which assumes the overlay unmounts once it fires). Only meaningful
-  // together with headerAction; Escape still runs the real close underneath.
+  // Close doesn't render, but Escape still closes. Meaningless without headerAction.
   hideClose?: boolean;
   // Controls on the first row, title centered on its own row beneath.
   stackedHeader?: boolean;
+  // Caller-driven confirm (e.g. delete), same scrim/inert/Escape mechanics as the
+  // built-in discard prompt. Present = open.
+  blockingConfirm?: {
+    message: string;
+    detail?: string;
+    confirmLabel: string;
+    cancelLabel?: string;
+    danger?: boolean;
+    pending?: boolean;
+    error?: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null;
   children: ReactNode;
 }
 
-// Full-page overlay shell (Add/Edit Expense, Settle Up, Who Are You): focus trap,
-// scroll lock, focus restoration, Escape, safe-area insets, and in-app dirty-form
-// discard confirmation (never window.confirm).
+// Full-page overlay shell: focus trap, scroll lock, Escape, in-app discard confirm.
 export function Overlay({
   title,
   isDirty,
@@ -44,6 +54,7 @@ export function Overlay({
   headerAction,
   hideClose = false,
   stackedHeader = false,
+  blockingConfirm = null,
   children
 }: OverlayProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -53,9 +64,11 @@ export function Overlay({
   // Lazy init so a reduced-motion viewer never flashes the invisible "entering" frame.
   const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'visible' : 'entering'));
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
-  // Keydown listener is bound once; this ref keeps the latest value reachable inside it.
+  // Keydown listener is bound once; these refs keep the latest values reachable inside it.
   const confirmingRef = useRef(false);
   confirmingRef.current = confirmingDiscard;
+  const blockingConfirmRef = useRef<typeof blockingConfirm>(null);
+  blockingConfirmRef.current = blockingConfirm;
 
   useEffect(() => {
     if (phase !== 'entering') return;
@@ -100,6 +113,10 @@ export function Overlay({
           setConfirmingDiscard(false);
           return;
         }
+        if (blockingConfirmRef.current) {
+          blockingConfirmRef.current.onCancel();
+          return;
+        }
         requestCloseRef.current();
         return;
       }
@@ -128,11 +145,11 @@ export function Overlay({
   }, []);
 
   const controls = (
-    <div className="overlay-header-actions">
-      {/* Hidden under the discard prompt so it can't be tabbed to behind the scrim. */}
+    // inert, not unmounted — unmounting flickers the header; the scrim covers it anyway.
+    <div className="overlay-header-actions" inert={!!blockingConfirm || undefined}>
+      {/* headerAction hides outright (not inert) under the discard prompt specifically. */}
       {headerAction && !confirmingDiscard ? headerAction : null}
-      {/* confirmingDiscard can only exist if Close was reachable to start a
-          close in the first place, so it's exempt from hideClose. */}
+      {/* confirmingDiscard implies Close was reachable already, so hideClose is exempt here. */}
       {(!hideClose || confirmingDiscard) && (
         <button
           type="button"
@@ -158,16 +175,52 @@ export function Overlay({
           <h2 className="heading text-title">{title}</h2>
           {!stackedHeader && controls}
         </div>
-        {/* Form stays mounted (inert, not unmounted) under the discard prompt so
-            "Keep editing" returns to it with every field still filled in. */}
+        {/* inert, not unmounted — content (a filled form) survives either confirm closing. */}
         <div
           className="mt-4 flex flex-1 flex-col"
-          inert={confirmingDiscard || undefined}
-          aria-hidden={confirmingDiscard || undefined}
+          inert={confirmingDiscard || !!blockingConfirm || undefined}
+          aria-hidden={confirmingDiscard || !!blockingConfirm || undefined}
         >
           {children}
         </div>
       </div>
+
+      {blockingConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-label={blockingConfirm.message}
+            className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog"
+          >
+            <p className="font-sans text-body font-semibold text-ink">{blockingConfirm.message}</p>
+            {blockingConfirm.detail && (
+              <p className="mt-1 font-sans text-label text-dim">{blockingConfirm.detail}</p>
+            )}
+            <div className="mt-5 flex gap-3">
+              <Button
+                variant="tertiary"
+                className="flex-1"
+                autoFocus
+                onClick={blockingConfirm.onCancel}
+                disabled={blockingConfirm.pending}
+              >
+                {blockingConfirm.cancelLabel ?? 'Cancel'}
+              </Button>
+              <Button
+                variant="primary"
+                danger={blockingConfirm.danger}
+                className="flex-1"
+                onClick={blockingConfirm.onConfirm}
+                disabled={blockingConfirm.pending}
+              >
+                {blockingConfirm.confirmLabel}
+              </Button>
+            </div>
+            {blockingConfirm.error && <ErrorState message={blockingConfirm.error} />}
+          </div>
+        </div>
+      )}
 
       {confirmingDiscard && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">

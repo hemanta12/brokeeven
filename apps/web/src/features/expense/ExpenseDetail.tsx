@@ -1,10 +1,8 @@
 import { useState } from 'react';
 
 import { Avatar } from '../../components/Avatar';
-import { Button } from '../../components/Button';
 import { Overlay } from '../../shared/Overlay';
 import { Amount } from '../../components/Amount';
-import { ErrorState } from '../../shared/RouteStates';
 import { formatDate, formatExpenseTitle } from '../../shared/format';
 import { canEdit } from '../group/ownership';
 import type { Expense, Person } from '../group/types';
@@ -24,8 +22,18 @@ interface ExpenseDetailProps {
   deleteError?: string;
 }
 
-// Read-only receipt view opened from an expense row. Edit is a quiet header icon,
-// not a primary button — editing is a deliberate second step.
+function TrashGlyph() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" className="h-4 w-4">
+      <path
+        d="M4.5 6h11M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6M6 6l.6 8.6A1.5 1.5 0 0 0 8.1 16h3.8a1.5 1.5 0 0 0 1.5-1.4L14 6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function ExpenseDetail({
   expense,
   people,
@@ -41,7 +49,6 @@ export function ExpenseDetail({
 }: ExpenseDetailProps) {
   const payer = people.find((person) => person.id === expense.payerId);
   const editable = !readOnly && canEdit(expense.createdByUserId, viewerUserId);
-  // Two-step inline confirm for delete, same pattern as EditPersonForm.
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   return (
@@ -50,25 +57,49 @@ export function ExpenseDetail({
       stackedHeader
       isDirty={false}
       onClose={onClose}
+      blockingConfirm={
+        confirmingDelete
+          ? {
+              message: 'Delete this expense?',
+              confirmLabel: deletePending ? 'Deleting…' : 'Delete',
+              cancelLabel: 'Cancel',
+              danger: true,
+              pending: deletePending,
+              error: deleteError,
+              onConfirm: onDelete,
+              onCancel: () => setConfirmingDelete(false)
+            }
+          : null
+      }
       headerAction={
         editable ? (
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label="Edit"
-            className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
-          >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              aria-hidden="true"
-              className="size-5"
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={onEdit}
+              aria-label="Edit"
+              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
             >
-              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                aria-hidden="true"
+                className="size-5"
+              >
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(true)}
+              aria-label="Delete"
+              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-down/10 text-down transition-transform duration-100 hover:bg-down/20 active:scale-90"
+            >
+              <TrashGlyph />
+            </button>
+          </div>
         ) : undefined
       }
     >
@@ -122,39 +153,12 @@ export function ExpenseDetail({
           </ul>
         </div>
 
-        {/* Non-owners get no Edit/Delete — an action that only ever 403s is worse than none. */}
+        {/* Hidden, not disabled: the server 403s this for non-owners anyway. */}
         {!editable && (
           <div className="modal-footer">
             <p className="w-full text-center font-sans text-label text-dim">
               {readOnly ? 'This group is closed.' : 'Only the person who added this can edit it.'}
             </p>
-          </div>
-        )}
-
-        {editable && (
-          <div className="modal-footer">
-            {confirmingDelete ? (
-              <div className="flex w-full flex-col gap-2">
-                <div className="flex w-full gap-3">
-                  <Button
-                    variant="tertiary"
-                    className="flex-1"
-                    onClick={() => setConfirmingDelete(false)}
-                    disabled={deletePending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button variant="primary" danger className="flex-1" onClick={onDelete} disabled={deletePending}>
-                    {deletePending ? 'Deleting…' : 'Delete expense'}
-                  </Button>
-                </div>
-                {deleteError && <ErrorState message={deleteError} />}
-              </div>
-            ) : (
-              <Button variant="secondary" danger onClick={() => setConfirmingDelete(true)}>
-                Delete expense
-              </Button>
-            )}
           </div>
         )}
       </div>

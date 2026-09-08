@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ExpenseDetail } from './ExpenseDetail';
@@ -66,7 +66,7 @@ describe('ExpenseDetail', () => {
     );
 
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Delete expense' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
     expect(screen.getByText('Only the person who added this can edit it.')).toBeInTheDocument();
   });
 
@@ -85,7 +85,7 @@ describe('ExpenseDetail', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete expense' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(onDelete).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
 
@@ -109,8 +109,8 @@ describe('ExpenseDetail', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete expense' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Delete expense' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete' }));
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 
@@ -130,7 +130,7 @@ describe('ExpenseDetail', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete expense' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Deleting…' })).toBeDisabled();
     expect(screen.getByText('Something broke. Try again.')).toBeInTheDocument();
