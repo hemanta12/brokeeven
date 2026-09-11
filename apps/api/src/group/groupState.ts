@@ -72,3 +72,11 @@ export function rejectIfGroupClosed(response: Response, closedAt: Date | null): 
   response.status(409).json({ error: CLOSED_MESSAGE });
   return true;
 }
+
+// Person ids leak into every GET /groups/:code response, so a person-id-keyed
+// write route must not treat the id alone as proof the caller holds the code.
+export async function verifyGroupMembership(code: unknown, groupId: string): Promise<boolean> {
+  if (typeof code !== 'string' || code.length === 0) return false;
+  const group = await prisma.group.findUnique({ where: { joinCode: code.toUpperCase() }, select: { id: true } });
+  return group?.id === groupId;
+}

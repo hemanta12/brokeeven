@@ -30,7 +30,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
     setIdentity(code, personId);
     // Also links this person to the session (survives a new device once signed in).
     // Not awaited: the overlay closes instantly and a failed claim costs nothing locally.
-    void claimPerson(personId);
+    void claimPerson(personId, code);
     onClose();
   }
 
@@ -38,7 +38,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
     event.preventDefault();
     const person = await addPerson.mutateAsync({ code, name });
     setIdentity(code, person.id);
-    void claimPerson(person.id);
+    void claimPerson(person.id, code);
     onClose();
   }
 
@@ -51,7 +51,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
               const isSelected = selectedId === person.id;
               return (
                 <li key={person.id}>
-                  {/* Wash fill + accent border so selection reads even if the tick is covered. */}
+                  {/* Wash + border double as the selection cue if the tick is covered. */}
                   <label
                     className={`focus-ring flex min-h-13 cursor-pointer items-center gap-2.5 rounded-inner border px-3 py-2 font-sans text-body font-medium text-ink transition-colors duration-100 ${
                       isSelected

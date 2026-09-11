@@ -3,7 +3,7 @@ import type { Request } from 'express';
 import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
-import { rejectIfGroupClosed } from '../group/groupState.js';
+import { rejectIfGroupClosed, verifyGroupMembership } from '../group/groupState.js';
 import { normalizePersonName } from '../group/personName.js';
 import { requireActor } from '../auth/middleware.js';
 import { centsToAmount, toCents } from '../split/money.js';
@@ -87,7 +87,7 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (requ
     return;
   }
 
-  const { name } = request.body as { name?: unknown };
+  const { name, code } = (request.body ?? {}) as { name?: unknown; code?: unknown };
   if (!isNonEmptyString(name, NAME_MAX_LENGTH)) {
     response.status(400).json({ error: 'name is required' });
     return;
@@ -99,6 +99,10 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (requ
   });
   if (!person || person.removedAt) {
     response.status(404).json({ error: 'Person not found' });
+    return;
+  }
+  if (!(await verifyGroupMembership(code, person.groupId))) {
+    response.status(403).json({ error: 'Group code required' });
     return;
   }
   if (rejectIfGroupClosed(response, person.group.closedAt)) return;
@@ -118,16 +122,15 @@ peopleRouter.patch('/people/:id/name', writeRateLimit, requireActor, async (requ
   void broadcastGroupUpdate(updated.groupId);
 });
 
-// Separate from PATCH /people/:id, which is soft-delete: an unrecognised body
-// there must never mean "edit the person". No ActivityLog entry — a payment
-// handle isn't a ledger event.
+// Separate route from soft-delete PATCH /people/:id. No ActivityLog entry — a
+// payment handle isn't a ledger event.
 peopleRouter.patch('/people/:id/handle', writeRateLimit, requireActor, async (request: Request<{ id: string }>, response) => {
   if (!UUID_PATTERN.test(request.params.id)) {
     response.status(400).json({ error: 'Invalid person id' });
     return;
   }
 
-  const { paymentHandle } = request.body as { paymentHandle?: unknown };
+  const { paymentHandle, code } = (request.body ?? {}) as { paymentHandle?: unknown; code?: unknown };
   if (paymentHandle !== null && typeof paymentHandle !== 'string') {
     response.status(400).json({ error: 'paymentHandle must be a string or null' });
     return;
@@ -148,6 +151,10 @@ peopleRouter.patch('/people/:id/handle', writeRateLimit, requireActor, async (re
     response.status(404).json({ error: 'Person not found' });
     return;
   }
+  if (!(await verifyGroupMembership(code, person.groupId))) {
+    response.status(403).json({ error: 'Group code required' });
+    return;
+  }
   if (rejectIfGroupClosed(response, person.group.closedAt)) return;
 
   const updated = await prisma.person.update({
@@ -165,12 +172,17 @@ peopleRouter.patch('/people/:id', writeRateLimit, requireActor, async (request: 
     return;
   }
 
+  const { code } = (request.body ?? {}) as { code?: unknown };
   const person = await prisma.person.findUnique({
     where: { id: request.params.id },
     include: { group: { select: { closedAt: true } } }
   });
   if (!person) {
     response.status(404).json({ error: 'Person not found' });
+    return;
+  }
+  if (!(await verifyGroupMembership(code, person.groupId))) {
+    response.status(403).json({ error: 'Group code required' });
     return;
   }
   if (person.removedAt) {
@@ -212,9 +224,14 @@ peopleRouter.post('/people/:id/claim', writeRateLimit, requireActor, async (requ
     return;
   }
 
+  const { code } = (request.body ?? {}) as { code?: unknown };
   const person = await prisma.person.findUnique({ where: { id: request.params.id } });
   if (!person) {
     response.status(404).json({ error: 'Person not found' });
+    return;
+  }
+  if (!(await verifyGroupMembership(code, person.groupId))) {
+    response.status(403).json({ error: 'Group code required' });
     return;
   }
 

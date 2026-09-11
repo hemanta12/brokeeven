@@ -74,7 +74,7 @@ export function useAddPerson(code?: string) {
       if (!paymentHandle?.trim()) return person;
       return apiFetch<Person>(`/people/${person.id}/handle`, {
         method: 'PATCH',
-        body: JSON.stringify({ paymentHandle })
+        body: JSON.stringify({ paymentHandle, code: groupCode })
       });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
@@ -84,7 +84,8 @@ export function useAddPerson(code?: string) {
 export function useRemovePerson(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (personId: string) => apiFetch<Person>(`/people/${personId}`, { method: 'PATCH' }),
+    mutationFn: (personId: string) =>
+      apiFetch<Person>(`/people/${personId}`, { method: 'PATCH', body: JSON.stringify({ code }) }),
     onSuccess: () => {
       vibrateConfirm();
       return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
@@ -152,7 +153,7 @@ export function useUpdatePaymentHandle(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, paymentHandle }: { id: string; paymentHandle: string }) =>
-      apiFetch<Person>(`/people/${id}/handle`, { method: 'PATCH', body: JSON.stringify({ paymentHandle }) }),
+      apiFetch<Person>(`/people/${id}/handle`, { method: 'PATCH', body: JSON.stringify({ paymentHandle, code }) }),
     onSuccess: () => {
       vibrateConfirm();
       return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
@@ -164,7 +165,7 @@ export function useRenamePerson(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
-      apiFetch<Person>(`/people/${id}/name`, { method: 'PATCH', body: JSON.stringify({ name }) }),
+      apiFetch<Person>(`/people/${id}/name`, { method: 'PATCH', body: JSON.stringify({ name, code }) }),
     onSuccess: () => {
       vibrateConfirm();
       return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });

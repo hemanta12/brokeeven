@@ -27,7 +27,7 @@ export function useCreateQuickGroup() {
         body: JSON.stringify({ name: theirName })
       });
       setIdentity(group.joinCode, you.id);
-      await claimPerson(you.id);
+      await claimPerson(you.id, group.joinCode);
       return group;
     }
   });

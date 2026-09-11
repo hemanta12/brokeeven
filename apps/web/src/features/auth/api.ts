@@ -87,9 +87,9 @@ export function useMyGroups(enabled: boolean) {
 
 // Tells the server which person the viewer is, for cross-device ownership.
 // Best-effort: a 409 just means someone claimed it first.
-export async function claimPerson(personId: string): Promise<void> {
+export async function claimPerson(personId: string, code: string): Promise<void> {
   try {
-    await apiFetch<unknown>(`/people/${personId}/claim`, { method: 'POST' });
+    await apiFetch<unknown>(`/people/${personId}/claim`, { method: 'POST', body: JSON.stringify({ code }) });
   } catch {
     // Local identity still stands; this only affects cross-device ownership.
   }
