@@ -7,7 +7,7 @@ import { getGroupStateByCode, resolveGroupForWrite } from '../group/groupState.j
 import { generateJoinCode } from '../group/joinCode.js';
 import { normalizePersonName } from '../group/personName.js';
 import { prisma } from '../prisma.js';
-import { writeRateLimit } from '../rateLimit.js';
+import { readRateLimit, writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
 import { forgiveBelow, minimizeTransactions } from '../settleUp.js';
 import { centsToAmount, formatMoney, isSupportedCurrency, toCents } from '../split/money.js';
@@ -167,9 +167,8 @@ groupsRouter.post('/groups/:code/close', writeRateLimit, requireActor, async (re
     thresholdCents
   );
 
-  // Closing blocks settlements, so outstanding debt would be stranded with no
-  // surface left to clear it. Gated on the minimized plan, not `remaining`: a
-  // cycle (A->B->C->A) leaves pairwise rows but nets to zero and is closeable.
+  // Gated on the minimized plan, not `remaining`: a cycle (A->B->C->A) leaves
+  // pairwise rows but nets to zero and is closeable.
   if (minimizeTransactions(remaining).length > 0) {
     response.status(409).json({
       error: 'This group does not balance yet. Settle what is left, or raise the forgive amount to write it off.'
@@ -245,8 +244,8 @@ groupsRouter.post('/groups/:code/reopen', writeRateLimit, requireActor, async (r
 
 // Balances are computed on read (TECH_STACK.md §4); the expense list and balance
 // summary ride along on this one fetch.
-groupsRouter.get('/groups/:code', async (request, response) => {
-  const state = await getGroupStateByCode(request.params.code);
+groupsRouter.get('/groups/:code', readRateLimit, async (request, response) => {
+  const state = await getGroupStateByCode(String(request.params.code));
   if (!state) {
     response.status(404).json({ error: 'Group not found' });
     return;
@@ -260,7 +259,7 @@ groupsRouter.get('/groups/:code', async (request, response) => {
 // the Activity tab is opened.
 const ACTIVITY_PAGE_SIZE = 100;
 
-groupsRouter.get('/groups/:code/activity', async (request, response) => {
+groupsRouter.get('/groups/:code/activity', readRateLimit, async (request, response) => {
   const group = await prisma.group.findUnique({
     where: { joinCode: String(request.params.code).toUpperCase() },
     select: { id: true }

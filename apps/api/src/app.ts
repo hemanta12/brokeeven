@@ -2,10 +2,12 @@ import type { ErrorRequestHandler } from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
+import helmet from 'helmet';
 
 import { attachActor } from './auth/middleware.js';
 import { requireJsonWrites } from './auth/csrf.js';
 import { sessionSecret } from './auth/session.js';
+import { isNonProductionEnv } from './env.js';
 import { authRouter } from './routes/auth.js';
 import { expensesRouter } from './routes/expenses.js';
 import { groupsRouter } from './routes/groups.js';
@@ -19,21 +21,19 @@ const jsonErrorHandler: ErrorRequestHandler = (error, _request, response, _next)
   response.status(500).json({ error: 'Internal server error' });
 };
 
-// `credentials: true` cannot be paired with a reflect-any-origin policy: that
-// would let any site make credentialed calls with the user's session cookie.
-// Production must name its origin; dev keeps the permissive fallback.
-function corsOrigin(): string | string[] | true {
+// `credentials: true` can't pair with reflect-any-origin: any site could then
+// make credentialed calls with the user's session cookie. Dev keeps a permissive fallback.
+export function corsOrigin(): string | string[] | true {
   const configured = process.env.WEB_ORIGIN;
   if (configured) return configured.split(',').map((origin) => origin.trim());
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('WEB_ORIGIN is required in production');
-  }
-  return true;
+  if (isNonProductionEnv()) return true;
+  throw new Error('WEB_ORIGIN is required outside development/test');
 }
 
 export function createApp() {
   const app = express();
 
+  app.use(helmet());
   app.use(cors({ origin: corsOrigin(), credentials: true }));
   app.use(cookieParser(sessionSecret()));
   app.use(express.json());

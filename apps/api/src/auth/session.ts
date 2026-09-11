@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
 
+import { isNonProductionEnv } from '../env.js';
+
 export const SESSION_COOKIE = 'be_session';
 
 const SESSION_MAX_AGE_MS = 180 * 24 * 60 * 60 * 1000;
@@ -9,10 +11,8 @@ const DEV_SESSION_SECRET = 'brokeeven-dev-session-secret';
 export function sessionSecret(): string {
   const secret = process.env.SESSION_SECRET;
   if (secret) return secret;
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('SESSION_SECRET is required in production');
-  }
-  return DEV_SESSION_SECRET;
+  if (isNonProductionEnv()) return DEV_SESSION_SECRET;
+  throw new Error('SESSION_SECRET is required outside development/test');
 }
 
 // ponytail: with no COOKIE_DOMAIN this is a third-party cookie, which Safari/Brave
@@ -22,7 +22,7 @@ export function sessionSecret(): string {
 function cookieOptions() {
   const base = { httpOnly: true, signed: true, maxAge: SESSION_MAX_AGE_MS, path: '/' } as const;
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (isNonProductionEnv()) {
     return { ...base, sameSite: 'lax' as const, secure: false };
   }
   const domain = process.env.COOKIE_DOMAIN;
