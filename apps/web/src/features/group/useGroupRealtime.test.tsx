@@ -70,7 +70,7 @@ describe('useGroupRealtime', () => {
 
   it('joins the group room on mount', () => {
     renderHook(() => useGroupRealtime('ABC123', 'g1'), { wrapper });
-    expect(emit).toHaveBeenCalledWith('group:join', 'g1');
+    expect(emit).toHaveBeenCalledWith('group:join', 'ABC123');
   });
 
   it('does nothing until both code and groupId are known', () => {

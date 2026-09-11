@@ -2,32 +2,39 @@ import type { Server as HttpServer } from 'node:http';
 
 import { Server } from 'socket.io';
 
+import { corsOrigin } from './app.js';
 import { getGroupStateById } from './group/groupState.js';
+import { prisma } from './prisma.js';
 
 let io: Server | undefined;
 
 // One Socket.io server per process, same lifetime as the Express app.
 export function initRealtime(httpServer: HttpServer): Server {
   io = new Server(httpServer, {
-    cors: { origin: process.env.WEB_ORIGIN ?? true }
+    // Same allowlist as the Express app (app.ts) — must fail the same way, or a
+    // future change to one silently reopens the other.
+    cors: { origin: corsOrigin() }
   });
 
   io.on('connection', (socket) => {
-    // One room per Group.id (TECH_STACK.md §4); the client sends the id from its
-    // own GET /groups/:code.
-    socket.on('group:join', (groupId: unknown) => {
-      if (typeof groupId === 'string' && groupId.length > 0) {
-        socket.join(groupId);
-      }
+    // Join by code, not a bare group id — an id leaks into every GET
+    // /groups/:code response and must not grant live access on its own.
+    socket.on('group:join', (code: unknown) => {
+      if (typeof code !== 'string' || code.length === 0) return;
+      prisma.group
+        .findUnique({ where: { joinCode: code.toUpperCase() }, select: { id: true } })
+        .then((group) => {
+          if (group) socket.join(group.id);
+        })
+        .catch((error) => console.error('Failed to resolve group for socket join', error));
     });
   });
 
   return io;
 }
 
-// Call after a mutation has committed. Emits the same shape as GET /groups/:code
-// so clients apply it directly; no-op when realtime is uninitialized (route-only
-// tests).
+// Emits the same shape as GET /groups/:code so clients apply it directly.
+// No-op when realtime is uninitialized (route-only tests).
 export async function broadcastGroupUpdate(groupId: string): Promise<void> {
   if (!io) return;
   try {

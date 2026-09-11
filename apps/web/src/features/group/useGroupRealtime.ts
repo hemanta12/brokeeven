@@ -29,9 +29,7 @@ function changedRowIds(previous: GroupWithPeople, next: GroupWithPeople): string
   return ids;
 }
 
-// Joins the group's realtime room on mount, applies `group:update` payloads to
-// the cache, and refetches via REST on reconnect rather than trusting the
-// disconnect window. Returns the ids of rows that just changed for a pulse cue.
+// Refetches via REST on reconnect rather than trusting the disconnect window.
 export function useGroupRealtime(code: string | undefined, groupId: string | undefined): Set<string> {
   const queryClient = useQueryClient();
   const [pulsingIds, setPulsingIds] = useState<Set<string>>(new Set());
@@ -67,10 +65,10 @@ export function useGroupRealtime(code: string | undefined, groupId: string | und
       if (previous) pulse(changedRowIds(previous, next));
     }
 
-    socket.emit('group:join', groupId);
+    socket.emit('group:join', code);
     socket.on('group:update', applyUpdate);
     socket.io.on('reconnect', () => {
-      socket.emit('group:join', groupId);
+      socket.emit('group:join', code);
       void queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
     });
 
