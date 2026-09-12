@@ -1,9 +1,7 @@
 @import "tailwindcss";
 
-/* Self-hosted, Latin subset only (app is English-only). Geist for everything,
-   Geist Mono for money — Geist Mono is tabular by construction, so `tabular-nums`
-   is redundant wherever font-mono is set. Both files are variable; the
-   font-weight range lets one file serve every weight. */
+/* Self-hosted, Latin subset (English-only app). Geist Mono is tabular by
+   construction — `tabular-nums` is redundant wherever font-mono is set. */
 @font-face {
   font-family: "Geist";
   font-style: normal;
@@ -28,73 +26,48 @@
      60  the discard prompt           over the modal it interrupts
 */
 @theme {
-  /* Three depths. The page ground is tinted, the card is white; the bg/surface
-     delta is what makes a card read as a card — do not flatten it. `sunken` is
-     the tinted fill inside a card (entry rows, segmented control); never collapse
-     it into bg. */
-  --color-bg: #f0f2f0; /* dL* 4.7 from white. #FCFCFB was dL* 0.4
-                                      (invisible); #EFF3EF read too green (green
-                                      channel +4 over red/blue vs +2 here). */
+  /* Three depths: page ground is tinted, card is white, sunken is the tinted
+     fill inside a card. Do not flatten the bg/surface delta or collapse
+     sunken into bg. */
+  --color-bg: #f0f2f0;
   --color-surface: #ffffff;
   --color-sunken: #e7ece7; /* must still read inside a white card */
-  --color-desk: #e2e8e2; /* >=640px, behind the sheet. Darker than bg */
+  --color-desk: #e2e8e2; /* used >=640px, behind the sheet; must stay darker than bg */
 
   --color-ink: #12140f; /* 16.5:1 on bg */
   --color-dim: #5b6360; /* 5.5:1 on bg */
 
-  /* `line` is decorative only. Anything that BOUNDS a control (input, checkbox,
-     outlined button) must use line-strong: WCAG 1.4.11 needs 3:1, `line` is
-     1.22:1. line-strong is verified against both the white field fill and the
-     tinted page ground; #868F86 was only 2.98:1 on the ground. */
+  /* `line` is decorative only; anything that bounds a control (input,
+     checkbox, outlined button) must use `line-strong` for WCAG 1.4.11's 3:1
+     minimum (`line` is only 1.22:1). line-strong holds 3.66:1 on white and
+     3.26:1 on the tinted page ground. */
   --color-line: #e3e8e3;
-  --color-line-strong: #7f887f; /* 3.66:1 on white, 3.26:1 on bg */
+  --color-line-strong: #7f887f;
 
   --color-accent: #0a6b42; /* 5.8:1 on bg; white on it 6.6:1 */
   --color-accent-hover: #0c7a4c;
-  --color-accent-wash: #dce9e1; /* selected-row fill. Pairs with an accent
-                                      border; ink on it stays 14:1 */
-  --color-mint: #3ddc91; /* 1.77:1 on white. FILLS ON THE BAND ONLY.
-                                      Never a text colour on a light surface. */
+  --color-accent-wash: #dce9e1; /* selected-row fill; ink on it stays 14:1 */
+  --color-mint: #3ddc91; /* 1.77:1 on white — fills on the band only, never text on a light surface */
 
-  --color-down: #be3623; /* 5.0:1 on bg. NOT #D6432E (4.35, fails)
-                                      and NOT #C63B27, which is 4.6 on the
-                                      tinted ground: too thin for money */
-  --color-down-bright: #e8746a; /* down's band-safe sibling, same pairing as
-                                      mint is to accent. 4.69:1 on --color-band —
-                                      down itself is 2.5:1 there and fails. FILLS
-                                      AND TEXT ON THE BAND ONLY. */
-  --color-down-wash: #f7dfdb; /* the settle-up amount chip */
-  --color-notice: #7a5e12; /* 5.4:1 on bg. #8A6A16 was 4.5, a hair
-                                      over the line. Overpayment + edit tag */
-  --color-notice-wash: #f4ebd3; /* overpayment warning fill */
+  --color-down: #be3623; /* 5.0:1 on bg */
+  --color-down-bright: #e8746a; /* 4.69:1 on --color-band (down itself is 2.5:1 there and fails); fills and text on the band only */
+  --color-down-wash: #f7dfdb;
+  --color-notice: #7a5e12; /* 5.4:1 on bg */
+  --color-notice-wash: #f4ebd3;
 
-  --color-band: #123322; /* Two surfaces: the landing proof band and
-                                      the GroupPage header. */
-  --color-band-closed: #2e322f; /* Band with the green drained out: a closed
-                                      group. Matched to band's weight, not
-                                      lightened. White 13.0:1, band-dim 6.5:1. */
-  --color-band-dim: #a9bbae; /* 6.8:1 on band. Also the ONLY colour for a
-                                      control boundary sitting on the band:
-                                      white at 22% composites to #465F53 = 2.0:1
-                                      and fails WCAG 1.4.11. */
+  --color-band: #123322;
+  --color-band-closed: #2e322f; /* band with the green drained out, matched to band's visual weight; white 13.0:1, band-dim 6.5:1 on it */
+  --color-band-dim: #a9bbae; /* 6.8:1 on band; the only color usable for a control boundary on the band — white at 22% opacity composites to 2.0:1 there and fails WCAG 1.4.11 */
 
-  --color-focus: #12140f; /* deliberately NOT accent */
+  --color-focus: #12140f; /* deliberately not accent */
   --color-scrim: color-mix(in srgb, #12140f 45%, transparent);
 
-  /* No display face: .heading is Geist 600 with negative tracking. */
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --text-zero: 3.25rem; /* the "big zero" moments and nothing else:
-                                      the landing hero counting down, the
-                                      settled receipt, and (Sprint 6.3) the
-                                      close-group review once the whole ledger
-                                      balances. The third was added rather than
-                                      faked at a smaller size: it is the same
-                                      finality, and closing now REQUIRES zero,
-                                      so it is the most earned of the three. */
+  --text-zero: 3.25rem; /* reserved for the three big-zero moments (landing hero countdown, settled receipt, close-group review) — do not reuse elsewhere */
   --text-display: 2rem;
-  --text-title: 1.375rem; /* overlay h2, navbar wordmark */
+  --text-title: 1.375rem;
   --text-section: 1.125rem;
   --text-body: 1rem;
   --text-row-amount: 1rem;
@@ -105,12 +78,9 @@
   --radius-card: 14px;
   --radius-inner: 10px;
 
-  /* Resting lift for a list card: enough to peel white off the tinted ground,
-     not a floating panel. Pairs with the border. */
   --shadow-card:
     0 1px 2px -1px color-mix(in srgb, var(--color-ink) 10%, transparent),
     0 3px 8px -3px color-mix(in srgb, var(--color-ink) 8%, transparent);
-  /* Hover state for a card that is itself a link target. */
   --shadow-card-hover:
     0 2px 4px -2px color-mix(in srgb, var(--color-ink) 12%, transparent),
     0 6px 16px -4px color-mix(in srgb, var(--color-ink) 12%, transparent);
@@ -128,22 +98,20 @@
   :root {
     color: var(--color-ink);
     background: var(--color-bg);
-    /* Opening a modal sets body{overflow:hidden}, removing the scrollbar and
-       shifting the layout right. Reserving the gutter keeps everything still. */
+    /* Opening a modal sets body{overflow:hidden}, which removes the scrollbar
+       and shifts the layout right; reserving the gutter keeps it still. */
     scrollbar-gutter: stable;
   }
 
   body {
     margin: 0;
     font-family: var(--font-sans);
-    /* A native control (input[type=date] most reliably) can render wider than its
-       CSS width on some mobile browsers regardless of max-width/box-sizing on the
-       element itself — this is the backstop so that never scrolls the page
-       sideways instead of just clipping the one control that overflowed. */
+    /* A native control (input[type=date] most reliably) can render wider than
+       its CSS width on some mobile browsers regardless of max-width/box-sizing
+       — this backstop clips just that control instead of scrolling the page. */
     overflow-x: hidden;
   }
 
-  /* Browsers default <button> to cursor:default (unlike <a href>). */
   button:not(:disabled) {
     cursor: pointer;
   }
@@ -151,8 +119,8 @@
     cursor: not-allowed;
   }
 
-  /* Fill the space under the sticky navbar, not 100vh — 100vh pushes the card a
-     navbar-height past the fold. */
+  /* Fill the space under the sticky navbar, not 100vh — 100vh pushes the card
+     a navbar-height past the fold. */
   main {
     box-sizing: border-box;
     margin: 0 auto;
@@ -162,22 +130,22 @@
   }
 }
 
-/* Tablet/desktop: column width never changes (DESIGN_SYSTEM.md §4); a wide
+/* Column width never changes at wider viewports (DESIGN_SYSTEM.md §4); a wide
    window gets a "desk" around a raised paper sheet instead. */
 @media (min-width: 640px) {
-  /* Desk colour on :root, not body: body's background only paints its own box,
-     leaving the root ground showing below as a second band. */
+  /* Desk color goes on :root, not body: body's background only paints its own
+     box, leaving the root ground showing below as a second band. */
   :root {
     background: var(--color-desk);
   }
 
   main {
-    /* Account for the 2rem top+bottom margins so the sheet stops at the fold
-       rather than overflowing by 4rem. */
+    /* Accounts for the 2rem top+bottom margins so the sheet stops at the fold
+       instead of overflowing by 4rem. */
     min-height: calc(100vh - var(--navbar-height) - 4rem);
     margin-block: 2rem;
     border-radius: var(--radius-card);
-    /* The sheet takes the page ground, not surface: every card and control on it
+    /* The sheet takes the page ground, not surface: every card/control on it
        is white and needs somewhere to be raised from. */
     background: var(--color-bg);
     box-shadow: var(--shadow-sheet);
@@ -185,9 +153,9 @@
 }
 
 @layer components {
-  /* Double focus ring (DESIGN_SYSTEM.md §10): outer ink ring for light surfaces,
-     inner white ring for dark control fills. Hand-written, not Tailwind
-     ring+ring-offset, which assumes one solid background colour. */
+  /* Double focus ring (DESIGN_SYSTEM.md §10): outer ink ring for light
+     surfaces, inner white ring for dark control fills. Hand-written, not
+     Tailwind ring+ring-offset, which assumes one solid background color. */
   .focus-ring {
     outline: none;
   }
@@ -197,9 +165,6 @@
       0 0 0 4px var(--color-focus);
   }
 
-  /* Display-heading treatment (family, weight, leading, tracking, colour); size
-     stays a per-use utility. -0.02em here; the landing hero figure goes to the
-     -0.04em floor and no tighter. */
   .heading {
     font-family: var(--font-sans);
     font-weight: 600;
@@ -211,22 +176,20 @@
 }
 
 /* Fixed full-viewport scroll region; width is capped on .overlay-content. The
-   background is required here — without it the still-mounted page shows through
-   the viewport margin beside the capped content. */
+   background is required here — without it the still-mounted page shows
+   through the viewport margin beside the capped content. */
 .overlay {
-  /* A field must never be the same fill as what it sits on; the sheet is tinted,
-     so fields are raised white. */
+  /* A field must never share its fill with what it sits on; the sheet is
+     tinted, so fields are raised white. */
   --field-bg: var(--color-surface);
   position: fixed;
   inset: 0;
   overflow-y: auto;
   /* Explicit, not left to default: with only overflow-y set, the spec computes
-     overflow-x to auto too — which is exactly how a too-wide date input turns
-     into sideways scroll on the modal instead of the body's own overflow-x
-     backstop (fixed elements escape body's containment). */
+     overflow-x to auto too, which turns a too-wide date input into sideways
+     scroll on the modal (fixed elements escape body's own overflow-x). */
   overflow-x: hidden;
   background: var(--color-bg);
-  /* Positive-z-index page content would otherwise paint over the modal. */
   z-index: 50;
 }
 
@@ -275,8 +238,8 @@
   }
 }
 
-/* Compact variant (Group info, People): short content, sizes to fit, floats on
-   a scrim at every width. */
+/* Sizes to content; unlike .overlay, floats on a scrim at every width instead
+   of becoming a desktop sheet. */
 .overlay-compact {
   --field-bg: var(--color-sunken);
   --page-ground: var(--color-surface);
@@ -293,9 +256,9 @@
   width: 100%;
   max-width: 26rem;
   max-height: calc(100vh - 3rem);
-  /* height:auto sizes to content up to max-height; without this the excess
-     spilled past the card's own rounded edge instead of scrolling inside it
-     once content (e.g. a long People list) outgrew the cap. */
+  /* height:auto sizes to content up to max-height; without it, content that
+     outgrows the cap (e.g. a long People list) spills past the card's rounded
+     edge instead of scrolling inside it. */
   overflow-y: auto;
   height: auto;
   margin: auto;
@@ -304,8 +267,8 @@
   box-shadow: var(--shadow-dialog);
 }
 
-/* Sticky action, like .bottom-bar: margin-top:auto parks it at the bottom when
-   the form is short; sticky holds it while a long form scrolls under. */
+/* Like .bottom-bar: margin-top:auto parks it at the bottom when the form is
+   short; sticky holds it while a long form scrolls under. */
 .modal-footer {
   position: sticky;
   bottom: 0;
@@ -326,8 +289,8 @@
   width: 100%;
 }
 
-/* Component flips to data-phase="visible" a frame after mount so the transition
-   animates in. */
+/* Flips to data-phase="visible" a frame after mount (set in JS) so the
+   transition animates in. */
 .overlay-content[data-phase="entering"] {
   opacity: 0;
   transform: translateY(8px);
@@ -346,9 +309,8 @@
   }
 }
 
-/* Segmented-pill control (Group View tabs, split-method). Always the sunken
-   fill, never --field-bg: in the Add/Edit sheet --field-bg is white, which
-   collapses the track into the white active thumb. */
+/* Always the sunken fill, never --field-bg: in the Add/Edit sheet --field-bg
+   is white, which would collapse the track into the white active thumb. */
 .segmented {
   display: flex;
   gap: 0;
@@ -416,7 +378,7 @@
 }
 
 /* A second control (Edit) sits beside the close button, so the title needs
-   more clearance to stay centred between them. */
+   more clearance to stay centered between them. */
 .overlay-header-centered.has-header-action h2 {
   padding-inline: 6rem;
 }
@@ -428,8 +390,6 @@
   transform: translateY(-50%);
 }
 
-/* Controls on the first row, title on its own row beneath — no side clearance
-   or absolute positioning needed. */
 .overlay-header-stacked {
   flex-direction: column;
   align-items: stretch;
@@ -446,10 +406,9 @@
 
 .paid-by-date {
   display: grid;
-  /* Proportional tracks, not a fixed date width. minmax(0, …) lets both shrink
-     past their content; the sub-360px rule below stacks them. Date gets the
-     larger share — its native picker UI runs wider than Paid by's avatar+name
-     on several mobile browsers regardless of this track's own max-width. */
+  /* Proportional tracks, not a fixed date width — minmax(0, …) lets both
+     shrink past their content. Date gets the larger share since its native
+     picker runs wider than Paid by's avatar+name on some mobile browsers. */
   grid-template-columns: minmax(0, 48fr) minmax(0, 52fr);
   gap: 1rem;
 }
@@ -474,28 +433,22 @@
   appearance: none;
 }
 
-@media (max-width: 480px) {
-  .paid-by-date {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-/* Border and radius live here, not on the inner <button>, so the .row-pulse cue
-   (set on the <li>) isn't painted over by its own child. */
+/* Border and radius live here, not on the inner <button>, so the .row-pulse
+   cue (set on the <li>) isn't painted over by its own child. */
 .entry-card {
   border: 1px solid var(--color-line);
   border-radius: var(--radius-inner);
   background-color: var(--color-surface);
-  /* background-color stays at §6's 250ms: this element is also the .row-pulse
-     target, and a shorter duration would retime that cue. */
+  /* background-color stays at §6's 250ms: this element is also the
+     .row-pulse target, and a shorter duration would retime that cue. */
   transition:
     border-color 150ms ease-out,
     background-color 250ms ease-out,
     transform 100ms ease-out;
 }
 
-/* Only whole-card tap targets get hover feedback. Hover darkens the border, not
-   the fill — darkening the fill outranks li.row-pulse and suppresses that cue. */
+/* Only whole-card tap targets get hover feedback. Hover darkens the border,
+   not the fill — darkening the fill would outrank and suppress li.row-pulse. */
 @media (hover: hover) {
   .entry-card-tappable:hover {
     border-color: var(--color-line-strong);
@@ -509,19 +462,14 @@
 :root {
   /* Navbar box model (py-2 + h-11 + border-b), kept in sync by hand. */
   --navbar-height: calc(0.5rem + 2.75rem + 0.5rem + 1px);
-  /* What a sticky bar's gradient fades into: page ground on mobile, the white
-     sheet on desktop (overridden above). */
   --page-ground: var(--color-bg);
 }
 
-/* Persistent action, thumb-reachable, safe-area aware. Sticky, not fixed: fixed
-   floats it on the desk below the sheet. The strip is click-through apart from
-   its children (see below). */
+/* Sticky, not fixed: fixed would float it on the desk below the sheet. */
 .bottom-bar {
   position: sticky;
   bottom: 0;
   z-index: 1;
-  /* Column so a screen can stack quieter alternatives above the primary action. */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -537,8 +485,8 @@
   );
 }
 
-/* The bar is click-through so the faded strip doesn't eat taps meant for rows
-   under it; its children are not. */
+/* The bar itself is click-through so the faded strip doesn't eat taps meant
+   for rows under it; its children are not. */
 .bottom-bar > * {
   pointer-events: auto;
 }
@@ -556,9 +504,9 @@
   box-shadow: var(--shadow-press);
 }
 
-/* One-shot update cue (DESIGN_SYSTEM.md §6): a transition, not a keyframe, so a
-   second update mid-fade retargets smoothly. Scoped to these two classes — a
-   bare `li` selector caught every other <li> in the app. */
+/* A transition, not a keyframe, so a second update mid-fade retargets
+   smoothly. Scoped to these two classes — a bare `li` selector caught every
+   other <li> in the app. */
 li.entry-card,
 li.row-pulse {
   transition: background-color 250ms ease-out;
@@ -590,9 +538,7 @@ li.row-pulse {
   }
 }
 
-/* The receipt tear. Two surfaces only: the settle card and the settled receipt.
-   Do not spread it. Two notches punched from the card's left/right edges, filled
-   with the colour behind the card, plus a dashed rule between. */
+/* Two surfaces only (the settle card, the settled receipt) — do not reuse elsewhere. */
 .tear {
   position: relative;
   height: 22px;
