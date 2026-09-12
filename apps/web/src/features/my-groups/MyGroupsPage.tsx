@@ -8,12 +8,18 @@ import { CornerDecor } from '../../components/CornerDecor';
 import { capitalizeFirst, formatCurrency, formatDate, formatUpdatedLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 
-// Card border and amount label share this map — keep them in sync per direction.
-const DIRECTION_STYLE: Record<MyGroup['netDirection'], { label: string; text: string; border: string }> = {
-  owed: { label: 'You’re owed', text: 'text-accent', border: 'border-l-accent' },
-  owe: { label: 'You owe', text: 'text-down', border: 'border-l-down' },
-  settled: { label: 'Even', text: 'text-ink', border: 'border-l-line-strong' }
+const DIRECTION_STYLE: Record<MyGroup['netDirection'], { label: string; text: string }> = {
+  owed: { label: 'You’re owed', text: 'text-accent' },
+  owe: { label: 'You owe', text: 'text-down' },
+  settled: { label: 'Even', text: 'text-ink' }
 };
+
+// "Individual" is auto-set on quick 1:1 groups; a real label wins over both.
+function spineLabel(group: MyGroup): string {
+  if (group.label && group.label !== 'Individual') return capitalizeFirst(group.label);
+  if (group.label === 'Individual') return '1:1';
+  return 'Group';
+}
 
 // Plain text, not a pill — a pill inside a row that's already a link reads as a button.
 function BalanceAmount({
@@ -58,64 +64,60 @@ function LockGlyph() {
 function GroupCard({ group }: { group: MyGroup }) {
   const closed = Boolean(group.closedAt);
 
-  const border = closed ? 'border-l-line-strong' : DIRECTION_STYLE[group.netDirection].border;
-
   return (
     <li
-      className={`rounded-card border border-line border-l-[3px] px-4 pb-3 pt-3.5 ${border} ${
+      className={`flex overflow-hidden rounded-card border border-line ${
         closed ? 'bg-surface/70' : 'bg-surface shadow-card transition-shadow duration-150 hover:shadow-card-hover'
       }`}
     >
-      <Link to={`/g/${group.joinCode}`} className="focus-ring flex min-h-11 items-start gap-3 rounded-inner">
-        {/* min-w-0 lets the name clamp instead of pushing the amount off its column. */}
-        <span className="min-w-0 flex-1">
-          {/* "Individual" is auto-set on quick 1:1 groups; not worth showing. */}
-          {group.label && group.label !== 'Individual' && (
-            <span className="block font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
-              {capitalizeFirst(group.label)}
+      {/* Deliberately grayscale, not a balance-direction accent bar. */}
+      <span aria-hidden="true" className="flex w-7 shrink-0 items-center justify-center bg-sunken py-3">
+        <span className="[writing-mode:vertical-rl] rotate-180 truncate font-sans text-micro font-semibold uppercase tracking-[0.08em] text-dim">
+          {spineLabel(group)}
+        </span>
+      </span>
+
+      <div className="min-w-0 flex-1 px-4 pb-3 pt-3.5">
+        <Link to={`/g/${group.joinCode}`} className="focus-ring flex min-h-11 items-start gap-3 rounded-inner">
+          {/* min-w-0 lets the name clamp instead of pushing the amount off its column. */}
+          <span className="min-w-0 flex-1">
+            <span
+              className={`min-w-0 font-sans text-section font-semibold leading-snug line-clamp-2 ${
+                closed ? 'text-dim' : 'text-ink'
+              }`}
+            >
+              {group.name}
             </span>
+            <span className="mt-0.5 block truncate font-sans text-micro text-dim">
+              Updated {formatUpdatedLabel(group.lastActivityAt)}
+            </span>
+          </span>
+          <span className="shrink-0">
+            <BalanceAmount direction={group.netDirection} amount={group.netAmount} currency={group.currency} />
+          </span>
+        </Link>
+        <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
+          {closed ? (
+            <span className="flex min-h-11 items-center gap-1.5 font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
+              <LockGlyph />
+              Closed {formatDate(group.closedAt as string)}
+            </span>
+          ) : (
+            /* GroupPage reads ?add=expense and opens the modal directly. */
+            <Link
+              to={`/g/${group.joinCode}?add=expense`}
+              className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink transition-transform duration-100 active:scale-95"
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3 w-3 text-accent">
+                  <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+                </svg>
+              </span>
+              Add expense
+            </Link>
           )}
-          <span
-            className={`min-w-0 font-sans text-section font-semibold leading-snug line-clamp-2 ${
-              closed ? 'text-dim' : 'text-ink'
-            }`}
-          >
-            {group.name}
-          </span>
-          <span className="mt-0.5 block truncate font-sans text-micro text-dim">
-            Updated {formatUpdatedLabel(group.lastActivityAt)}
-          </span>
-        </span>
-        <span className="shrink-0">
-          <BalanceAmount direction={group.netDirection} amount={group.netAmount} currency={group.currency} />
-        </span>
-      </Link>
-      <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
-        {closed ? (
-          <span className="flex min-h-11 items-center gap-1.5 font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
-            <LockGlyph />
-            Closed {formatDate(group.closedAt as string)}
-          </span>
-        ) : (
-          /* GroupPage reads ?add=expense and opens the modal directly. */
-          <Link
-            to={`/g/${group.joinCode}?add=expense`}
-            className="focus-ring -my-0.5 flex min-h-10 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink"
-          >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3 w-3 text-accent">
-                <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-              </svg>
-            </span>
-            Add expense
-          </Link>
-        )}
-        <span className="flex shrink-0 items-center gap-2">
           <AvatarCluster names={group.members} total={group.memberCount} />
-          <span className="font-sans text-micro text-dim">
-            {group.memberCount} {group.memberCount === 1 ? 'person' : 'people'}
-          </span>
-        </span>
+        </div>
       </div>
     </li>
   );
@@ -141,9 +143,9 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
   const settled = owed === 0 && owe === 0;
 
   return (
-    <header className="relative -mx-4 -mt-2 overflow-hidden bg-band px-4 pb-6 pt-6 text-white sm:rounded-t-card sm:px-6">
+    <header className="relative -mx-4 -mt-2 overflow-hidden bg-band px-4 pb-3 pt-5 text-white sm:rounded-t-card sm:px-6">
       <CornerDecor />
-      <h1 className="relative heading text-display text-white">My groups</h1>
+      <h1 className="relative heading text-hero-balance font-bold tracking-[-0.035em] text-white">My groups</h1>
 
       {groups && settled && (
         <div className="relative mt-5 flex items-center gap-2.5 rounded-card bg-surface px-4 py-3.5 shadow-sheet">
@@ -166,14 +168,14 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
 
       {groups && !settled && (
         // text-accent/text-down fail contrast on this dark band — figures stay white here.
-        <div className="relative mt-6">
+        <div className="relative mt-4">
           <div className="flex items-start gap-10">
             <div>
               <p className="font-sans text-label font-semibold uppercase tracking-[0.08em] text-band-dim">
                 Net position
               </p>
               <p
-                className={`mt-1 font-mono text-[2.5rem] font-semibold leading-none ${netPosition >= 0 ? 'text-mint' : 'text-down-bright'}`}
+                className={`mt-1 font-mono text-display font-semibold leading-none ${netPosition >= 0 ? 'text-mint' : 'text-down-bright'}`}
               >
                 {netPosition >= 0 ? '+' : '−'}
                 {formatCurrency(Math.abs(netPosition), bandCurrency)}
@@ -182,13 +184,13 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
             {/* Always zero — this is the app's fixed goal, not a per-user target. */}
             <div className="ml-auto shrink-0 text-right">
               <p className="font-sans text-label font-semibold uppercase tracking-[0.08em] text-band-dim">Goal</p>
-              <p className="mt-1 font-mono text-hero-balance font-semibold leading-none text-band-dim">
+              <p className="mt-1 font-mono text-title font-semibold leading-none text-band-dim">
                 {formatCurrency(0, bandCurrency)}
               </p>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-2 items-stretch border-t border-white/15 pt-4 font-sans text-section">
+          <div className="mt-3 grid grid-cols-2 items-stretch border-t border-white/15 pt-2 font-sans text-body">
             <span className="flex items-center justify-center gap-2.5 border-r border-white/15">
               <span className="text-label text-band-dim">You&rsquo;re owed</span>
               <span className="font-mono font-semibold text-white">{formatCurrency(owed ?? 0, bandCurrency)}</span>
