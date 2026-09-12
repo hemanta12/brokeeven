@@ -59,9 +59,13 @@ export function Navbar() {
           <Link
             to="/"
             aria-label="Home"
-            className="focus-ring flex h-11 items-center rounded-md px-1.5 transition-transform duration-100 hover:bg-ink/10 active:scale-95"
+            className="focus-ring flex h-11 items-center gap-2 rounded-md px-1.5 transition-transform duration-100 hover:bg-ink/10 active:scale-95"
           >
-            <span className="heading text-title leading-none">BrokeEven</span>
+            <img src="/icons/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
+            {/* accent, not mint: mint is only 1.77:1 on this white bar. */}
+            <span className="heading text-title font-extrabold leading-none tracking-tight">
+              broke<span className="text-accent">even</span>
+            </span>
           </Link>
           {isSignedIn && user ? (
             <button
