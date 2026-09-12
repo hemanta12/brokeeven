@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { BackButton } from "../../components/BackButton";
@@ -15,7 +15,7 @@ import { useDeleteExpense } from "../expense/api";
 import { ExpenseDetail } from "../expense/ExpenseDetail";
 import { ExpenseModal } from "../expense/ExpenseModal";
 import { SettleUpModal } from "../settlement/SettleUpModal";
-import { useGroupByCode, useReopenGroup } from "./api";
+import { useGroupActivity, useGroupByCode, useReopenGroup } from "./api";
 import { CloseGroupModal } from "./CloseGroupModal";
 import { groupExpensesByDate } from "./expenseGroups";
 import { GroupInfoOverlay } from "./GroupInfoOverlay";
@@ -47,6 +47,27 @@ export function GroupPage() {
   const openAddExpense = searchParams.get("add") === "expense";
 
   const [tab, setTab] = useState<Tab>("expenses");
+  // Floors panel height across tab switches — stops the scroll-jump when the doc collapses.
+  // ponytail: one transition only, async growth inside a panel still jumps.
+  const panelsRef = useRef<HTMLDivElement>(null);
+  const [reservedHeight, setReservedHeight] = useState(0);
+  // Same query key/gate as ActivityFeed — react-query dedupes, no extra request.
+  const { isLoading: activityLoading } = useGroupActivity(code, tab === "activity");
+
+  function changeTab(next: Tab) {
+    if (next === tab) return;
+    setReservedHeight(panelsRef.current?.offsetHeight ?? 0);
+    setTab(next);
+  }
+
+  // Waits a frame (lets the transition ease from the old height) and for
+  // activityLoading to clear (else Activity's blank state snaps back).
+  useLayoutEffect(() => {
+    if (reservedHeight === 0 || activityLoading) return;
+    const frame = requestAnimationFrame(() => setReservedHeight(0));
+    return () => cancelAnimationFrame(frame);
+  }, [tab, reservedHeight, activityLoading]);
+
   const [identityPersonId, setIdentityPersonId] = useState<string | null>(() =>
     code ? getIdentity(code) : null,
   );
@@ -224,7 +245,7 @@ export function GroupPage() {
             expenses={group.expenses}
             personId={resolvedIdentityPersonId}
             currency={group.currency}
-            onSettleUp={tab === "balances" ? undefined : () => setTab("balances")}
+            onSettleUp={tab === "balances" ? undefined : () => changeTab("balances")}
           />
         )}
 
@@ -237,116 +258,122 @@ export function GroupPage() {
               { id: "activity", label: "Activity" },
             ]}
             activeId={tab}
-            onChange={(id) => setTab(id as Tab)}
+            onChange={(id) => changeTab(id as Tab)}
           />
         </div>
 
-        {tab === "expenses" && (
-          <div
-            role="tabpanel"
-            id="panel-expenses"
-            aria-labelledby="tab-expenses"
-            className="mt-2 sm:px-2"
-          >
-            {group.expenses.length === 0 ? (
-              <EmptyState message="No expenses yet. Add the first one." />
-            ) : (
-              <div>
-                <p className="mb-1.5 font-sans text-micro text-dim">
-                  {group.expenses.length}{" "}
-                  {group.expenses.length === 1 ? "expense" : "expenses"}
-                </p>
-                {groupExpensesByDate(group.expenses).map((dateGroup) => (
-                  <div key={dateGroup.date} className="mt-4 first:mt-0">
-                    <h3 className="mb-1.5 font-sans text-label font-medium text-dim">
-                      {formatDateGroupLabel(dateGroup.date)}
-                    </h3>
-                    <ul className="flex flex-col gap-1.5">
-                      {dateGroup.expenses.map((expense) => {
-                        const payer = group.people.find(
-                          (p) => p.id === expense.payerId,
-                        );
-                        return (
-                          <li
-                            key={expense.id}
-                            className={`entry-card entry-card-tappable ${pulsingIds.has(expense.id) ? "row-pulse" : ""}`}
-                          >
-                            <ExpenseRow
-                              title={expense.title}
-                              payerName={payer?.name ?? "someone removed"}
-                              payerIsViewer={expense.payerId === resolvedIdentityPersonId}
-                              amount={Number(expense.amount)}
-                              currency={group.currency}
-                              viewerNet={viewerNetOnExpense(expense, resolvedIdentityPersonId)}
-                              onClick={() => setViewingExpense(expense)}
-                            />
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        <div
+          className="tab-panels"
+          ref={panelsRef}
+          style={{ minHeight: reservedHeight || undefined }}
+        >
+          {tab === "expenses" && (
+            <div
+              role="tabpanel"
+              id="panel-expenses"
+              aria-labelledby="tab-expenses"
+              className="mt-2 sm:px-2"
+            >
+              {group.expenses.length === 0 ? (
+                <EmptyState message="No expenses yet. Add the first one." />
+              ) : (
+                <div>
+                  <p className="mb-1.5 font-sans text-micro text-dim">
+                    {group.expenses.length}{" "}
+                    {group.expenses.length === 1 ? "expense" : "expenses"}
+                  </p>
+                  {groupExpensesByDate(group.expenses).map((dateGroup) => (
+                    <div key={dateGroup.date} className="mt-4 first:mt-0">
+                      <h3 className="mb-1.5 font-sans text-label font-medium text-dim">
+                        {formatDateGroupLabel(dateGroup.date)}
+                      </h3>
+                      <ul className="flex flex-col gap-1.5">
+                        {dateGroup.expenses.map((expense) => {
+                          const payer = group.people.find(
+                            (p) => p.id === expense.payerId,
+                          );
+                          return (
+                            <li
+                              key={expense.id}
+                              className={`entry-card entry-card-tappable ${pulsingIds.has(expense.id) ? "row-pulse" : ""}`}
+                            >
+                              <ExpenseRow
+                                title={expense.title}
+                                payerName={payer?.name ?? "someone removed"}
+                                payerIsViewer={expense.payerId === resolvedIdentityPersonId}
+                                amount={Number(expense.amount)}
+                                currency={group.currency}
+                                viewerNet={viewerNetOnExpense(expense, resolvedIdentityPersonId)}
+                                onClick={() => setViewingExpense(expense)}
+                              />
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-        {tab === "balances" && (
-          <div
-            role="tabpanel"
-            id="panel-balances"
-            aria-labelledby="tab-balances"
-            className="mt-2 sm:px-2"
-          >
-            <BalancesPanel
-              code={code}
-              balances={group.balances}
-              people={group.people}
-              currency={group.currency}
-              settleMode={group.settleMode}
-              identityPersonId={resolvedIdentityPersonId}
-              closed={closed}
-              pulsingIds={pulsingIds}
-              onSettle={(balance, reference) => setSettling({ balance, reference })}
-            />
+          {tab === "balances" && (
+            <div
+              role="tabpanel"
+              id="panel-balances"
+              aria-labelledby="tab-balances"
+              className="mt-2 sm:px-2"
+            >
+              <BalancesPanel
+                code={code}
+                balances={group.balances}
+                people={group.people}
+                currency={group.currency}
+                settleMode={group.settleMode}
+                identityPersonId={resolvedIdentityPersonId}
+                closed={closed}
+                pulsingIds={pulsingIds}
+                onSettle={(balance, reference) => setSettling({ balance, reference })}
+              />
 
-            <SettlementHistory
-              code={code}
-              settlements={group.settlements}
-              people={group.people}
-              identityPersonId={resolvedIdentityPersonId}
-              currency={group.currency}
-              readOnly={closed}
-            />
+              <SettlementHistory
+                code={code}
+                settlements={group.settlements}
+                people={group.people}
+                identityPersonId={resolvedIdentityPersonId}
+                currency={group.currency}
+                readOnly={closed}
+              />
 
-            {/* Secondary, not danger — closing is reversible. Full size: sm is 36px, under the 44pt touch floor. */}
-            {!closed && group.people.length > 0 && (
-              <div className="mt-8 flex flex-col items-center gap-2 border-t border-line pt-6">
-                <Button
-                  variant="secondary"
-                  className="!border-accent hover:!bg-accent-wash"
-                  onClick={() => setShowCloseGroup(true)}
-                >
-                  Close group
-                </Button>
-                <p className="text-center font-sans text-micro text-dim">
-                  Locks the ledger once everything reaches zero. You can reopen it.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+              {/* Secondary, not danger — closing is reversible. Full size: sm is 36px, under the 44pt touch floor. */}
+              {!closed && group.people.length > 0 && (
+                <div className="mt-8 flex flex-col items-center gap-2 border-t border-line pt-6">
+                  <Button
+                    variant="secondary"
+                    className="!border-accent hover:!bg-accent-wash"
+                    onClick={() => setShowCloseGroup(true)}
+                  >
+                    Close group
+                  </Button>
+                  <p className="text-center font-sans text-micro text-dim">
+                    Locks the ledger once everything reaches zero. You can reopen it.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
-        {tab === "activity" && (
-          <div
-            role="tabpanel"
-            id="panel-activity"
-            aria-labelledby="tab-activity"
-            className="mt-2 sm:px-2"
-          >
-            <ActivityFeed code={code} isActive={tab === "activity"} />
-          </div>
-        )}
+          {tab === "activity" && (
+            <div
+              role="tabpanel"
+              id="panel-activity"
+              aria-labelledby="tab-activity"
+              className="mt-2 sm:px-2"
+            >
+              <ActivityFeed code={code} isActive={tab === "activity"} />
+            </div>
+          )}
+        </div>
 
         {/* Stays mounted in both states — removing it on close collapses the page's shape. */}
         <div className="bottom-bar mt-auto">

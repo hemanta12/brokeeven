@@ -351,6 +351,18 @@
   }
 }
 
+/* Eases GroupPage's reserved tab-panel height back down; without it a shorter
+   panel snaps instead of settling. */
+.tab-panels {
+  transition: min-height 300ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-panels {
+    transition: none;
+  }
+}
+
 .overlay-header {
   display: flex;
   align-items: center;
