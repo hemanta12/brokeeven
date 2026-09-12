@@ -8,6 +8,7 @@ const GSI_SRC = 'https://accounts.google.com/gsi/client';
 
 interface CodeResponse {
   code?: string;
+  state?: string;
   error?: string;
 }
 
@@ -22,6 +23,7 @@ interface GoogleIdentityServices {
         client_id: string;
         scope: string;
         ux_mode: 'popup';
+        state: string;
         callback: (response: CodeResponse) => void;
       }) => CodeClient;
     };
@@ -80,15 +82,18 @@ function GoogleGlyph() {
 }
 
 // Our own button drives Google's OAuth popup (initCodeClient), not Google's
-// iframe-rendered button. The code client is built once on script load and
-// stashed in a ref so the click handler can call requestCode() synchronously —
+// iframe-rendered button. A fresh code client is built per click (fresh state
+// nonce) and requestCode() is called synchronously in the same handler —
 // the popup, like window.open, only survives inside the original user gesture.
 export function SignInButton({ onSuccess }: { onSuccess?: () => void } = {}) {
   const signIn = useSignIn();
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  const codeClientRef = useRef<CodeClient | null>(null);
+  const gisRef = useRef<GoogleIdentityServices | null>(null);
+  // A fresh nonce per popup request, checked against the callback's echoed
+  // `state` so a stray/forged callback can't be mistaken for this attempt.
+  const pendingStateRef = useRef<string | null>(null);
   // The GSI callback is created once on script load, so it reaches onSuccess via
   // a ref; capturing the prop directly would freeze whichever value existed when
   // the script finished loading.
@@ -102,14 +107,7 @@ export function SignInButton({ onSuccess }: { onSuccess?: () => void } = {}) {
     loadGoogleScript()
       .then(() => {
         if (cancelled || !window.google) return;
-        codeClientRef.current = window.google.accounts.oauth2.initCodeClient({
-          client_id: clientId,
-          scope: 'openid email profile',
-          ux_mode: 'popup',
-          callback: (response) => {
-            if (response.code) signIn.mutate(response.code, { onSuccess: () => onSuccessRef.current?.() });
-          }
-        });
+        gisRef.current = window.google;
         setIsReady(true);
       })
       .catch((error: Error) => {
@@ -119,9 +117,24 @@ export function SignInButton({ onSuccess }: { onSuccess?: () => void } = {}) {
     return () => {
       cancelled = true;
     };
-    // Keyed on clientId alone: signIn.mutate is stable for the life of the
-    // hook.
-  }, [clientId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [clientId]);
+
+  function requestSignIn() {
+    if (!gisRef.current || !clientId) return;
+    const state = crypto.randomUUID();
+    pendingStateRef.current = state;
+    const codeClient: CodeClient = gisRef.current.accounts.oauth2.initCodeClient({
+      client_id: clientId,
+      scope: 'openid email profile',
+      ux_mode: 'popup',
+      state,
+      callback: (response) => {
+        if (response.state !== pendingStateRef.current) return;
+        if (response.code) signIn.mutate(response.code, { onSuccess: () => onSuccessRef.current?.() });
+      }
+    });
+    codeClient.requestCode();
+  }
 
   if (!clientId) {
     return <p className="font-sans text-label text-dim">Sign-in is not configured for this build.</p>;
@@ -134,7 +147,7 @@ export function SignInButton({ onSuccess }: { onSuccess?: () => void } = {}) {
         size="lg"
         className="w-full"
         disabled={!isReady || signIn.isPending}
-        onClick={() => codeClientRef.current?.requestCode()}
+        onClick={requestSignIn}
       >
         <GoogleGlyph />
         {signIn.isPending ? 'Signing in…' : 'Continue with Google'}
