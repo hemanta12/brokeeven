@@ -1,23 +1,51 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "../../components/Button";
 import { Overlay } from "../../shared/Overlay";
+import { ErrorState } from "../../shared/RouteStates";
 import { SUPPORTED_CURRENCIES } from "../../shared/format";
-import { useUpdateGroupCurrency } from "./api";
+import { InlineFieldRow } from "./EditPersonForm";
+import { canEdit } from "./ownership";
+import { useDeleteGroup, useUpdateGroupCurrency, useUpdateGroupLabel, useUpdateGroupName } from "./api";
 
 interface GroupInfoOverlayProps {
   joinCode: string;
   inviteLink: string;
+  name: string;
+  label: string | null;
   currency: string;
-  // Closed group: currency is locked like the rest of the ledger.
+  createdByUserId: string | null;
+  viewerUserId: string | null;
+  // Closed group: currency and name/label are locked like the rest of the ledger.
   readOnly?: boolean;
   onClose: () => void;
+  onDeleted: () => void;
 }
 
-export function GroupInfoOverlay({ joinCode, inviteLink, currency, readOnly = false, onClose }: GroupInfoOverlayProps) {
+export function GroupInfoOverlay({
+  joinCode,
+  inviteLink,
+  name,
+  label,
+  currency,
+  createdByUserId,
+  viewerUserId,
+  readOnly = false,
+  onClose,
+  onDeleted,
+}: GroupInfoOverlayProps) {
   const [copiedField, setCopiedField] = useState<"code" | "link" | null>(null);
   const updateCurrency = useUpdateGroupCurrency(joinCode);
   const [savedCurrency, setSavedCurrency] = useState(false);
+  const updateName = useUpdateGroupName(joinCode);
+  const updateLabel = useUpdateGroupLabel(joinCode);
+  const [nameValue, setNameValue] = useState(name);
+  const [labelValue, setLabelValue] = useState(label ?? "");
+  const [savedDetails, setSavedDetails] = useState(false);
+  const deleteGroup = useDeleteGroup(joinCode);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const isOwner = canEdit(createdByUserId, viewerUserId);
+  const canDeleteNow = readOnly && isOwner;
 
   // Clear the "Saved" cue after 2s, matching the copy buttons above.
   useEffect(() => {
@@ -26,6 +54,27 @@ export function GroupInfoOverlay({ joinCode, inviteLink, currency, readOnly = fa
     return () => clearTimeout(timer);
   }, [savedCurrency]);
 
+  useEffect(() => {
+    if (!savedDetails) return;
+    const timer = setTimeout(() => setSavedDetails(false), 2000);
+    return () => clearTimeout(timer);
+  }, [savedDetails]);
+
+  async function handleNameSubmit(event: FormEvent) {
+    event.preventDefault();
+    if (!nameValue.trim() || nameValue === name) return;
+    await updateName.mutateAsync(nameValue);
+    setSavedDetails(true);
+  }
+
+  async function handleLabelSubmit(event: FormEvent) {
+    event.preventDefault();
+    const trimmed = labelValue.trim();
+    if (trimmed === (label ?? "")) return;
+    await updateLabel.mutateAsync(trimmed || null);
+    setSavedDetails(true);
+  }
+
   async function copyText(field: "code" | "link", text: string) {
     await navigator.clipboard?.writeText(text);
     setCopiedField(field);
@@ -33,39 +82,87 @@ export function GroupInfoOverlay({ joinCode, inviteLink, currency, readOnly = fa
   }
 
   return (
-    <Overlay title="Group info" isDirty={false} compact onClose={onClose}>
+    <Overlay
+      title="Group info"
+      isDirty={false}
+      compact
+      onClose={onClose}
+      blockingConfirm={
+        confirmingDelete
+          ? {
+              message: "Delete this group?",
+              detail: "This permanently removes it and everything in it — expenses, balances, history — for everyone. This can't be undone.",
+              confirmLabel: deleteGroup.isPending ? "Deleting…" : "Delete group",
+              cancelLabel: "Cancel",
+              danger: true,
+              pending: deleteGroup.isPending,
+              error: deleteGroup.error?.message,
+              onConfirm: () => deleteGroup.mutate(undefined, { onSuccess: onDeleted }),
+              onCancel: () => setConfirmingDelete(false),
+            }
+          : null
+      }
+    >
       <div className="flex flex-1 flex-col gap-3">
+        <div className="flex flex-col gap-2 rounded-card bg-sunken px-4 py-3.5">
+          <div className="flex items-center gap-1.5">
+            <p className="font-sans text-label font-medium text-ink">Details</p>
+            {(updateName.isPending || updateLabel.isPending) && (
+              <span className="font-sans text-micro text-dim">Saving…</span>
+            )}
+            {savedDetails && !updateName.isPending && !updateLabel.isPending && (
+              <span className="flex items-center gap-1 font-sans text-micro font-medium text-accent">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-3.5 w-3.5">
+                  <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span aria-live="polite">Saved</span>
+              </span>
+            )}
+          </div>
+          <form onSubmit={handleNameSubmit}>
+            <InlineFieldRow
+              id="group-name-edit"
+              label="Name"
+              value={nameValue}
+              onChange={(event) => setNameValue(event.target.value)}
+              maxLength={60}
+              saveLabel="Save name"
+              disabled={readOnly || updateName.isPending || !nameValue.trim() || nameValue === name}
+            />
+          </form>
+          <form onSubmit={handleLabelSubmit}>
+            <InlineFieldRow
+              id="group-label-edit"
+              label="Label (opt)"
+              value={labelValue}
+              onChange={(event) => setLabelValue(event.target.value)}
+              maxLength={60}
+              placeholder="Home, Trip, 1:1…"
+              saveLabel="Save label"
+              disabled={readOnly || updateLabel.isPending || labelValue.trim() === (label ?? "")}
+            />
+          </form>
+          {readOnly && <p className="font-sans text-micro text-dim">Locked while the group is closed.</p>}
+          {updateName.isError && <ErrorState message={updateName.error.message} />}
+          {updateLabel.isError && <ErrorState message={updateLabel.error.message} />}
+        </div>
         <div className="rounded-card bg-sunken px-4 py-3.5">
           <p className="font-sans text-label text-dim">Join code</p>
           <div className="mt-1 flex items-center justify-between gap-3">
             <p className="font-mono text-section font-medium tracking-[0.04em] text-ink">{joinCode}</p>
-            <button
-              type="button"
-              onClick={() => copyText("code", joinCode)}
-              aria-label={copiedField === "code" ? "Join code copied" : "Copy join code"}
-              className={`focus-ring flex h-9 w-9 shrink-0 items-center justify-center rounded-full border transition-transform duration-100 active:scale-90 ${
-                copiedField === "code" ? "border-accent/40 text-accent" : "border-line-strong text-ink hover:bg-surface"
-              }`}
-            >
-              {copiedField === "code" ? (
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden="true" className="h-4 w-4">
-                  <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" className="h-4 w-4">
-                  <rect x="7" y="7" width="9.5" height="9.5" rx="2" />
-                  <path d="M13 7V5.5A2.5 2.5 0 0 0 10.5 3h-5A2.5 2.5 0 0 0 3 5.5v5A2.5 2.5 0 0 0 5.5 13H7" strokeLinecap="round" />
-                </svg>
-              )}
-            </button>
+            <Button variant="secondary" size="sm" onClick={() => copyText("code", joinCode)} className="w-20 shrink-0">
+              <span aria-live="polite">{copiedField === "code" ? "Copied!" : "Copy"}</span>
+            </Button>
           </div>
         </div>
         <div className="rounded-card bg-accent/10 px-4 py-3.5">
           <p className="font-sans text-label text-dim">Invite link</p>
-          <p className="mt-1 break-all font-mono text-label text-dim">{inviteLink}</p>
-          <Button variant="secondary" onClick={() => copyText("link", inviteLink)} className="mt-3">
-            <span aria-live="polite">{copiedField === "link" ? "Copied!" : "Copy link"}</span>
-          </Button>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <p className="min-w-0 break-all font-mono text-label text-dim">{inviteLink}</p>
+            <Button variant="secondary" size="sm" onClick={() => copyText("link", inviteLink)} className="w-20 shrink-0">
+              <span aria-live="polite">{copiedField === "link" ? "Copied!" : "Copy"}</span>
+            </Button>
+          </div>
         </div>
         <div className="rounded-card bg-sunken px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
@@ -109,9 +206,28 @@ export function GroupInfoOverlay({ joinCode, inviteLink, currency, readOnly = fa
                 : "Changes how amounts are shown, does not convert them."}
           </p>
         </div>
-        <p className="mt-auto border-t border-line pt-4 font-sans text-label text-dim">
+        <p className="border-t border-line pt-4 font-sans text-label text-dim">
           Anyone with the code or link can join. Email invites are coming later.
         </p>
+        <div className="mt-auto flex flex-col gap-2 rounded-card border border-down/30 bg-down/5 px-4 py-3.5">
+          <p className="font-sans text-label font-medium text-ink">Caution</p>
+          <p className="font-sans text-micro text-dim">
+            {!readOnly
+              ? "Close the group first. Delete is only for groups that are fully settled."
+              : !isOwner
+                ? "Only the person who created this group can delete it."
+                : "Removes this group and everything in it, for everyone, permanently."}
+          </p>
+          <Button
+            variant="primary"
+            danger
+            disabled={!canDeleteNow}
+            onClick={() => setConfirmingDelete(true)}
+            className="w-full"
+          >
+            Delete group
+          </Button>
+        </div>
       </div>
     </Overlay>
   );

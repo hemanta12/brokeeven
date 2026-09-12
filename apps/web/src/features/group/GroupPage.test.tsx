@@ -170,7 +170,8 @@ describe('GroupPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Group info' }));
     const dialog = screen.getByRole('dialog', { name: 'Group info' });
     expect(within(dialog).getByText('ABC123')).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+    const inviteCard = within(dialog).getByText('Invite link').closest('div') as HTMLElement;
+    fireEvent.click(within(inviteCard).getByRole('button', { name: 'Copy' }));
 
     expect(await screen.findByRole('button', { name: 'Copied!' })).toBeInTheDocument();
   });
@@ -327,7 +328,7 @@ describe('GroupPage', () => {
     // Name unchanged: its Save button stays disabled.
     expect(within(aliceGroup).getByRole('button', { name: 'Save name' })).toBeDisabled();
 
-    const handleInput = within(aliceGroup).getByLabelText('Handle (opt)');
+    const handleInput = within(aliceGroup).getByLabelText('Optional: @');
     fireEvent.change(handleInput, { target: { value: '@alice' } });
     const saveHandle = within(aliceGroup).getByRole('button', { name: 'Save handle' });
     expect(saveHandle).toBeEnabled();

@@ -39,6 +39,7 @@ function baseGroup(overrides: Partial<GroupWithPeople> = {}): GroupWithPeople {
     closedAt: null,
     forgiveThreshold: '0',
     settleMode: 'direct',
+    createdByUserId: null,
     createdAt: '2026-01-01',
     people: [],
     expenses: [],

@@ -13,6 +13,15 @@ const TONE = {
     'min-h-11 -ml-1 gap-1 text-body text-white/85 hover:text-white hover:underline underline-offset-4 active:opacity-70',
 } as const;
 
+// `band`'s squared corner is deliberate: its siblings there are circular icon
+// buttons, so back-navigation never reads as one of the action buttons.
+const ICON_TONE = {
+  light:
+    'h-9 w-9 justify-center rounded-full border border-line-strong bg-surface text-ink shadow-card hover:bg-sunken active:scale-95',
+  band:
+    'h-11 w-11 justify-center rounded-xl border border-band-dim bg-white/8 text-white/85 hover:bg-white/15 hover:text-white active:scale-95',
+} as const;
+
 function Chevron() {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-4 w-4 shrink-0">
@@ -28,25 +37,31 @@ export function BackButton({
   onClick,
   label = 'Back',
   tone = 'light',
+  iconOnly = false,
 }: {
   to?: string;
   onClick?: () => void;
   label?: string;
   tone?: keyof typeof TONE;
+  iconOnly?: boolean;
 }) {
-  const className = `${BASE} ${TONE[tone]}`;
+  const className = `${BASE} ${iconOnly ? ICON_TONE[tone] : TONE[tone]}`;
+  const content = (
+    <>
+      <Chevron />
+      <span className={iconOnly ? 'sr-only' : undefined}>{label}</span>
+    </>
+  );
   if (to) {
     return (
       <Link to={to} className={className}>
-        <Chevron />
-        {label}
+        {content}
       </Link>
     );
   }
   return (
     <button type="button" onClick={onClick} className={className}>
-      <Chevron />
-      {label}
+      {content}
     </button>
   );
 }

@@ -59,11 +59,16 @@ model Group {
   // Balances at or below this (in currency units) are written off at close-out.
   forgiveThreshold Decimal   @default(0) @db.Decimal(12, 2)
   settleMode   SettleMode    @default(direct)
+  // Gates delete only; edit stays open to anyone with the code. NULL means
+  // unowned (legacy groups), so anyone may delete.
+  createdByUserId String?    @db.Uuid
   createdAt    DateTime      @default(now())
   people       Person[]
   expenses     Expense[]
   settlements  Settlement[]
   activityLogs ActivityLog[]
+
+  @@index([createdByUserId])
 }
 
 model Person {

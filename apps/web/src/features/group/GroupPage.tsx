@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { BackButton } from "../../components/BackButton";
 import { Button } from "../../components/Button";
@@ -33,6 +33,7 @@ type Tab = "expenses" | "balances" | "activity";
 
 export function GroupPage() {
   const { code } = useParams<{ code: string }>();
+  const navigate = useNavigate();
   const {
     data: group,
     isLoading,
@@ -139,8 +140,9 @@ export function GroupPage() {
           } ${resolvedIdentityPersonId ? "pb-20" : "pb-11"}`}
         >
           <CornerDecor />
-          <div className="relative flex items-center justify-between gap-3">
-            <BackButton to="/groups" label="My groups" tone="band" />
+          <div className="relative flex items-center gap-2">
+            <BackButton to="/groups" label="Back to My groups" tone="band" iconOnly />
+            <h1 className="heading min-w-0 flex-1 text-hero-balance text-white">{group.name}</h1>
             <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -185,38 +187,29 @@ export function GroupPage() {
             </button>
             </div>
           </div>
-          {(closed || (group.label && group.label !== 'Individual')) && (
-            <div className="relative mt-4 flex flex-wrap items-center gap-2">
-              {closed && (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-band-dim px-2.5 py-1 font-sans text-micro font-bold uppercase tracking-[0.08em] text-band-closed">
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
-                    className="h-3 w-3"
-                  >
-                    <rect x="4.5" y="8.75" width="11" height="7.25" rx="1.75" />
-                    <path d="M7.25 8.75V6.5a2.75 2.75 0 0 1 5.5 0v2.25" strokeLinecap="round" />
-                  </svg>
-                  Closed
-                </span>
-              )}
-              {group.label && group.label !== 'Individual' && (
-                <span className="font-sans text-micro uppercase tracking-wide text-band-dim">
-                  {capitalizeFirst(group.label)}
-                </span>
-              )}
+          {group.label && group.label !== 'Individual' && (
+            <p className="relative mt-1 pl-13 font-sans text-micro uppercase tracking-wide text-band-dim">
+              {capitalizeFirst(group.label)}
+            </p>
+          )}
+          {closed && (
+            <div className="relative mt-2 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-band-dim px-2.5 py-1 font-sans text-micro font-bold uppercase tracking-[0.08em] text-band-closed">
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                  className="h-3 w-3"
+                >
+                  <rect x="4.5" y="8.75" width="11" height="7.25" rx="1.75" />
+                  <path d="M7.25 8.75V6.5a2.75 2.75 0 0 1 5.5 0v2.25" strokeLinecap="round" />
+                </svg>
+                Closed
+              </span>
             </div>
           )}
-          <h1
-            className={`relative heading text-display text-white ${
-              closed || (group.label && group.label !== 'Individual') ? 'mt-1' : 'mt-3'
-            }`}
-          >
-            {group.name}
-          </h1>
           {closed && (
             <p className="relative mt-1.5 font-sans text-label text-band-dim">
               Closed {formatDate(group.closedAt as string)}. Nothing can be added or changed.
@@ -329,7 +322,11 @@ export function GroupPage() {
             {/* Secondary, not danger — closing is reversible. Full size: sm is 36px, under the 44pt touch floor. */}
             {!closed && group.people.length > 0 && (
               <div className="mt-8 flex flex-col items-center gap-2 border-t border-line pt-6">
-                <Button variant="secondary" onClick={() => setShowCloseGroup(true)}>
+                <Button
+                  variant="secondary"
+                  className="!border-accent hover:!bg-accent-wash"
+                  onClick={() => setShowCloseGroup(true)}
+                >
                   Close group
                 </Button>
                 <p className="text-center font-sans text-micro text-dim">
@@ -442,9 +439,14 @@ export function GroupPage() {
         <GroupInfoOverlay
           joinCode={group.joinCode}
           inviteLink={inviteLink}
+          name={group.name}
+          label={group.label}
           currency={group.currency}
+          createdByUserId={group.createdByUserId}
+          viewerUserId={group.viewerUserId}
           readOnly={closed}
           onClose={() => setShowInfo(false)}
+          onDeleted={() => navigate("/groups", { replace: true })}
         />
       )}
 

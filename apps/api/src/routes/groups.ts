@@ -3,6 +3,7 @@ import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
+import { canMutate } from '../auth/ownership.js';
 import { getGroupStateByCode, resolveGroupForWrite } from '../group/groupState.js';
 import { generateJoinCode } from '../group/joinCode.js';
 import { normalizePersonName } from '../group/personName.js';
@@ -50,6 +51,7 @@ groupsRouter.post('/groups', writeRateLimit, requireActor, async (request, respo
           name: name.trim(),
           label: label?.trim(),
           joinCode: generateJoinCode(),
+          createdByUserId: request.actorId ?? null,
           ...(currency !== undefined ? { currency } : {})
         }
       });
@@ -91,6 +93,74 @@ groupsRouter.patch('/groups/:code/currency', writeRateLimit, requireActor, async
       );
     }
     return next;
+  });
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(group.id);
+});
+
+// Open to anyone with the code, like every other group-level edit. Only
+// delete is creator-gated.
+groupsRouter.patch('/groups/:code/name', writeRateLimit, requireActor, async (request, response) => {
+  const { name } = request.body as { name?: unknown };
+
+  if (!isNonEmptyString(name, NAME_MAX_LENGTH)) {
+    response.status(400).json({ error: 'name is required' });
+    return;
+  }
+
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
+    return;
+  }
+  const { group } = resolved;
+  const trimmed = name.trim();
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const next = await tx.group.update({ where: { id: group.id }, data: { name: trimmed } });
+    if (trimmed !== group.name) {
+      await logActivity(
+        tx,
+        group.id,
+        'group_edit',
+        `Renamed to ${trimmed}`,
+        await actorNameInGroup(tx, group.id, request.actorId)
+      );
+    }
+    return next;
+  });
+  response.status(200).json(updated);
+  void broadcastGroupUpdate(group.id);
+});
+
+groupsRouter.patch('/groups/:code/label', writeRateLimit, requireActor, async (request, response) => {
+  const { label } = request.body as { label?: unknown };
+
+  if (label !== null && !isNonEmptyString(label, NAME_MAX_LENGTH)) {
+    response.status(400).json({ error: 'label must be a non-empty string or null' });
+    return;
+  }
+
+  const resolved = await resolveGroupForWrite(String(request.params.code));
+  if ('error' in resolved) {
+    response.status(resolved.status).json({ error: resolved.error });
+    return;
+  }
+  const { group } = resolved;
+  const next = label === null ? null : label.trim();
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const updatedGroup = await tx.group.update({ where: { id: group.id }, data: { label: next } });
+    if (next !== group.label) {
+      await logActivity(
+        tx,
+        group.id,
+        'group_edit',
+        next ? `Label set to ${next}` : 'Label cleared',
+        await actorNameInGroup(tx, group.id, request.actorId)
+      );
+    }
+    return updatedGroup;
   });
   response.status(200).json(updated);
   void broadcastGroupUpdate(group.id);
@@ -240,6 +310,32 @@ groupsRouter.post('/groups/:code/reopen', writeRateLimit, requireActor, async (r
   const updated = await getGroupStateByCode(String(request.params.code));
   response.status(200).json(updated);
   void broadcastGroupUpdate(group.id);
+});
+
+// Requiring closedAt reuses Close's balance-zero gate instead of re-deriving it.
+// Person/Expense/Settlement/ActivityLog cascade from Group in the schema, so a
+// single delete clears the group entirely.
+groupsRouter.delete('/groups/:code', writeRateLimit, requireActor, async (request, response) => {
+  const group = await prisma.group.findUnique({
+    where: { joinCode: String(request.params.code).toUpperCase() }
+  });
+  if (!group) {
+    response.status(404).json({ error: 'Group not found' });
+    return;
+  }
+  if (!group.closedAt) {
+    response.status(409).json({
+      error: 'Close the group first. Deleting removes it and everything in it, permanently, for everyone.'
+    });
+    return;
+  }
+  if (!canMutate(group.createdByUserId, request.actorId)) {
+    response.status(403).json({ error: 'Only the person who created this group can delete it' });
+    return;
+  }
+
+  await prisma.group.delete({ where: { id: group.id } });
+  response.status(204).send();
 });
 
 // Balances are computed on read (TECH_STACK.md §4); the expense list and balance

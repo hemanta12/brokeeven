@@ -155,7 +155,10 @@ export function Overlay({
           type="button"
           aria-label={confirmingDiscard ? 'Back to editing' : closeLabel}
           onClick={() => (confirmingDiscard ? setConfirmingDiscard(false) : requestCloseRef.current())}
-          className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-xl text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+          // Explicit bg-surface, not --field-bg: that token shifts per overlay
+          // variant (sunken in compact sheets), which made this button inconsistent
+          // across modals.
+          className="focus-ring flex h-11 w-11 items-center justify-center rounded-full border border-accent bg-surface text-xl text-ink transition-transform duration-100 hover:bg-accent-wash active:scale-90"
         >
           {closeLabel === 'Close' ? '×' : closeLabel}
         </button>

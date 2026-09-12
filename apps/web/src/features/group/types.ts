@@ -23,6 +23,9 @@ export interface Group {
   forgiveThreshold: string;
   // Which surface the group settles from. Shared, so everyone follows one plan.
   settleMode: SettleMode;
+  // Gates delete only; edit stays open to anyone with the code. Null means
+  // unowned (legacy groups), so anyone may delete.
+  createdByUserId: string | null;
   createdAt: string;
 }
 

@@ -7,7 +7,7 @@ import { prisma } from '../prisma.js';
 
 vi.mock('../prisma.js', () => {
   const prismaMock = {
-    group: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    group: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
     person: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn() },
     settlement: { createMany: vi.fn() },
     activityLog: { create: vi.fn() },
@@ -128,6 +128,133 @@ describe('PATCH /groups/:code/currency', () => {
     const response = await request(app).patch('/groups/NOPE0000/currency').send({ currency: 'EUR' });
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe('PATCH /groups/:code/name', () => {
+  it('renames a group and logs it', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345', name: 'Old', closedAt: null } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({ id: 'g1', name: 'New' } as never);
+
+    const response = await request(app).patch('/groups/ABCD2345/name').send({ name: 'New' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'g1' }, data: { name: 'New' } })
+    );
+    expect(prisma.activityLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ action: 'group_edit' }) })
+    );
+  });
+
+  it('rejects an empty name without touching the group', async () => {
+    const response = await request(app).patch('/groups/ABCD2345/name').send({ name: '  ' });
+
+    expect(response.status).toBe(400);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('409s on a closed group', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345', name: 'Old', closedAt: new Date() } as never);
+
+    const response = await request(app).patch('/groups/ABCD2345/name').send({ name: 'New' });
+
+    expect(response.status).toBe(409);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('PATCH /groups/:code/label', () => {
+  it('sets a label and logs it', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345', label: null, closedAt: null } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({ id: 'g1', label: 'Home' } as never);
+
+    const response = await request(app).patch('/groups/ABCD2345/label').send({ label: 'Home' });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'g1' }, data: { label: 'Home' } })
+    );
+  });
+
+  it('clears a label when sent null', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({ id: 'g1', joinCode: 'ABCD2345', label: 'Home', closedAt: null } as never);
+    vi.mocked(prisma.group.update).mockResolvedValue({ id: 'g1', label: null } as never);
+
+    const response = await request(app).patch('/groups/ABCD2345/label').send({ label: null });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'g1' }, data: { label: null } })
+    );
+  });
+});
+
+describe('DELETE /groups/:code', () => {
+  it('deletes a closed group its creator owns', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: new Date(),
+      createdByUserId: GUEST_ID
+    } as never);
+    vi.mocked(prisma.group.delete).mockResolvedValue({} as never);
+
+    const response = await request(app).delete('/groups/ABCD2345');
+
+    expect(response.status).toBe(204);
+    expect(prisma.group.delete).toHaveBeenCalledWith({ where: { id: 'g1' } });
+  });
+
+  it('deletes an unowned closed group (predates ownership)', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: new Date(),
+      createdByUserId: null
+    } as never);
+    vi.mocked(prisma.group.delete).mockResolvedValue({} as never);
+
+    const response = await request(app).delete('/groups/ABCD2345');
+
+    expect(response.status).toBe(204);
+  });
+
+  it('409s on an open group and never deletes it', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: null,
+      createdByUserId: null
+    } as never);
+
+    const response = await request(app).delete('/groups/ABCD2345');
+
+    expect(response.status).toBe(409);
+    expect(prisma.group.delete).not.toHaveBeenCalled();
+  });
+
+  it("403s a non-creator, even on a closed group", async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: new Date(),
+      createdByUserId: 'someone-else'
+    } as never);
+
+    const response = await request(app).delete('/groups/ABCD2345');
+
+    expect(response.status).toBe(403);
+    expect(prisma.group.delete).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the group does not exist', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue(null);
+
+    const response = await request(app).delete('/groups/NOPE0000');
+
+    expect(response.status).toBe(404);
+    expect(prisma.group.delete).not.toHaveBeenCalled();
   });
 });
 

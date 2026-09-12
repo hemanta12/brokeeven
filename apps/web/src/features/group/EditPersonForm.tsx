@@ -34,7 +34,7 @@ interface EditPersonFormProps {
 
 const SAVED_MESSAGE_MS = 3000;
 
-interface InlineFieldRowProps {
+export interface InlineFieldRowProps {
   id: string;
   label: string;
   value: string;
@@ -48,7 +48,7 @@ interface InlineFieldRowProps {
 // Compact counterpart to `Field`: label, input, and save button on one row.
 // Used where `Field`'s label-above layout would triple the row count in a
 // list repeated per member.
-function InlineFieldRow({
+export function InlineFieldRow({
   id,
   label,
   value,
@@ -59,7 +59,7 @@ function InlineFieldRow({
   disabled,
 }: InlineFieldRowProps) {
   return (
-    <div className="flex items-center gap-2 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] py-1 pl-3 pr-1.5">
+    <div className="flex items-center gap-2">
       <label
         htmlFor={id}
         className="shrink-0 font-sans text-label font-medium text-dim"
@@ -72,7 +72,7 @@ function InlineFieldRow({
         onChange={onChange}
         maxLength={maxLength}
         placeholder={placeholder}
-        className="focus-ring min-w-0 flex-1 rounded-inner bg-transparent py-1.5 font-sans text-body text-ink placeholder:text-label placeholder:text-dim"
+        className="focus-ring min-w-0 flex-1 rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 py-1.5 font-sans text-body text-ink placeholder:text-label placeholder:text-dim"
       />
       <button
         type="submit"
@@ -200,7 +200,7 @@ export function EditPersonForm({
       >
         <InlineFieldRow
           id={`person-handle-${person.id}`}
-          label="Handle (opt)"
+          label="Optional: @"
           value={handle}
           onChange={(event) => setHandle(event.target.value)}
           maxLength={100}

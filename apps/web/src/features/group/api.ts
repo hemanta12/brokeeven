@@ -108,6 +108,36 @@ export function useUpdateGroupCurrency(code: string | undefined) {
   });
 }
 
+export function useUpdateGroupName(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) =>
+      apiFetch<Group>(`/groups/${code}/name`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name })
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+  });
+}
+
+export function useUpdateGroupLabel(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (label: string | null) =>
+      apiFetch<Group>(`/groups/${code}/label`, {
+        method: 'PATCH',
+        body: JSON.stringify({ label })
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
+  });
+}
+
+export function useDeleteGroup(code: string | undefined) {
+  return useMutation({
+    mutationFn: () => apiFetch<void>(`/groups/${code}`, { method: 'DELETE' })
+  });
+}
+
 export function useUpdateSettleMode(code: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
