@@ -60,7 +60,7 @@ describe('CreateGroupPage', () => {
 
     expect(await screen.findByText('Alice')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue to group' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue without copying' }));
 
     expect(navigate).toHaveBeenCalledWith('/g/ABC123');
   });

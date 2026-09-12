@@ -5,7 +5,7 @@ import { SignInPrompt } from '../auth/SignInPrompt';
 import { useMyGroups, useSession, type MyGroup } from '../auth/api';
 import { AvatarCluster } from '../../components/Avatar';
 import { CornerDecor } from '../../components/CornerDecor';
-import { capitalizeFirst, formatCurrency, formatDate, formatUpdatedLabel } from '../../shared/format';
+import { formatCurrency, formatDate, formatUpdatedLabel, spineLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 
 const DIRECTION_STYLE: Record<MyGroup['netDirection'], { label: string; text: string }> = {
@@ -13,13 +13,6 @@ const DIRECTION_STYLE: Record<MyGroup['netDirection'], { label: string; text: st
   owe: { label: 'You owe', text: 'text-down' },
   settled: { label: 'Even', text: 'text-ink' }
 };
-
-// "Individual" is auto-set on quick 1:1 groups; a real label wins over both.
-function spineLabel(group: MyGroup): string {
-  if (group.label && group.label !== 'Individual') return capitalizeFirst(group.label);
-  if (group.label === 'Individual') return '1:1';
-  return 'Group';
-}
 
 // Plain text, not a pill — a pill inside a row that's already a link reads as a button.
 function BalanceAmount({
@@ -73,7 +66,7 @@ function GroupCard({ group }: { group: MyGroup }) {
       {/* Deliberately grayscale, not a balance-direction accent bar. */}
       <span aria-hidden="true" className="flex w-7 shrink-0 items-center justify-center bg-sunken py-3">
         <span className="[writing-mode:vertical-rl] rotate-180 truncate font-sans text-micro font-semibold uppercase tracking-[0.08em] text-dim">
-          {spineLabel(group)}
+          {spineLabel(group.label)}
         </span>
       </span>
 

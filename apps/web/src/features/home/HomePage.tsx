@@ -2,9 +2,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
 import { buttonClass } from '../../components/Button';
+import { CornerDecor } from '../../components/CornerDecor';
 import { useSession } from '../auth/api';
 import { MyGroupsPage } from '../my-groups/MyGroupsPage';
-import { formatCurrency } from '../../shared/format';
+import { formatCurrency, formatUpdatedLabel, spineLabel } from '../../shared/format';
+import { listRecentGroups } from '../../shared/recentGroups';
 
 const START = 44;
 const STEP = 1.6;
@@ -136,6 +138,74 @@ const MESSY_QUESTIONS = [
   },
 ];
 
+// Signed-out visitors keep their groups in localStorage only, so this list is the
+// only route back into them from the landing page. Card and band styling match
+// My Groups deliberately — same list, minus the balances a guest has no account to total.
+function RecentGroups() {
+  const [groups] = useState(listRecentGroups);
+  if (groups.length === 0) return null;
+
+  return (
+    <section className="flex flex-col">
+      <header className="relative overflow-hidden bg-band px-5 pb-4 pt-6 text-white sm:rounded-t-card">
+        <CornerDecor />
+        <h2 className="relative heading text-hero-balance font-bold tracking-[-0.035em] text-white">
+          Your groups
+        </h2>
+        <p className="relative mt-1.5 font-sans text-label text-band-dim">
+          Kept in this browser only. Sign in to reach them from any device.
+        </p>
+      </header>
+
+      <ul className="flex flex-col gap-2.5 px-4 pt-4">
+        {groups.map((group) => (
+          <li
+            key={group.code}
+            className="flex overflow-hidden rounded-card border border-line bg-surface shadow-card transition-shadow duration-150 hover:shadow-card-hover"
+          >
+            {/* Same grayscale spine as My Groups. */}
+            <span aria-hidden="true" className="flex w-7 shrink-0 items-center justify-center bg-sunken py-3">
+              <span className="[writing-mode:vertical-rl] rotate-180 truncate font-sans text-micro font-semibold uppercase tracking-[0.08em] text-dim">
+                {spineLabel(group.label)}
+              </span>
+            </span>
+
+            <div className="min-w-0 flex-1 px-4 pb-3 pt-3.5">
+              <Link to={`/g/${group.code}`} className="focus-ring flex min-h-11 items-start gap-3 rounded-inner">
+                <span className="min-w-0 flex-1">
+                  <span className="block min-w-0 font-sans text-section font-semibold leading-snug text-ink line-clamp-2">
+                    {group.name}
+                  </span>
+                  <span className="mt-0.5 block truncate font-sans text-micro text-dim">
+                    Opened {formatUpdatedLabel(group.visitedAt)}
+                  </span>
+                </span>
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-dim">
+                  <path d="M7.5 4.5l6 5.5-6 5.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </Link>
+              <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
+                <Link
+                  to={`/g/${group.code}?add=expense`}
+                  className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink transition-transform duration-100 active:scale-95"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3 w-3 text-accent">
+                      <path d="M10 4v12M4 10h12" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  Add expense
+                </Link>
+                <span className="font-mono text-micro tracking-[0.04em] text-dim">{group.code}</span>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 // "/" is the pitch when signed out, the group list when signed in.
 export function HomePage() {
   const { isSignedIn, isPending } = useSession();
@@ -151,6 +221,8 @@ export function HomePage() {
     // (styles.css), and -mx/-my there would pin it to -1rem and off-center the sheet.
     <main className="overflow-hidden">
       <div className="-mx-4 -my-4 flex flex-col">
+      <RecentGroups />
+
       <section className="px-5 pb-10 pt-14 text-center">
         <ZeroTicker />
         <h1 className="mt-3.5 heading text-display">Every group expense ends here.</h1>

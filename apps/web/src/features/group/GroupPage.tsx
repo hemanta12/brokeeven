@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { BackButton } from "../../components/BackButton";
@@ -10,15 +10,19 @@ import { ApiError, hasCompletedWrite } from "../../lib/apiClient";
 import { EmptyState, ErrorState, NotFoundState } from "../../shared/RouteStates";
 import { capitalizeFirst, formatDate, formatDateGroupLabel } from "../../shared/format";
 import { getIdentity } from "../../shared/identity";
+import { forgetRecentGroup, rememberRecentGroup } from "../../shared/recentGroups";
+import { isInviteSaved } from "../../shared/inviteSaved";
 import { resolveIdentityPersonId, viewerNetOnExpense } from "./ownership";
 import { useDeleteExpense } from "../expense/api";
 import { ExpenseDetail } from "../expense/ExpenseDetail";
 import { ExpenseModal } from "../expense/ExpenseModal";
 import { SettleUpModal } from "../settlement/SettleUpModal";
+import { useSession } from "../auth/api";
 import { useGroupActivity, useGroupByCode, useReopenGroup } from "./api";
 import { CloseGroupModal } from "./CloseGroupModal";
 import { groupExpensesByDate } from "./expenseGroups";
 import { GroupInfoOverlay } from "./GroupInfoOverlay";
+import { InviteReminder } from "./InviteReminder";
 import { GroupPageSkeleton } from "./GroupPageSkeleton";
 import { GroupSummary } from "./GroupSummary";
 import { BalancesPanel } from "./BalancesPanel";
@@ -92,10 +96,18 @@ export function GroupPage() {
     reference: Balance[];
   } | null>(null);
   const [showCloseGroup, setShowCloseGroup] = useState(false);
+  const [inviteSaved, setInviteSaved] = useState(() => (code ? isInviteSaved(code) : true));
 
   const deleteExpense = useDeleteExpense(code);
   const reopenGroup = useReopenGroup(code);
   const pulsingIds = useGroupRealtime(code, group?.id);
+  const { isSignedIn, isPending: sessionPending } = useSession();
+
+  // Signed-out visitors have no server-side group list; this is how they find the
+  // group again from the landing page.
+  useEffect(() => {
+    if (code && group?.name) rememberRecentGroup(code, group.name, group.label);
+  }, [code, group?.name, group?.label]);
 
   function closeWhoAreYou() {
     setIdentityPersonId(code ? getIdentity(code) : null);
@@ -162,8 +174,19 @@ export function GroupPage() {
         >
           <CornerDecor />
           <div className="relative flex items-center gap-2">
-            <BackButton to="/groups" label="Back to My groups" tone="band" iconOnly />
-            <h1 className="heading min-w-0 flex-1 text-hero-balance text-white">{group.name}</h1>
+            {/* Signed out there is no My Groups to go back to — /groups is a sign-in
+                wall, so the navbar wordmark is the only way out. */}
+            {isSignedIn && <BackButton to="/groups" label="Back to My groups" tone="band" iconOnly />}
+            {/* Title and label share one column so the label tracks the title's left
+                edge whether or not the back button is there. */}
+            <div className="min-w-0 flex-1">
+              <h1 className="heading text-hero-balance text-white">{group.name}</h1>
+              {group.label && group.label !== "Individual" && (
+                <p className="mt-0.5 truncate font-sans text-micro uppercase tracking-wide text-band-dim">
+                  {capitalizeFirst(group.label)}
+                </p>
+              )}
+            </div>
             <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -208,10 +231,13 @@ export function GroupPage() {
             </button>
             </div>
           </div>
-          {group.label && group.label !== 'Individual' && (
-            <p className="relative mt-1 pl-13 font-sans text-micro uppercase tracking-wide text-band-dim">
-              {capitalizeFirst(group.label)}
-            </p>
+          {/* Signed in, the group is reachable from My Groups; signed out, this link is it. */}
+          {!isSignedIn && !sessionPending && !inviteSaved && !closed && (
+            <InviteReminder
+              joinCode={group.joinCode}
+              inviteLink={inviteLink}
+              onSaved={() => setInviteSaved(true)}
+            />
           )}
           {closed && (
             <div className="relative mt-2 flex items-center gap-2">
@@ -473,7 +499,10 @@ export function GroupPage() {
           viewerUserId={group.viewerUserId}
           readOnly={closed}
           onClose={() => setShowInfo(false)}
-          onDeleted={() => navigate("/groups", { replace: true })}
+          onDeleted={() => {
+            forgetRecentGroup(group.joinCode);
+            navigate(isSignedIn ? "/groups" : "/", { replace: true });
+          }}
         />
       )}
 

@@ -135,3 +135,11 @@ export function formatUpdatedLabel(date: string, now: Date = new Date()): string
     ? shortDateFormatter.format(parsed)
     : shortDateWithYearFormatter.format(parsed);
 }
+
+// Spine label on a group card. "Individual" is auto-set on quick 1:1 groups; a real
+// label wins over both.
+export function spineLabel(label: string | null | undefined): string {
+  if (label && label !== 'Individual') return capitalizeFirst(label);
+  if (label === 'Individual') return '1:1';
+  return 'Group';
+}
