@@ -37,14 +37,14 @@ export function GroupSummary({ balances, expenses, personId, currency, onSettleU
     /* Straddles the band's lower edge. */
     <section
       aria-label="Your position in this group"
-      className="relative z-1 -mt-16 flex flex-col gap-3 overflow-hidden rounded-card bg-surface p-4 shadow-sheet sm:mx-2"
+      className="relative z-1 -mt-16 flex flex-col gap-2.5 overflow-hidden rounded-card bg-surface px-3.5 pb-3.5 pt-2.5 shadow-sheet sm:mx-2"
     >
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2">
         <Chip label="You’re owed" value={owed} variant="in" currency={currency} />
         <Chip label="You owe" value={owe} variant="out" currency={currency} />
       </div>
 
-      <dl className="flex items-start justify-between gap-3 border-t border-line pt-3">
+      <dl className="flex items-start justify-between gap-3 border-t border-line pt-2.5">
         <div className="min-w-0">
           <dt className="font-sans text-micro text-dim">Total group expense</dt>
           <dd>
@@ -60,7 +60,7 @@ export function GroupSummary({ balances, expenses, personId, currency, onSettleU
       </dl>
 
       {/* Always rendered so the card keeps its height across tabs. */}
-      <div className="flex min-h-6 items-center justify-between gap-3 border-t border-line pt-3">
+      <div className="flex min-h-5 items-center justify-between gap-3 border-t border-line pt-2.5">
         {pending > 0 ? (
           <span className="flex min-w-0 items-center gap-2 font-sans text-label text-dim">
             <span aria-hidden="true" className="flex shrink-0 items-center gap-1">
@@ -147,7 +147,7 @@ function Chip({
   const direction = value === 0 ? 'flat' : variant === 'in' ? 'up' : 'down';
   const iconColour = value === 0 ? 'text-dim' : variant === 'in' ? 'text-accent' : 'text-down';
   return (
-    <div className="flex items-center gap-2.5 rounded-card bg-sunken px-3 py-2.5">
+    <div className="flex items-center gap-2 rounded-card bg-sunken px-2.5 py-2">
       <FlowArrow variant={variant} className={iconColour} />
       <span className="min-w-0">
         <span className="block truncate font-sans text-micro text-dim">{label}</span>

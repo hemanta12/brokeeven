@@ -466,7 +466,15 @@
   min-width: 0;
 }
 
-@media (max-width: 360px) {
+/* iOS sizes date inputs to fit the full formatted date and icon, ignoring
+   width/min-width and overflowing the grid track. appearance:none makes it
+   respect the box model like the desktop control. */
+.paid-by-date input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@media (max-width: 480px) {
   .paid-by-date {
     grid-template-columns: minmax(0, 1fr);
   }
