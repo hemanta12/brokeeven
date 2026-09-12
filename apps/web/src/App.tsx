@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, Outlet, RouterProvider, ScrollRestoration, createBrowserRouter } from 'react-router-dom';
 
 import { CreateGroupPage } from './features/create-group/CreateGroupPage';
 import { GroupPage } from './features/group/GroupPage';
@@ -12,35 +13,57 @@ import { Navbar } from './components/Navbar';
 import { ErrorBoundary } from './shared/ErrorBoundary';
 import { NotFoundState } from './shared/RouteStates';
 
+function Layout() {
+  return (
+    <>
+      <Navbar />
+      {/* Keyed by pathname only for /groups: its back button is a <Link> (push,
+          not pop), so per-entry keying would never restore it. */}
+      <ScrollRestoration
+        getKey={(location) => (location.pathname === '/groups' ? location.pathname : location.key)}
+      />
+      <Outlet />
+    </>
+  );
+}
+
+const routes = [
+  {
+    element: <Layout />,
+    children: [
+      { path: '/', element: <HomePage /> },
+      { path: '/create', element: <CreateGroupPage /> },
+      { path: '/join', element: <JoinPage /> },
+      { path: '/groups', element: <MyGroupsPage /> },
+      { path: '/quick', element: <QuickOneOnOnePage /> },
+      { path: '/g/:code', element: <GroupPage /> },
+      {
+        path: '*',
+        element: (
+          <main>
+            <NotFoundState />
+            <p className="mt-4 font-sans text-body text-ink">
+              <Link to="/" className="underline">
+                Back to home
+              </Link>
+              .
+            </p>
+          </main>
+        )
+      }
+    ]
+  }
+];
+
 export function App() {
+  // Lazy init, not module scope (freezes on the first URL loaded) or a plain
+  // per-render call (remounts the tree).
+  const [router] = useState(() => createBrowserRouter(routes));
+
   return (
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
-        <BrowserRouter>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/create" element={<CreateGroupPage />} />
-            <Route path="/join" element={<JoinPage />} />
-            <Route path="/groups" element={<MyGroupsPage />} />
-            <Route path="/quick" element={<QuickOneOnOnePage />} />
-            <Route path="/g/:code" element={<GroupPage />} />
-            <Route
-              path="*"
-              element={
-                <main>
-                  <NotFoundState />
-                  <p className="mt-4 font-sans text-body text-ink">
-                    <Link to="/" className="underline">
-                      Back to home
-                    </Link>
-                    .
-                  </p>
-                </main>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
+        <RouterProvider router={router} />
       </ErrorBoundary>
     </QueryClientProvider>
   );

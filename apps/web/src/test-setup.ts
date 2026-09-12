@@ -18,3 +18,7 @@ window.matchMedia ??= (query: string) =>
     removeEventListener: () => {},
     dispatchEvent: () => false
   }) as MediaQueryList;
+
+// jsdom has no layout, so window.scrollTo throws "Not implemented" and floods
+// stderr — ScrollRestoration calls it on every route change.
+window.scrollTo = () => {};
