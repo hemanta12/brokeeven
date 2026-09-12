@@ -197,7 +197,7 @@ export function HomePage() {
         <PhoneFrame>
           <img
             src="/group-preview.png"
-            alt="A whole phone screen of a real group mid-trip: $123.60 spent, your share $41.20, two payments left to settle, and a four dollar debt with a Settle button next to it."
+            alt="A whole phone screen of a real group mid-trip: $123.60 spent, your share $61.80, one payment left to settle: a four dollar debt with a Settle button next to it."
             width={786}
             height={1704}
             loading="lazy"
