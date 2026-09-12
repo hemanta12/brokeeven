@@ -6,6 +6,8 @@ import { CreateGroupPage } from './features/create-group/CreateGroupPage';
 import { GroupPage } from './features/group/GroupPage';
 import { HomePage } from './features/home/HomePage';
 import { JoinPage } from './features/join/JoinPage';
+import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage';
+import { TermsOfUsePage } from './features/legal/TermsOfUsePage';
 import { MyGroupsPage } from './features/my-groups/MyGroupsPage';
 import { QuickOneOnOnePage } from './features/quick/QuickOneOnOnePage';
 import { queryClient } from './lib/queryClient';
@@ -37,6 +39,8 @@ const routes = [
       { path: '/groups', element: <MyGroupsPage /> },
       { path: '/quick', element: <QuickOneOnOnePage /> },
       { path: '/g/:code', element: <GroupPage /> },
+      { path: '/privacy', element: <PrivacyPolicyPage /> },
+      { path: '/terms', element: <TermsOfUsePage /> },
       {
         path: '*',
         element: (

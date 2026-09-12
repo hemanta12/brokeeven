@@ -254,6 +254,15 @@ export function HomePage() {
           Free, no ads, no account required.
           <span className="block">Built by Hemanta, who got tired of paying to split a pizza.</span>
         </p>
+        <p className="mt-3 font-sans text-micro text-dim">
+          <Link to="/privacy" className="underline">
+            Privacy
+          </Link>
+          <span className="mx-2">·</span>
+          <Link to="/terms" className="underline">
+            Terms
+          </Link>
+        </p>
       </section>
       </div>
     </main>
