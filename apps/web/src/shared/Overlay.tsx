@@ -16,8 +16,10 @@ function prefersReducedMotion(): boolean {
 interface OverlayProps {
   title: string;
   isDirty: boolean;
-  onClose: () => void;
+  // Words instead of the × glyph, where skipping is a real choice ("Just looking").
+  // Widens the button to a pill; the shape and tone stay the same.
   closeLabel?: string;
+  onClose: () => void;
   centerTitle?: boolean;
   // Float a content-sized card on a scrim instead of a full-height sheet.
   compact?: boolean;
@@ -158,9 +160,13 @@ export function Overlay({
           // Explicit bg-surface, not --field-bg: that token shifts per overlay
           // variant (sunken in compact sheets), which made this button inconsistent
           // across modals.
-          className="focus-ring flex h-11 w-11 items-center justify-center rounded-full border border-accent bg-surface text-xl text-ink transition-transform duration-100 hover:bg-accent-wash active:scale-90"
+          className={`focus-ring flex h-11 shrink-0 items-center justify-center rounded-full border border-accent bg-surface text-ink transition-transform duration-100 hover:bg-accent-wash active:scale-90 ${
+            confirmingDiscard || closeLabel === 'Close'
+              ? 'w-11 text-xl'
+              : 'px-4 font-sans text-label font-medium'
+          }`}
         >
-          {closeLabel === 'Close' ? '×' : closeLabel}
+          {confirmingDiscard || closeLabel === 'Close' ? '×' : closeLabel}
         </button>
       )}
     </div>
