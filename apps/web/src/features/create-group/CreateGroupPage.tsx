@@ -23,22 +23,6 @@ export function CreateGroupPage() {
   const [label, setLabel] = useState('');
   const [currency, setCurrency] = useState(localeCurrency());
   const [personName, setPersonName] = useState('');
-  const [copiedField, setCopiedField] = useState<'code' | 'link' | null>(null);
-
-  async function copyText(field: 'code' | 'link', text: string) {
-    await navigator.clipboard?.writeText(text);
-    setCopiedField(field);
-    setTimeout(() => setCopiedField(null), 2000);
-  }
-
-  // Copying is on the way forward, not a step to notice and skip: most people never
-  // save the link when the only path out of here is a plain "Continue".
-  async function copyLinkAndContinue() {
-    if (!group) return;
-    await copyText('link', `${window.location.origin}/g/${group.joinCode}`);
-    navigate(`/g/${group.joinCode}`);
-  }
-
   // mutateAsync rejects on failure; catch it or a 4xx logs an unhandled rejection.
   // The error itself renders below from createGroup.isError.
   async function handleCreateGroup(event: FormEvent) {
@@ -122,52 +106,11 @@ export function CreateGroupPage() {
     );
   }
 
-  const inviteLink = `${window.location.origin}/g/${group.joinCode}`;
-
   return (
     <main>
       <h1 className="heading text-display">Add people to {group.name}</h1>
 
-      <div className="mt-5 flex flex-col gap-2 rounded-card border border-line bg-sunken px-4 py-3.5">
-        <p className="font-sans text-label font-medium text-ink">Save this — it&rsquo;s how you get back in</p>
-        <p className="font-sans text-micro leading-relaxed text-dim">
-          Anyone with the code or link can open this group. Without an account, this browser is the only
-          place it&rsquo;s remembered.
-        </p>
-        <div className="mt-1 flex items-center justify-between gap-3 border-t border-line pt-3">
-          <span className="min-w-0">
-            <span className="block font-sans text-micro text-dim">Join code</span>
-            <span className="block font-mono text-section font-medium tracking-[0.04em] text-ink">
-              {group.joinCode}
-            </span>
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => copyText('code', group.joinCode)}
-            className="w-20 shrink-0"
-          >
-            <span aria-live="polite">{copiedField === 'code' ? 'Copied!' : 'Copy'}</span>
-          </Button>
-        </div>
-        <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
-          <span className="min-w-0">
-            <span className="block font-sans text-micro text-dim">Invite link</span>
-            <span className="block break-all font-mono text-label text-dim">{inviteLink}</span>
-          </span>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => copyText('link', inviteLink)}
-            className="w-20 shrink-0"
-          >
-            <span aria-live="polite">{copiedField === 'link' ? 'Copied!' : 'Copy'}</span>
-          </Button>
-        </div>
-      </div>
-
       <div className="mt-6 flex flex-col gap-3">
-        <span className="font-sans text-label font-medium text-ink">Add people to this group</span>
         <form onSubmit={handleAddPerson} className="flex items-end gap-2">
           <Field
             id="person-name"
@@ -183,12 +126,15 @@ export function CreateGroupPage() {
           <Button
             type="submit"
             variant="secondary"
-            aria-label="Add person"
+            aria-label="Save person"
             disabled={addPerson.isPending}
-            size="icon"
-            className="shrink-0"
+            className="min-h-12 shrink-0"
           >
-            +
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" className="h-4 w-4">
+              <path d="M4 3h9.5L17 6.5V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" strokeLinejoin="round" />
+              <path d="M6.5 3v4h6V3M6 17v-5h8v5" strokeLinejoin="round" />
+            </svg>
+            Save
           </Button>
         </form>
         {addPerson.isError && <ErrorState message={addPerson.error.message} />}
@@ -213,16 +159,9 @@ export function CreateGroupPage() {
         <p className="font-sans text-label text-dim">{people.length} people added</p>
       </div>
 
-      <Button className="mt-6 h-[52px] w-full" onClick={() => void copyLinkAndContinue()}>
-        Copy link &amp; continue
+      <Button className="mt-6 h-[52px] w-full" onClick={() => navigate(`/g/${group.joinCode}`)}>
+        Continue
       </Button>
-      <button
-        type="button"
-        onClick={() => navigate(`/g/${group.joinCode}`)}
-        className="focus-ring mx-auto mt-2 flex min-h-11 items-center rounded px-2 font-sans text-label text-dim underline hover:opacity-70"
-      >
-        Continue without copying
-      </button>
     </main>
   );
 }

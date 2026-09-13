@@ -56,11 +56,11 @@ describe('CreateGroupPage', () => {
     expect(await screen.findByRole('heading', { name: 'Add people to Trip' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Alice' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add person' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save person'}));
 
     expect(await screen.findByText('Alice')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue without copying' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue'}));
 
     expect(navigate).toHaveBeenCalledWith('/g/ABC123');
   });

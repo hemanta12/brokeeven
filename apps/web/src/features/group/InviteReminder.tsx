@@ -37,9 +37,9 @@ export function InviteReminder({
         Keep the code or link
       </p>
       <p className="mt-1 font-sans text-micro leading-relaxed text-dim">
-        You are not signed in, so only this browser remembers this group. You
-        need the save the code or link somewhere to come back to it later, and
-        to let your friends join.
+        You are not signed in, so only this browser remembers this group. Save
+        the code or link somewhere to come back to it later, and to let your
+        friends join.
       </p>
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
         <span className="rounded-inner border border-line bg-sunken px-2.5 py-1.5 font-mono text-label font-medium tracking-[0.04em] text-ink">
