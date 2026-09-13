@@ -15,6 +15,7 @@ interface GroupInfoOverlayProps {
   label: string | null;
   currency: string;
   createdByUserId: string | null;
+  owner: { personId: string | null; pending: boolean } | null;
   viewerUserId: string | null;
   // Closed group: currency and name/label are locked like the rest of the ledger.
   readOnly?: boolean;
@@ -29,6 +30,7 @@ export function GroupInfoOverlay({
   label,
   currency,
   createdByUserId,
+  owner,
   viewerUserId,
   readOnly = false,
   onClose,
@@ -44,7 +46,7 @@ export function GroupInfoOverlay({
   const [savedDetails, setSavedDetails] = useState(false);
   const deleteGroup = useDeleteGroup(joinCode);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const isOwner = canEdit(createdByUserId, viewerUserId);
+  const isOwner = !owner?.pending && canEdit(createdByUserId, viewerUserId);
   const canDeleteNow = readOnly && isOwner;
 
   // Clear the "Saved" cue after 2s, matching the copy buttons above.
@@ -214,8 +216,10 @@ export function GroupInfoOverlay({
           <p className="font-sans text-micro text-dim">
             {!readOnly
               ? "Close the group first. Delete is only for groups that are fully settled."
-              : !isOwner
-                ? "Only the person who created this group can delete it."
+              : owner?.pending
+                ? "Waiting for the new owner to open this group."
+                : !isOwner
+                ? "Only the group's owner can delete it."
                 : "Removes this group and everything in it, for everyone, permanently."}
           </p>
           <Button

@@ -12,7 +12,7 @@ import { capitalizeFirst, formatDate, formatDateGroupLabel } from "../../shared/
 import { getIdentity } from "../../shared/identity";
 import { forgetRecentGroup, rememberRecentGroup } from "../../shared/recentGroups";
 import { isInviteSaved } from "../../shared/inviteSaved";
-import { resolveIdentityPersonId, viewerNetOnExpense } from "./ownership";
+import { groupOwner, resolveIdentityPersonId, viewerNetOnExpense } from "./ownership";
 import { useDeleteExpense } from "../expense/api";
 import { ExpenseDetail } from "../expense/ExpenseDetail";
 import { ExpenseModal } from "../expense/ExpenseModal";
@@ -173,13 +173,18 @@ export function GroupPage() {
           } ${resolvedIdentityPersonId ? "pb-20" : "pb-11"}`}
         >
           <CornerDecor />
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-start gap-5">
             {/* Signed out there is no My Groups to go back to — /groups is a sign-in
                 wall, so the navbar wordmark is the only way out. */}
-            {isSignedIn && <BackButton to="/groups" label="Back to My groups" tone="band" iconOnly />}
+            {isSignedIn && (
+              <div className="pt-2">
+                <BackButton to="/groups" label="Back to My groups" tone="band" iconOnly />
+              </div>
+            )}
             {/* Title and label share one column so the label tracks the title's left
-                edge whether or not the back button is there. */}
-            <div className="min-w-0 flex-1">
+                edge whether or not the back button is there. pt-2 lines its top up
+                with the back/People/Info buttons instead of sitting above them. */}
+            <div className="min-w-0 flex-1 pt-2">
               <h1 className="heading text-hero-balance text-white">{group.name}</h1>
               {group.label && group.label !== "Individual" && (
                 <p className="mt-0.5 truncate font-sans text-micro uppercase tracking-wide text-band-dim">
@@ -187,7 +192,7 @@ export function GroupPage() {
                 </p>
               )}
             </div>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 pt-2">
             <button
               type="button"
               onClick={() => setShowPeople(true)}
@@ -496,6 +501,7 @@ export function GroupPage() {
           label={group.label}
           currency={group.currency}
           createdByUserId={group.createdByUserId}
+          owner={groupOwner(group)}
           viewerUserId={group.viewerUserId}
           readOnly={closed}
           onClose={() => setShowInfo(false)}
@@ -512,6 +518,9 @@ export function GroupPage() {
           people={group.people}
           identityPersonId={resolvedIdentityPersonId}
           pulsingIds={pulsingIds}
+          owner={groupOwner(group)}
+          createdByUserId={group.createdByUserId}
+          viewerUserId={group.viewerUserId}
           readOnly={closed}
           onClose={() => setShowPeople(false)}
         />

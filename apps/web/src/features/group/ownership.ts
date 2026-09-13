@@ -5,6 +5,19 @@ export function canEdit(createdByUserId: string | null, viewerUserId: string | n
   return createdByUserId === null || (viewerUserId !== null && createdByUserId === viewerUserId);
 }
 
+// Null = unowned. personId is null when the owning account isn't a member here;
+// pending = handed off to someone who hasn't claimed their person yet.
+export function groupOwner(group: {
+  createdByUserId: string | null;
+  pendingOwnerPersonId: string | null;
+  people: { id: string; userId: string | null }[];
+}): { personId: string | null; pending: boolean } | null {
+  if (group.pendingOwnerPersonId) return { personId: group.pendingOwnerPersonId, pending: true };
+  if (!group.createdByUserId) return null;
+  const owner = group.people.find((person) => person.userId === group.createdByUserId);
+  return { personId: owner?.id ?? null, pending: false };
+}
+
 // Which person the viewer is in this group. The server's claim wins over the
 // browser's local hint — it followed the account from another device.
 export function resolveIdentityPersonId(

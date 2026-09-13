@@ -18,6 +18,7 @@ export function useGroupByCode(code: string | undefined) {
     // read for consistency.
     select: (group): GroupWithPeople => ({
       ...group,
+      name: capitalizeFirst(group.name),
       // An API that predates the field would otherwise leave settleMode undefined,
       // which reads as "no surface is live" and hides every Settle button.
       settleMode: group.settleMode ?? 'direct',
@@ -57,8 +58,10 @@ export function useGroupActivity(code: string | undefined, enabled: boolean) {
 
 export function useCreateGroup() {
   return useMutation({
-    mutationFn: (input: { name: string; label?: string; currency?: string }) =>
-      apiFetch<Group>('/groups', { method: 'POST', body: JSON.stringify(input) })
+    mutationFn: async (input: { name: string; label?: string; currency?: string }) => {
+      const group = await apiFetch<Group>('/groups', { method: 'POST', body: JSON.stringify(input) });
+      return { ...group, name: capitalizeFirst(group.name) };
+    }
   });
 }
 
@@ -114,7 +117,7 @@ export function useUpdateGroupName(code: string | undefined) {
     mutationFn: (name: string) =>
       apiFetch<Group>(`/groups/${code}/name`, {
         method: 'PATCH',
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name: capitalizeFirst(name.trim()) })
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groupQueryKey(code) })
   });
@@ -135,6 +138,18 @@ export function useUpdateGroupLabel(code: string | undefined) {
 export function useDeleteGroup(code: string | undefined) {
   return useMutation({
     mutationFn: () => apiFetch<void>(`/groups/${code}`, { method: 'DELETE' })
+  });
+}
+
+export function useSetGroupOwner(code: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (personId: string) =>
+      apiFetch<GroupWithPeople>(`/groups/${code}/owner`, { method: 'POST', body: JSON.stringify({ personId }) }),
+    onSuccess: () => {
+      vibrateConfirm();
+      return queryClient.invalidateQueries({ queryKey: groupQueryKey(code) });
+    }
   });
 }
 

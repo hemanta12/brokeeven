@@ -3,7 +3,7 @@ import { Router } from 'express';
 
 import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { requireActor } from '../auth/middleware.js';
-import { canMutate } from '../auth/ownership.js';
+import { canDeleteGroup } from '../auth/ownership.js';
 import { getGroupStateByCode, resolveGroupForWrite } from '../group/groupState.js';
 import { generateJoinCode } from '../group/joinCode.js';
 import { normalizePersonName } from '../group/personName.js';
@@ -12,7 +12,7 @@ import { readRateLimit, writeRateLimit } from '../rateLimit.js';
 import { broadcastGroupUpdate } from '../realtime.js';
 import { forgiveBelow, minimizeTransactions } from '../settleUp.js';
 import { centsToAmount, formatMoney, isSupportedCurrency, toCents } from '../split/money.js';
-import { isNonEmptyString } from '../validation.js';
+import { isNonEmptyString, UUID_PATTERN } from '../validation.js';
 
 const MEMBER_CAP = 20;
 const NAME_MAX_LENGTH = 60;
@@ -329,13 +329,66 @@ groupsRouter.delete('/groups/:code', writeRateLimit, requireActor, async (reques
     });
     return;
   }
-  if (!canMutate(group.createdByUserId, request.actorId)) {
+  if (!canDeleteGroup(group, request.actorId)) {
     response.status(403).json({ error: 'Only the person who created this group can delete it' });
     return;
   }
 
   await prisma.group.delete({ where: { id: group.id } });
   response.status(204).send();
+});
+
+// The owner hands off to any live member; an unowned group can only be claimed
+// by a member for themselves. A pending handoff blocks changes until claimed.
+groupsRouter.post('/groups/:code/owner', writeRateLimit, requireActor, async (request, response) => {
+  const { personId } = request.body as { personId?: unknown };
+  if (typeof personId !== 'string' || !UUID_PATTERN.test(personId)) {
+    response.status(400).json({ error: 'personId is required' });
+    return;
+  }
+
+  const group = await prisma.group.findUnique({ where: { joinCode: String(request.params.code).toUpperCase() } });
+  if (!group) {
+    response.status(404).json({ error: 'Group not found' });
+    return;
+  }
+  if (group.pendingOwnerPersonId) {
+    response.status(409).json({ error: 'Ownership is waiting for the new owner to open this group' });
+    return;
+  }
+
+  const target = await prisma.person.findUnique({ where: { id: personId } });
+  if (!target || target.groupId !== group.id || target.removedAt) {
+    response.status(400).json({ error: 'Choose a current member of this group' });
+    return;
+  }
+
+  const actorId = request.actorId!;
+  const unowned = group.createdByUserId === null;
+  if (unowned ? target.userId !== actorId : group.createdByUserId !== actorId) {
+    response.status(403).json({
+      error: unowned ? 'You can only make yourself the owner' : 'Only the owner can change the owner'
+    });
+    return;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.group.update({
+      where: { id: group.id },
+      data: target.userId
+        ? { createdByUserId: target.userId, pendingOwnerPersonId: null }
+        : { createdByUserId: null, pendingOwnerPersonId: target.id }
+    });
+    await logActivity(
+      tx,
+      group.id,
+      'group_edit',
+      target.userId ? `${target.name} is now the owner` : `Ownership passed to ${target.name} (pending)`,
+      await actorNameInGroup(tx, group.id, actorId)
+    );
+  });
+  response.status(200).json(await getGroupStateByCode(group.joinCode));
+  void broadcastGroupUpdate(group.id);
 });
 
 // Balances are computed on read (TECH_STACK.md §4); the expense list and balance

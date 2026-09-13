@@ -8,7 +8,7 @@ import { prisma } from '../prisma.js';
 vi.mock('../prisma.js', () => {
   const prismaMock = {
     group: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), delete: vi.fn() },
-    person: { findFirst: vi.fn(), count: vi.fn(), create: vi.fn() },
+    person: { findFirst: vi.fn(), findUnique: vi.fn(), count: vi.fn(), create: vi.fn() },
     settlement: { createMany: vi.fn() },
     activityLog: { create: vi.fn() },
     user: { findUnique: vi.fn(), create: vi.fn() },
@@ -218,6 +218,21 @@ describe('DELETE /groups/:code', () => {
     const response = await request(app).delete('/groups/ABCD2345');
 
     expect(response.status).toBe(204);
+  });
+
+  it('403s everyone while ownership waits on a pending handoff', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      closedAt: new Date(),
+      createdByUserId: null,
+      pendingOwnerPersonId: 'p1'
+    } as never);
+
+    const response = await request(app).delete('/groups/ABCD2345');
+
+    expect(response.status).toBe(403);
+    expect(prisma.group.delete).not.toHaveBeenCalled();
   });
 
   it('409s on an open group and never deletes it', async () => {
@@ -518,5 +533,110 @@ describe('POST /groups/:code/people', () => {
 
     expect(response.status).toBe(409);
     expect(prisma.person.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /groups/:code/owner', () => {
+  const PERSON_ID = '22222222-2222-2222-2222-222222222222';
+
+  function mockGroup(overrides: Record<string, unknown> = {}) {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      createdByUserId: GUEST_ID,
+      pendingOwnerPersonId: null,
+      ...overrides
+    } as never);
+  }
+
+  function mockTarget(overrides: Record<string, unknown> = {}) {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({
+      id: PERSON_ID,
+      groupId: 'g1',
+      name: 'Priya',
+      userId: 'u-priya',
+      removedAt: null,
+      ...overrides
+    } as never);
+  }
+
+  it('lets the owner pass ownership to a member with an account', async () => {
+    mockGroup();
+    mockTarget();
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith({
+      where: { id: 'g1' },
+      data: { createdByUserId: 'u-priya', pendingOwnerPersonId: null }
+    });
+    expect(prisma.activityLog.create).toHaveBeenCalled();
+  });
+
+  it('hands off to a member without an account as pending', async () => {
+    mockGroup();
+    mockTarget({ userId: null });
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith({
+      where: { id: 'g1' },
+      data: { createdByUserId: null, pendingOwnerPersonId: PERSON_ID }
+    });
+  });
+
+  it('403s anyone but the owner', async () => {
+    mockGroup({ createdByUserId: 'someone-else' });
+    mockTarget();
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(403);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('lets a member claim an unowned group for themselves', async () => {
+    mockGroup({ createdByUserId: null });
+    mockTarget({ userId: GUEST_ID });
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.update).toHaveBeenCalledWith({
+      where: { id: 'g1' },
+      data: { createdByUserId: GUEST_ID, pendingOwnerPersonId: null }
+    });
+  });
+
+  it('403s claiming an unowned group for someone else', async () => {
+    mockGroup({ createdByUserId: null });
+    mockTarget();
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(403);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('409s while a handoff is pending', async () => {
+    mockGroup({ createdByUserId: null, pendingOwnerPersonId: 'p9' });
+    mockTarget();
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(409);
+    expect(prisma.group.update).not.toHaveBeenCalled();
+  });
+
+  it('400s a person from another group', async () => {
+    mockGroup();
+    mockTarget({ groupId: 'g2' });
+
+    const response = await request(app).post('/groups/ABCD2345/owner').send({ personId: PERSON_ID });
+
+    expect(response.status).toBe(400);
+    expect(prisma.group.update).not.toHaveBeenCalled();
   });
 });

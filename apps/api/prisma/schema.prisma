@@ -62,13 +62,19 @@ model Group {
   // Gates delete only; edit stays open to anyone with the code. NULL means
   // unowned (legacy groups), so anyone may delete.
   createdByUserId String?    @db.Uuid
+  // Handoff to a member with no account yet: set with createdByUserId = NULL,
+  // and promoted to createdByUserId when that person is claimed. Locks delete
+  // until then, so a NULL owner here does not mean "anyone may delete".
+  pendingOwnerPersonId String? @db.Uuid
+  pendingOwner Person?       @relation("GroupPendingOwner", fields: [pendingOwnerPersonId], references: [id], onDelete: SetNull)
   createdAt    DateTime      @default(now())
-  people       Person[]
+  people       Person[]      @relation("GroupPeople")
   expenses     Expense[]
   settlements  Settlement[]
   activityLogs ActivityLog[]
 
   @@index([createdByUserId])
+  @@index([pendingOwnerPersonId])
 }
 
 model Person {
@@ -81,8 +87,9 @@ model Person {
   userId          String?        @db.Uuid
   removedAt       DateTime?
   createdAt       DateTime       @default(now())
-  group           Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group           Group          @relation("GroupPeople", fields: [groupId], references: [id], onDelete: Cascade)
   user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  pendingOwnerOf  Group[]        @relation("GroupPendingOwner")
   paidExpenses    Expense[]      @relation("ExpensePayer")
   expenseSplits   ExpenseSplit[]
   settlementsFrom Settlement[]   @relation("SettlementFrom")

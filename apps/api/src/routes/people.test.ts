@@ -6,7 +6,7 @@ import { prisma } from '../prisma.js';
 
 vi.mock('../prisma.js', () => {
   const prismaMock = {
-    group: { findUnique: vi.fn() },
+    group: { findUnique: vi.fn(), updateMany: vi.fn() },
     person: { findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     expense: { findMany: vi.fn() },
     expenseSplit: { findMany: vi.fn(), delete: vi.fn(), update: vi.fn() },
@@ -302,5 +302,20 @@ describe('POST /people/:id/claim', () => {
 
     expect(response.status).toBe(403);
     expect(prisma.person.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /people/:id/claim ownership handoff', () => {
+  it('promotes a pending owner handoff to the claiming actor', async () => {
+    vi.mocked(prisma.person.findUnique).mockResolvedValue({ id: VALID_ID, groupId: GROUP_ID, userId: null } as never);
+    vi.mocked(prisma.person.update).mockResolvedValue({ id: VALID_ID, userId: GUEST_ID } as never);
+
+    const response = await request(app).post(`/people/${VALID_ID}/claim`).send({ code: GROUP_CODE });
+
+    expect(response.status).toBe(200);
+    expect(prisma.group.updateMany).toHaveBeenCalledWith({
+      where: { pendingOwnerPersonId: VALID_ID },
+      data: { createdByUserId: GUEST_ID, pendingOwnerPersonId: null }
+    });
   });
 });

@@ -33,6 +33,7 @@ function baseGroup(overrides: Partial<GroupWithPeople> = {}): GroupWithPeople {
   return {
     id: 'g1',
     name: 'Trip',
+    pendingOwnerPersonId: null,
     label: null,
     joinCode: 'ABC123',
     currency: 'USD',

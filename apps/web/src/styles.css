@@ -402,6 +402,19 @@
   transform: translateY(-50%);
 }
 
+/* Compact cards scroll inside themselves, so the header pins to keep close/Done
+   reachable. The spread shadow paints the card's padding band around it instead
+   of resizing the header, which would move the absolutely placed actions; the
+   clip stops it at the header's bottom so it can't cover the first content row. */
+.overlay-compact .overlay-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--color-surface);
+  box-shadow: 0 0 0 1.5rem var(--color-surface);
+  clip-path: inset(-1.5rem -1.5rem 0 -1.5rem);
+}
+
 .overlay-header-stacked {
   flex-direction: column;
   align-items: stretch;

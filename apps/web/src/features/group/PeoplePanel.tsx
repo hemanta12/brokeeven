@@ -8,6 +8,7 @@ import { Overlay } from "../../shared/Overlay";
 import { useBlurValidation } from "../../shared/useBlurValidation";
 import { useAddPerson, useRemovePerson } from "./api";
 import { EditPersonForm } from "./EditPersonForm";
+import { OwnerSection } from "./OwnerSection";
 import type { Person } from "./types";
 
 const MEMBER_CAP = 20;
@@ -17,6 +18,9 @@ interface PeoplePanelProps {
   people: Person[];
   identityPersonId: string | null;
   pulsingIds: Set<string>;
+  owner: { personId: string | null; pending: boolean } | null;
+  createdByUserId: string | null;
+  viewerUserId: string | null;
   // Closed group: roster view only — no add, rename, or remove.
   readOnly?: boolean;
   onClose: () => void;
@@ -24,7 +28,17 @@ interface PeoplePanelProps {
 
 // Own component so edit-mode, the add-person form, and the typed name unmount
 // with the panel — nothing for the parent to reset.
-export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOnly = false, onClose }: PeoplePanelProps) {
+export function PeoplePanel({
+  code,
+  people,
+  identityPersonId,
+  pulsingIds,
+  owner,
+  createdByUserId,
+  viewerUserId,
+  readOnly = false,
+  onClose,
+}: PeoplePanelProps) {
   const addPerson = useAddPerson(code);
   const removePerson = useRemovePerson(code);
   const { touch, untouch, isRequiredError } = useBlurValidation();
@@ -68,7 +82,9 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
       hideClose={isEditingMembers}
     >
       <div className="-mt-2 flex items-center justify-between gap-3">
-        <p className="font-sans text-label text-dim">{people.length} in this group</p>
+        <p className="font-sans text-label text-dim">
+          {people.length} in this group{owner ? "" : " · No owner"}
+        </p>
         {!readOnly && !isEditingMembers && (
           <Button
             variant="tertiary"
@@ -82,7 +98,24 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
         )}
       </div>
       <div className="mt-3 flex flex-1 flex-col gap-3">
-        <ul className={isEditingMembers ? "flex flex-col gap-3" : "flex flex-col gap-2"}>
+        {!isEditingMembers && !showAddPersonForm && (
+          <OwnerSection
+            code={code}
+            people={people}
+            owner={owner}
+            createdByUserId={createdByUserId}
+            viewerUserId={viewerUserId}
+          />
+        )}
+
+        {/* View mode caps at ~4.5 rows: the cut-off row signals the list scrolls. */}
+        <ul
+          className={
+            isEditingMembers
+              ? "flex flex-col gap-3"
+              : "flex max-h-[14.25rem] flex-col gap-2 overflow-y-auto overscroll-contain"
+          }
+        >
           {people.map((person) =>
             isEditingMembers ? (
               <li key={person.id}>
@@ -104,9 +137,14 @@ export function PeoplePanel({ code, people, identityPersonId, pulsingIds, readOn
                 className={`flex min-h-11 items-center gap-3 rounded-inner px-1 py-1 ${pulsingIds.has(person.id) ? "row-pulse" : ""}`}
               >
                 <Avatar name={person.name} isYou={person.id === identityPersonId} />
-                <p className="min-w-0 flex-1 truncate font-sans text-body font-medium text-ink">{person.name}</p>
+                <p className="min-w-0 shrink truncate font-sans text-label font-medium text-ink">{person.name}</p>
+                {owner?.personId === person.id && (
+                  <span className="shrink-0 rounded-inner border border-line px-1.5 py-0.5 font-sans text-micro text-dim">
+                    {owner.pending ? "Owner (pending)" : "Owner"}
+                  </span>
+                )}
                 {person.paymentHandle && (
-                  <p className="min-w-0 max-w-[45%] shrink-0 truncate font-mono text-label text-dim">
+                  <p className="ml-auto min-w-0 max-w-[45%] shrink-0 truncate font-mono text-micro text-dim">
                     ({person.paymentHandle})
                   </p>
                 )}

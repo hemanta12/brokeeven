@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 
 import { requireActor } from '../auth/middleware.js';
+import { promotePendingOwner } from '../auth/ownership.js';
 import { clearSession, issueSession } from '../auth/session.js';
 import { prisma } from '../prisma.js';
 import { authRateLimit, writeRateLimit } from '../rateLimit.js';
@@ -45,6 +46,7 @@ async function mergeGuestInto(guestId: string, targetUserId: string): Promise<vo
       });
     }
 
+    await tx.group.updateMany({ where: { createdByUserId: guestId }, data: { createdByUserId: targetUserId } });
     await tx.expense.updateMany({ where: { createdByUserId: guestId }, data: { createdByUserId: targetUserId } });
     await tx.settlement.updateMany({ where: { createdByUserId: guestId }, data: { createdByUserId: targetUserId } });
     await tx.user.delete({ where: { id: guestId } });
@@ -190,7 +192,10 @@ authRouter.post('/auth/claim', writeRateLimit, requireActor, async (request, res
     const taken = await prisma.person.findFirst({ where: { groupId: person.groupId, userId: actorId } });
     if (taken) continue;
 
-    await prisma.person.update({ where: { id: person.id }, data: { userId: actorId } });
+    await prisma.$transaction(async (tx) => {
+      await tx.person.update({ where: { id: person.id }, data: { userId: actorId } });
+      await promotePendingOwner(tx, person.id, actorId);
+    });
     claimed++;
   }
 

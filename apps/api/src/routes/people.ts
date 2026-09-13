@@ -6,6 +6,7 @@ import { actorNameInGroup, logActivity } from '../group/activityLog.js';
 import { rejectIfGroupClosed, verifyGroupMembership } from '../group/groupState.js';
 import { normalizePersonName } from '../group/personName.js';
 import { requireActor } from '../auth/middleware.js';
+import { promotePendingOwner } from '../auth/ownership.js';
 import { centsToAmount, toCents } from '../split/money.js';
 import { prisma } from '../prisma.js';
 import { writeRateLimit } from '../rateLimit.js';
@@ -203,6 +204,8 @@ peopleRouter.patch('/people/:id', writeRateLimit, requireActor, async (request: 
   const updated = await prisma.$transaction(async (tx) => {
     await redistributeSplitsForRemoval(tx, person.id);
     const removed = await tx.person.update({ where: { id: person.id }, data: { removedAt: new Date() } });
+    // A removed member can't claim, so a handoff to them would lock delete forever.
+    await tx.group.updateMany({ where: { pendingOwnerPersonId: person.id }, data: { pendingOwnerPersonId: null } });
     await logActivity(
       tx,
       removed.groupId,
@@ -251,6 +254,10 @@ peopleRouter.post('/people/:id/claim', writeRateLimit, requireActor, async (requ
     return;
   }
 
-  const claimed = await prisma.person.update({ where: { id: person.id }, data: { userId: actorId } });
+  const claimed = await prisma.$transaction(async (tx) => {
+    const linked = await tx.person.update({ where: { id: person.id }, data: { userId: actorId } });
+    await promotePendingOwner(tx, person.id, actorId);
+    return linked;
+  });
   response.status(200).json(claimed);
 });

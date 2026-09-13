@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiFetch } from '../../lib/apiClient';
-import { listLocalIdentities } from '../../shared/identity';
+import { clearLocalIdentities, listLocalIdentities } from '../../shared/identity';
+import { capitalizeFirst } from '../../shared/format';
 
 export interface SessionUser {
   id: string;
@@ -81,7 +82,35 @@ export function useMyGroups(enabled: boolean) {
   return useQuery({
     queryKey: myGroupsQueryKey,
     queryFn: () => apiFetch<{ groups: MyGroup[] }>('/me/groups'),
-    enabled
+    enabled,
+    select: (data) => ({ groups: data.groups.map((group) => ({ ...group, name: capitalizeFirst(group.name) })) })
+  });
+}
+
+export interface OwnedGroup {
+  id: string;
+  name: string;
+  // Live members other than the owner; empty means the group is deleted with the account.
+  candidates: { id: string; name: string; hasAccount: boolean }[];
+}
+
+export function useOwnedGroups() {
+  return useQuery({
+    queryKey: ['ownedGroups'],
+    queryFn: () => apiFetch<{ groups: OwnedGroup[] }>('/me/owned-groups')
+  });
+}
+
+export function useDeleteAccount() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (transfers: Record<string, string>) =>
+      apiFetch<void>('/me', { method: 'DELETE', body: JSON.stringify({ transfers }) }),
+    onSuccess: async () => {
+      clearLocalIdentities();
+      await queryClient.invalidateQueries({ queryKey: sessionQueryKey });
+      await queryClient.invalidateQueries({ queryKey: myGroupsQueryKey });
+    }
   });
 }
 

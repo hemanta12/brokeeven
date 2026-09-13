@@ -16,6 +16,14 @@ export function setIdentity(groupCode: string, personId: string): void {
   }
 }
 
+export function clearLocalIdentities(): void {
+  try {
+    for (const { code } of listLocalIdentities()) localStorage.removeItem(STORAGE_PREFIX + code);
+  } catch {
+    // localStorage unavailable; nothing was stored.
+  }
+}
+
 // Every locally recorded identity, sent to the server at sign-in to seed My Groups.
 export function listLocalIdentities(): { code: string; personId: string }[] {
   try {

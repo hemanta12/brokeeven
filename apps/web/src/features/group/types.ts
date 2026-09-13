@@ -26,6 +26,9 @@ export interface Group {
   // Gates delete only; edit stays open to anyone with the code. Null means
   // unowned (legacy groups), so anyone may delete.
   createdByUserId: string | null;
+  // Owner handed off to a member with no account yet; delete stays locked until
+  // they open the group and pick their name.
+  pendingOwnerPersonId: string | null;
   createdAt: string;
 }
 

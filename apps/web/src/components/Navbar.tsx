@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 import { Button } from './Button';
 import { Overlay } from '../shared/Overlay';
+import { DeleteAccountPanel } from '../features/auth/DeleteAccountPanel';
 import { SignInPrompt } from '../features/auth/SignInPrompt';
 import { useSession, useSignOut } from '../features/auth/api';
 
@@ -38,12 +39,14 @@ function SignOutGlyph() {
 
 export function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const { user, isSignedIn, isPending: isSessionPending } = useSession();
   const signOut = useSignOut();
   const navigate = useNavigate();
 
   // "/" renders the right thing for either auth state, so one target covers both flows.
   function closeAndGoHome() {
+    setIsDeleteOpen(false);
     setIsProfileOpen(false);
     navigate('/');
   }
@@ -122,9 +125,9 @@ export function Navbar() {
                 </div>
 
                 <div className="flex flex-col gap-2 border-t border-line pt-4">
+                  {/* Neutral: signing out loses nothing, so red stays reserved for delete. */}
                   <Button
                     variant="secondary"
-                    danger
                     onClick={() => signOut.mutate(undefined, { onSuccess: closeAndGoHome })}
                     disabled={signOut.isPending}
                   >
@@ -132,11 +135,24 @@ export function Navbar() {
                     {signOut.isPending ? 'Signing out…' : 'Sign out'}
                   </Button>
                 </div>
+
+                <div className="mt-6 flex flex-col gap-2 rounded-card border border-down/30 bg-down/5 px-4 py-3.5">
+                  <p className="font-sans text-label font-medium text-ink">Caution</p>
+                  <Button variant="primary" danger onClick={() => setIsDeleteOpen(true)} className="w-full">
+                    Delete account
+                  </Button>
+                </div>
               </>
             ) : (
               <SignInPrompt onSignedIn={closeAndGoHome} />
             )}
           </div>
+        </Overlay>
+      )}
+
+      {isDeleteOpen && (
+        <Overlay title="Delete account" isDirty={false} compact onClose={() => setIsDeleteOpen(false)}>
+          <DeleteAccountPanel onCancel={() => setIsDeleteOpen(false)} onDeleted={closeAndGoHome} />
         </Overlay>
       )}
     </>

@@ -47,8 +47,9 @@ export function PrivacyPolicyPage() {
         <section>
           <h2 className="heading text-section">How long we keep it</h2>
           <p className="mt-2">
-            Group data is kept until you delete it or contact us to remove it. Your Google account link can
-            be removed by signing out and contacting us to delete the associated account record.
+            Group data is kept until you delete it or contact us to remove it. You can delete your account
+            yourself from Profile, Delete account: this removes your name, email and Google link. Groups you
+            were in keep their expenses so the other members can still settle up.
           </p>
         </section>
 
@@ -56,7 +57,7 @@ export function PrivacyPolicyPage() {
           <h2 className="heading text-section">Your choices</h2>
           <p className="mt-2">
             Signing in with Google is optional everywhere in the app; you can create and use groups as a
-            guest. To request deletion of your data, email the address above.
+            guest. For anything else about your data, including guest data, email the address above.
           </p>
         </section>
 

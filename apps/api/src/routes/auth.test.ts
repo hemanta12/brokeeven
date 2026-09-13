@@ -19,7 +19,7 @@ vi.mock('../prisma.js', () => {
     person: { findMany: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     expense: { updateMany: vi.fn() },
     settlement: { updateMany: vi.fn() },
-    group: { findUnique: vi.fn() },
+    group: { findUnique: vi.fn(), updateMany: vi.fn() },
     $transaction: vi.fn((fn: (tx: typeof prismaMock) => unknown) => Promise.resolve(fn(prismaMock)))
   };
   return { prisma: prismaMock };

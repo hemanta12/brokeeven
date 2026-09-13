@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { canEdit, resolveIdentityPersonId, viewerNetOnExpense } from './ownership';
+import { canEdit, groupOwner, resolveIdentityPersonId, viewerNetOnExpense } from './ownership';
 
 describe('canEdit', () => {
   it('leaves rows with no recorded creator open to everyone', () => {
@@ -73,5 +73,28 @@ describe('viewerNetOnExpense', () => {
   // captions this case differently from a settled one.
   it('is zero when someone else paid and you are not in the split', () => {
     expect(viewerNetOnExpense(expense('p2', '90.00', [['p3', '90.00']]), 'p1')).toBe(0);
+  });
+});
+
+describe('groupOwner', () => {
+  const people = [
+    { id: 'p1', userId: 'u1' },
+    { id: 'p2', userId: null }
+  ];
+
+  it('finds the member linked to the owning account', () => {
+    expect(groupOwner({ createdByUserId: 'u1', pendingOwnerPersonId: null, people })).toEqual({ personId: 'p1', pending: false });
+  });
+
+  it('reports a pending handoff even with no owner account', () => {
+    expect(groupOwner({ createdByUserId: null, pendingOwnerPersonId: 'p2', people })).toEqual({ personId: 'p2', pending: true });
+  });
+
+  it('is null only for an unowned group', () => {
+    expect(groupOwner({ createdByUserId: null, pendingOwnerPersonId: null, people })).toBeNull();
+  });
+
+  it('keeps an owner who has not joined as a member, with no person', () => {
+    expect(groupOwner({ createdByUserId: 'u9', pendingOwnerPersonId: null, people })).toEqual({ personId: null, pending: false });
   });
 });

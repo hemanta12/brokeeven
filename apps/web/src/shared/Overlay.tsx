@@ -109,6 +109,9 @@ export function Overlay({
     container?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR)?.focus();
 
     function handleKeyDown(event: KeyboardEvent) {
+      // Stacked overlays each listen on document; only the topmost may react.
+      const overlays = document.querySelectorAll('.overlay');
+      if (container && overlays[overlays.length - 1] !== container) return;
       if (event.key === 'Escape') {
         event.preventDefault();
         if (confirmingRef.current) {
