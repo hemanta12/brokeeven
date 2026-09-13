@@ -5,9 +5,11 @@ import { type Socket as ClientSocket, io as ioClient } from 'socket.io-client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getGroupStateById } from './group/groupState.js';
+import { prisma } from './prisma.js';
 import { broadcastGroupUpdate, initRealtime } from './realtime.js';
 
 vi.mock('./group/groupState.js', () => ({ getGroupStateById: vi.fn() }));
+vi.mock('./prisma.js', () => ({ prisma: { group: { findUnique: vi.fn() } } }));
 
 let httpServer: ReturnType<typeof createServer>;
 let baseUrl: string;
@@ -36,6 +38,9 @@ afterEach(async () => {
 describe('broadcastGroupUpdate', () => {
   it('emits group:update only to sockets that joined that group room', async () => {
     vi.mocked(getGroupStateById).mockResolvedValue({ id: 'g1', people: [] } as never);
+    const groupIdByCode: Record<string, string> = { AAAA1111: 'g1', BBBB2222: 'g2' };
+    vi.mocked(prisma.group.findUnique).mockImplementation((({ where }: { where: { joinCode: string } }) =>
+      Promise.resolve(groupIdByCode[where.joinCode] ? { id: groupIdByCode[where.joinCode] } : null)) as never);
 
     const member = connectClient();
     const stranger = connectClient();
@@ -43,8 +48,8 @@ describe('broadcastGroupUpdate', () => {
       new Promise<void>((resolve) => member.on('connect', () => resolve())),
       new Promise<void>((resolve) => stranger.on('connect', () => resolve()))
     ]);
-    member.emit('group:join', 'g1');
-    stranger.emit('group:join', 'g2');
+    member.emit('group:join', 'aaaa1111');
+    stranger.emit('group:join', 'BBBB2222');
     await new Promise((resolve) => setTimeout(resolve, 20)); // let the joins land server-side
 
     const received: unknown[] = [];
