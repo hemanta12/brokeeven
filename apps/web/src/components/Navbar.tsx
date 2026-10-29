@@ -34,7 +34,7 @@ export function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-10 border-b border-line bg-surface">
+      <header className="navbar-static sticky top-0 z-10 border-b border-line bg-surface">
         {/* px-4 on mobile matches the page card's own edge inset; on desktop
             the card gains a visible fill and its edge sits at the column
             boundary, so the wordmark and profile drop to px-0 to line up with
@@ -43,7 +43,7 @@ export function Navbar() {
           <Link
             to="/"
             aria-label="Home"
-            className="focus-ring flex h-11 items-center gap-2 rounded-md px-1.5 transition-transform duration-100 hover:bg-ink/10 active:scale-95"
+            className="focus-ring flex h-11 items-center gap-2 rounded-md px-1.5 pressable hover:bg-ink/10 active:scale-95"
           >
             <img src="/icons/icon-192.png" alt="" className="h-7 w-7 rounded-md" />
             {/* accent, not mint: mint is only 1.77:1 on this white bar. */}
@@ -58,7 +58,7 @@ export function Navbar() {
                 type="button"
                 aria-label="Profile"
                 onClick={() => setIsProfileOpen(true)}
-                className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+                className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-ink pressable hover:bg-ink/10 active:scale-90"
               >
                 <AccountDisc sizeClass="h-8 w-8" glyphClass="size-4.5" />
               </button>
@@ -72,7 +72,7 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => setIsProfileOpen(true)}
-                className="focus-ring flex h-11 items-center rounded-full border border-line-strong px-4 font-sans text-label font-medium text-ink transition-transform duration-100 hover:bg-sunken active:scale-95"
+                className="focus-ring flex h-11 items-center rounded-full border border-line-strong px-4 font-sans text-label font-medium text-ink pressable hover:bg-sunken active:scale-95"
               >
                 Sign in
               </button>

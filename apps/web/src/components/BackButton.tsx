@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 // own close button. Two tones: `light` (bordered pill on plain ground), `band`
 // (bare chevron link on the group page's dark header).
 const BASE =
-  'focus-ring inline-flex items-center font-sans font-medium transition-transform duration-100';
+  'focus-ring inline-flex items-center font-sans font-medium pressable';
 
 const TONE = {
   light:
@@ -47,7 +47,7 @@ export function BackButton({
   );
   if (to) {
     return (
-      <Link to={to} className={className}>
+      <Link to={to} state={{ direction: 'back' }} className={className}>
         {content}
       </Link>
     );
