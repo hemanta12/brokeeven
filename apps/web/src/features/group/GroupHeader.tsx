@@ -62,7 +62,7 @@ export function GroupHeader({
             onClick={onOpenPeople}
             aria-haspopup="dialog"
             aria-label={`People (${peopleCount})`}
-            className="focus-ring flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-band-dim bg-white/8 px-3 font-sans text-label font-medium text-white transition-transform duration-100 hover:bg-white/15 active:scale-95"
+            className="focus-ring flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-band-dim bg-white/8 px-3 font-sans text-label font-medium text-white pressable hover:bg-white/15 active:scale-95"
           >
             <Users aria-hidden="true" className="size-4" strokeWidth={1.5} />
             {peopleCount}

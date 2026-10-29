@@ -67,7 +67,7 @@ export function ExpenseDetail({
               type="button"
               onClick={onEdit}
               aria-label="Edit"
-              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-ink pressable hover:bg-ink/10 active:scale-90"
             >
               <Pencil className="size-5" strokeWidth={1.75} />
             </button>
@@ -75,7 +75,7 @@ export function ExpenseDetail({
               type="button"
               onClick={() => setConfirmingDelete(true)}
               aria-label="Delete"
-              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-down/10 text-down transition-transform duration-100 hover:bg-down/20 active:scale-90"
+              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-down/10 text-down pressable hover:bg-down/20 active:scale-90"
             >
               <Trash2 className="size-4" />
             </button>

@@ -84,7 +84,7 @@ function GroupCard({ group }: { group: MyGroup }) {
             /* GroupPage reads ?add=expense and opens the modal directly. */
             <Link
               to={`/g/${group.joinCode}?add=expense`}
-              className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink transition-transform duration-100 active:scale-95"
+              className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink pressable active:scale-95"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
                 <Plus aria-hidden="true" className="size-3 text-accent" strokeWidth={2.25} />
@@ -249,7 +249,7 @@ export function MyGroupsPage() {
         {closedGroups.length > 0 && (
           <details open={openGroups.length === 0} className="group mt-6 sm:px-2">
             <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-inner font-sans text-label font-medium text-dim [&::-webkit-details-marker]:hidden">
-              <ChevronRight aria-hidden="true" className="size-3.5 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none" />
+              <ChevronRight aria-hidden="true" className="size-3.5 pressable group-open:rotate-90 motion-reduce:transition-none" />
               Closed groups
               <span className="rounded-full bg-sunken px-2 py-0.5 font-sans text-micro font-semibold text-dim">
                 {closedGroups.length}

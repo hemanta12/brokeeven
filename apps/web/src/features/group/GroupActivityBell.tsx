@@ -40,7 +40,7 @@ function ActivityBell({ code }: { code: string }) {
         onClick={show}
         aria-haspopup="dialog"
         aria-label={unread ? "Activity, new" : "Activity"}
-        className="focus-ring relative flex size-11 items-center justify-center rounded-full text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+        className="focus-ring relative flex size-11 items-center justify-center rounded-full text-ink pressable hover:bg-ink/10 active:scale-90"
       >
         <Bell aria-hidden="true" className="size-5.5" strokeWidth={1.75} />
         {/* accent, not mint: mint is 1.77:1 on this white bar. */}

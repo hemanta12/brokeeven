@@ -24,7 +24,7 @@ export function Field({ label, id, error, helpText, className = '', ...inputProp
         {...inputProps}
       />
       {error ? (
-        <p id={`${id}-error`} className="text-label text-down">
+        <p id={`${id}-error`} className="inline-in text-label text-down">
           {error}
         </p>
       ) : helpText ? (

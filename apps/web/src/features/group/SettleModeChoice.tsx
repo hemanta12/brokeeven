@@ -121,7 +121,7 @@ export function SettleModeChoice({
         })}
       </div>
       {target && (
-        <div role="alert" className="mt-2.5 rounded-inner bg-sunken p-3">
+        <div role="alert" className="inline-in mt-2.5 rounded-inner bg-sunken p-3">
           <p className="mb-2.5 font-sans text-micro leading-[1.45] text-dim">
             <b className="mb-0.5 block text-label font-semibold text-ink">
               Switch everyone to {SETTLE_MODE_LABEL[target]}?

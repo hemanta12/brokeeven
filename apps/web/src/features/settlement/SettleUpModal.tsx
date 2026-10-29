@@ -1,5 +1,5 @@
 import { Pencil } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useState, type CSSProperties, type FormEvent } from 'react';
 
 import { Amount } from '../../components/Amount';
 import { Avatar } from '../../components/Avatar';
@@ -114,20 +114,22 @@ export function SettleUpModal({ code, people, balance, balances, currency, role,
     return (
       <Overlay title={title} isDirty={false} onClose={onClose}>
         <div className="flex flex-1 flex-col justify-center gap-6 pb-10">
-          <div className={`${cardClassName} shadow-sheet`}>
+          <div className={`${cardClassName} receipt-in shadow-sheet`}>
             <div className="px-4 pb-4 pt-6 text-center">
-              <Faces from={fromPersonName} to={toPersonName} />
-              <p className="mt-3 font-sans text-body text-dim">
+              <div className="reveal" style={{ '--i': 0 } as CSSProperties}>
+                <Faces from={fromPersonName} to={toPersonName} />
+              </div>
+              <p className="reveal mt-3 font-sans text-body text-dim" style={{ '--i': 1 } as CSSProperties}>
                 {fromPersonName} paid <span className="font-semibold text-ink">{toPersonName}</span>
               </p>
-              <span className="mt-3 inline-block rounded-full bg-accent-wash px-4 py-1.5">
+              <span className="reveal mt-3 inline-block rounded-full bg-accent-wash px-4 py-1.5" style={{ '--i': 2 } as CSSProperties}>
                 <Amount value={Number(amount)} currency={currency} direction="up" className="text-title font-semibold" />
               </span>
             </div>
             <div className="tear">
               <span />
             </div>
-            <div className="px-4 pb-6 text-center">
+            <div className="reveal px-4 pb-6 text-center" style={{ '--i': 4 } as CSSProperties}>
               <Amount value={0} currency={currency} className="block text-zero font-semibold tracking-[-0.04em]" />
               <p className="mt-1 font-sans text-body text-dim">Even.</p>
             </div>

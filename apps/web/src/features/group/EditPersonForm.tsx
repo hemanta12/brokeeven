@@ -61,7 +61,7 @@ export function InlineFieldRow({
         type="submit"
         aria-label={saveLabel}
         disabled={disabled}
-        className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ink text-ink transition-transform hover:bg-sunken active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
+        className="focus-ring flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ink text-ink pressable hover:bg-sunken active:scale-90 disabled:cursor-not-allowed disabled:opacity-30"
       >
         ✓
       </button>
@@ -199,7 +199,7 @@ export function EditPersonForm({
       {showSavedMessage && (
         <p
           aria-live="polite"
-          className="font-sans text-label font-medium text-accent"
+          className="inline-in font-sans text-label font-medium text-accent"
         >
           ✓ Saved
         </p>
@@ -219,7 +219,7 @@ export function EditPersonForm({
           type="button"
           onClick={() => setConfirmingRemove(true)}
           aria-label={`Remove ${person.name}`}
-          className="focus-ring absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-down/10 text-down transition-transform hover:bg-down/20 active:scale-90"
+          className="focus-ring absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-down/10 text-down pressable hover:bg-down/20 active:scale-90"
         >
           <Trash2 aria-hidden="true" className="size-3.5" />
         </button>

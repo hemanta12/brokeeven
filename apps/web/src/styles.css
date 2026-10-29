@@ -65,6 +65,11 @@
   --color-focus: #12140f; /* deliberately not accent */
   --color-scrim: color-mix(in srgb, #12140f 45%, transparent);
 
+  /* Strong ease-out for entrances and presses; drawer curve for sheets and the
+     tab thumb. The built-in CSS easings are too weak to read as intentional. */
+  --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -210,8 +215,8 @@
   opacity: 1;
   transform: translateY(0);
   transition:
-    opacity 200ms ease-out,
-    transform 200ms ease-out;
+    opacity 300ms var(--ease-snap),
+    transform 400ms var(--ease-drawer);
 }
 
 /* A sticky footer takes over the bottom padding so its fade reaches the sheet edge. */
@@ -293,20 +298,60 @@
 }
 
 /* Flips to data-phase="visible" a frame after mount (set in JS) so the
-   transition animates in. */
+   transition animates in. Phase sits on both the root and the content: the root
+   fades the scrim, the content moves. */
 .overlay-content[data-phase="entering"] {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(20px);
 }
 
 .overlay-content[data-phase="exiting"] {
   opacity: 0;
   transform: translateY(8px);
-  transition-duration: 150ms;
-  transition-timing-function: ease-in;
+  transition-duration: 200ms;
+  transition-timing-function: ease-out;
+}
+
+/* A full-page sheet is opaque: fading only its content would flash a flat
+   ground first, so the root fades as one piece and the content only slides. */
+.overlay:not(.overlay-compact) {
+  transition: opacity 280ms var(--ease-snap);
+}
+
+.overlay:not(.overlay-compact)[data-phase="entering"],
+.overlay:not(.overlay-compact)[data-phase="exiting"] {
+  opacity: 0;
+}
+
+.overlay:not(.overlay-compact)[data-phase="exiting"] {
+  transition-duration: 200ms;
+}
+
+.overlay:not(.overlay-compact) .overlay-content[data-phase] {
+  opacity: 1;
+}
+
+/* A compact card floats on the scrim: the scrim fades, the card rises and
+   settles from 0.96 (never from 0). */
+.overlay-compact {
+  transition: background-color 280ms ease-out;
+}
+
+.overlay-compact[data-phase="entering"],
+.overlay-compact[data-phase="exiting"] {
+  background-color: transparent;
+}
+
+.overlay-compact .overlay-content[data-phase="entering"] {
+  transform: translateY(10px) scale(0.96);
+}
+
+.overlay-compact .overlay-content[data-phase="exiting"] {
+  transform: scale(0.98);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .overlay,
   .overlay-content {
     transition: none;
   }
@@ -328,7 +373,10 @@
   border-radius: 9999px;
   color: var(--color-dim);
   cursor: pointer;
-  transition: transform 100ms ease-out;
+  transition:
+    transform 100ms ease-out,
+    background-color 180ms ease-out,
+    color 180ms ease-out;
 }
 
 @media (hover: hover) {
@@ -699,5 +747,233 @@ li.row-pulse {
 @media (prefers-reduced-motion: reduce) {
   .range-month > span {
     transition: none;
+  }
+}
+
+/* ---- Motion -------------------------------------------------------------
+   Entrances are keyframes that run once on mount; anything that can retarget
+   mid-flight (hover, press, tab thumb, sheets) is a transition. Distances are
+   variables so reduced motion keeps the fades and drops the movement. */
+:root {
+  --rise: 10px;
+  --pop: 0.96;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --rise: 0px;
+    --pop: 1;
+  }
+
+  .inline-in {
+    --rise: 0px;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise));
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise)) scale(var(--pop));
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--rise) * -0.5)) scale(var(--pop));
+  }
+}
+
+/* Route change fallback (cold load, back/forward, no View Transitions API). */
+.page-enter {
+  animation: rise-in 380ms var(--ease-snap) backwards;
+}
+
+/* Inline reveal for form pieces that appear in place (errors, hints, confirm strips). */
+.inline-in {
+  animation: rise-in 260ms var(--ease-snap) backwards;
+  --rise: 6px;
+}
+
+/* Tab panel swap. Shorter than a route change: tabs are used often. */
+.panel-in {
+  animation: rise-in 260ms var(--ease-snap) backwards;
+}
+
+/* A list row on mount: the first screenful staggers, the rest land together.
+   Rows that merely re-render keep their key and never replay this. */
+.row-in {
+  animation: rise-in 340ms var(--ease-snap) backwards;
+  animation-delay: calc(min(var(--i, 0), 8) * 45ms);
+}
+
+/* Receipt beats: the --i step orders them. */
+.reveal {
+  animation: rise-in 440ms var(--ease-snap) backwards;
+  animation-delay: calc(150ms + var(--i, 0) * 90ms);
+}
+
+/* Inline confirm prompts above a modal. */
+.scrim-in {
+  animation: fade-in 260ms ease-out backwards;
+}
+
+.dialog-in {
+  animation: pop-in 300ms var(--ease-snap) backwards;
+}
+
+/* Anchored popover: grows from the trigger's corner, not from its center. */
+.menu-in {
+  transform-origin: top right;
+  animation: drop-in 220ms var(--ease-snap) backwards;
+}
+
+.menu-swap {
+  animation: fade-in 240ms ease-out backwards;
+}
+
+/* Settled-receipt card. */
+.receipt-in {
+  animation: pop-in 480ms var(--ease-drawer) backwards;
+}
+
+/* Tabs: one thumb slides between segments instead of each segment repainting. */
+/* isolation keeps the segments' z-index inside the tab bar; without it they
+   outrank the summary card above and paint through its period dropdown. */
+.segmented-sliding {
+  position: relative;
+  isolation: isolate;
+}
+
+.segment-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--n, 1));
+  border-radius: 9999px;
+  background: var(--color-surface);
+  box-shadow: 0 1px 3px -1px color-mix(in srgb, var(--color-ink) 16%, transparent);
+  transform: translateX(calc(var(--i, 0) * 100%));
+  transition: transform 340ms var(--ease-drawer);
+  pointer-events: none;
+}
+
+.segmented-sliding .segment {
+  position: relative;
+  z-index: 1;
+}
+
+.segmented-sliding .segment[data-active="true"] {
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment-thumb {
+    transition: none;
+  }
+}
+
+/* Pressable controls animate every property a hover or press can change, not
+   just transform, so a hover tint eases in instead of snapping. */
+@utility pressable {
+  transition-property: transform, background-color, color, border-color, opacity, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-snap);
+}
+
+/* ---- Page transitions (View Transitions API) -----------------------------
+   Forward: the new page slides in over the old one, which drifts left and
+   dims. Back: the page being left slides off to the right, uncovering the one
+   beneath. The navbar keeps its own group so it stays put. */
+.navbar-static {
+  view-transition-name: navbar;
+}
+
+::view-transition-group(navbar) {
+  animation: none;
+}
+
+::view-transition-old(navbar),
+::view-transition-new(navbar) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+  animation-duration: 460ms;
+  animation-timing-function: var(--ease-drawer);
+  animation-fill-mode: both;
+}
+
+@keyframes nav-in-from-right {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes nav-out-to-right {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes nav-under-out {
+  to {
+    transform: translateX(-24%);
+    filter: brightness(0.92);
+  }
+}
+
+@keyframes nav-under-in {
+  from {
+    transform: translateX(-24%);
+    filter: brightness(0.92);
+  }
+}
+
+:root[data-nav="forward"]::view-transition-old(root) {
+  z-index: 1;
+  animation-name: nav-under-out;
+}
+
+:root[data-nav="forward"]::view-transition-new(root) {
+  z-index: 2;
+  animation-name: nav-in-from-right;
+  box-shadow: -12px 0 32px -12px color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+:root[data-nav="back"]::view-transition-old(root) {
+  z-index: 2;
+  animation-name: nav-out-to-right;
+  box-shadow: -12px 0 32px -12px color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+:root[data-nav="back"]::view-transition-new(root) {
+  z-index: 1;
+  animation-name: nav-under-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
   }
 }

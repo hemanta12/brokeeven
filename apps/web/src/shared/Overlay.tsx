@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Button } from '../components/Button';
 import { ErrorState } from './RouteStates';
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-// Restrained exit timing (UIUX_rules.md §10): ease-in, no spring physics.
+// Exits are quicker than entrances and ease-out, so the UI answers the tap at once.
 const EXIT_MS = 150;
 
 type Phase = 'entering' | 'visible' | 'exiting';
@@ -163,7 +164,7 @@ export function Overlay({
           // Explicit bg-surface, not --field-bg: that token shifts per overlay
           // variant (sunken in compact sheets), which made this button inconsistent
           // across modals.
-          className={`focus-ring flex h-11 shrink-0 items-center justify-center rounded-full border border-accent bg-surface text-ink transition-transform duration-100 hover:bg-accent-wash active:scale-90 ${
+          className={`focus-ring flex h-11 shrink-0 items-center justify-center rounded-full border border-accent bg-surface text-ink pressable hover:bg-accent-wash active:scale-90 ${
             confirmingDiscard || closeLabel === 'Close'
               ? 'w-11 text-xl'
               : 'px-4 font-sans text-label font-medium'
@@ -175,8 +176,11 @@ export function Overlay({
     </div>
   );
 
-  return (
-    <div className={compact ? 'overlay overlay-compact' : 'overlay'} role="dialog" aria-modal="true" aria-label={title} ref={containerRef}>
+  // Portaled to <body>: an overlay rendered inside a transformed, clipped or
+  // stacking-context ancestor (the route transition, the summary card) would be
+  // positioned and layered against that ancestor instead of the viewport.
+  return createPortal(
+    <div className={compact ? 'overlay overlay-compact' : 'overlay'} role="dialog" aria-modal="true" aria-label={title} ref={containerRef} data-phase={phase}>
       <div className="overlay-content" data-phase={phase}>
         <div
           className={`overlay-header mb-6${stackedHeader ? ' overlay-header-stacked' : ''}${
@@ -198,12 +202,12 @@ export function Overlay({
       </div>
 
       {blockingConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
+        <div className="scrim-in fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
           <div
             role="alertdialog"
             aria-modal="true"
             aria-label={blockingConfirm.message}
-            className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog"
+            className="dialog-in w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog"
           >
             <p className="font-sans text-body font-semibold text-ink">{blockingConfirm.message}</p>
             {blockingConfirm.detail && (
@@ -235,8 +239,8 @@ export function Overlay({
       )}
 
       {confirmingDiscard && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
-          <div className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog">
+        <div className="scrim-in fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
+          <div className="dialog-in w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog">
             <p className="font-sans text-body font-semibold text-ink">Discard unsaved changes?</p>
             <p className="mt-1 font-sans text-label text-dim">Leaving now clears what you entered.</p>
             <div className="mt-5 flex flex-col gap-2">
@@ -257,6 +261,7 @@ export function Overlay({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

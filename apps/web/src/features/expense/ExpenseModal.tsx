@@ -160,7 +160,7 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
             </div>
           </div>
           {isRequiredError('amount', amount) && (
-            <p id="expense-amount-error" className="text-right text-label text-down">
+            <p id="expense-amount-error" className="inline-in text-right text-label text-down">
               Amount is required.
             </p>
           )}
@@ -223,7 +223,7 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
                 </option>
               ))}
             </select>
-            {isRequiredError('payerId', payerId) && <p className="text-label text-down">Payer is required.</p>}
+            {isRequiredError('payerId', payerId) && <p className="inline-in text-label text-down">Payer is required.</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="expense-date" className="font-sans text-label font-medium text-ink">
@@ -341,12 +341,12 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
           })}
           </div>
           {splitMethod === 'percent' && (
-            <p className={`font-sans text-label ${percentMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
+            <p className={`inline-in font-sans text-label ${percentMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
               Entered: {percentEntered} / 100{percentMismatch && submitAttempted ? ', must add up to 100%' : ''}
             </p>
           )}
           {splitMethod === 'custom' && (
-            <p className={`font-sans text-label ${customMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
+            <p className={`inline-in font-sans text-label ${customMismatch && submitAttempted ? 'text-down' : 'text-dim'}`}>
               Entered: {formatCurrency(customEnteredCents / 100, currency)} / {formatCurrency(amountCents / 100, currency)}
               {customMismatch && submitAttempted ? ', must add up to the total' : ''}
             </p>

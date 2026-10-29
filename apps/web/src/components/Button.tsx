@@ -16,7 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonSha
 // maps below, not here: in BASE they beat a caller's className on source order
 // and forced `!` at call sites.
 const BASE =
-  'focus-ring inline-flex items-center justify-center gap-2 font-sans font-semibold transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45';
+  'focus-ring inline-flex items-center justify-center gap-2 font-sans font-semibold pressable active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45';
 
 // Pill-shaped at every size. lg is the 52px primary for the landing page and sticky bars.
 const SIZE_CLASSES: Record<Size, string> = {

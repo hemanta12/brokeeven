@@ -12,7 +12,7 @@ export function EmptyState({ message }: { message: string }) {
 
 export function ErrorState({ message = 'Something broke. Try again.', onRetry }: { message?: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-col items-start gap-2 font-sans text-body text-down">
+    <div role="alert" className="inline-in flex flex-col items-start gap-2 font-sans text-body text-down">
       <p>{message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry} className="focus-ring rounded-lg underline hover:opacity-70 active:opacity-50">

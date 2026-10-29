@@ -184,7 +184,7 @@ function RecentGroups() {
               <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
                 <Link
                   to={`/g/${group.code}?add=expense`}
-                  className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink transition-transform duration-100 active:scale-95"
+                  className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink pressable active:scale-95"
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
                     <Plus aria-hidden="true" className="size-3 text-accent" strokeWidth={2.25} />
