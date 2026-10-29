@@ -8,12 +8,15 @@ import { prisma } from '../prisma.js';
 const groupInclude = {
   people: { where: { removedAt: null }, orderBy: { createdAt: 'asc' } },
   expenses: { orderBy: { date: 'desc' }, include: { splits: true } },
-  settlements: { orderBy: { settledAt: 'desc' } }
+  settlements: { orderBy: { settledAt: 'desc' } },
+  // Newest entry only: the activity feed itself is fetched on demand, but the
+  // header's unread dot needs to know when the last thing happened.
+  activityLogs: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } }
 } satisfies Prisma.GroupInclude;
 
 type GroupWithRelations = Prisma.GroupGetPayload<{ include: typeof groupInclude }>;
 
-function withBalances(group: GroupWithRelations) {
+function withBalances({ activityLogs, ...group }: GroupWithRelations) {
   const expenses = group.expenses ?? [];
   const settlements = group.settlements ?? [];
   const balances = computeBalances(
@@ -31,7 +34,7 @@ function withBalances(group: GroupWithRelations) {
     }))
   ).map((balance) => ({ ...balance, amount: centsToAmount(balance.amountCents) }));
 
-  return { ...group, balances };
+  return { ...group, balances, lastActivityAt: activityLogs?.[0]?.createdAt ?? null };
 }
 
 // Shared by GET /groups/:code and the realtime broadcast so both compute state

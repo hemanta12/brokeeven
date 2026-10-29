@@ -319,6 +319,63 @@ describe('GET /groups/:code', () => {
   });
 });
 
+describe('GET /groups/:code lastActivityAt', () => {
+  it('carries the newest activity time and does not leak the raw log rows', async () => {
+    const newest = new Date('2026-10-20T09:30:00.000Z');
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      people: [],
+      expenses: [],
+      settlements: [],
+      activityLogs: [{ createdAt: newest }]
+    } as never);
+
+    const response = await request(app).get('/groups/ABCD2345');
+
+    expect(response.status).toBe(200);
+    expect(response.body.lastActivityAt).toBe('2026-10-20T09:30:00.000Z');
+    expect(response.body).not.toHaveProperty('activityLogs');
+    expect(prisma.group.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          activityLogs: { orderBy: { createdAt: 'desc' }, take: 1, select: { createdAt: true } }
+        })
+      })
+    );
+  });
+
+  it('is null for a group with no activity yet', async () => {
+    vi.mocked(prisma.group.findUnique).mockResolvedValue({
+      id: 'g1',
+      joinCode: 'ABCD2345',
+      people: [],
+      expenses: [],
+      settlements: [],
+      activityLogs: []
+    } as never);
+
+    const response = await request(app).get('/groups/ABCD2345');
+
+    expect(response.body.lastActivityAt).toBeNull();
+  });
+
+  it('moves forward after a mutation logs new activity', async () => {
+    const before = new Date('2026-10-20T09:30:00.000Z');
+    const after = new Date('2026-10-20T09:45:00.000Z');
+    const group = { id: 'g1', joinCode: 'ABCD2345', people: [], expenses: [], settlements: [] };
+    vi.mocked(prisma.group.findUnique)
+      .mockResolvedValueOnce({ ...group, activityLogs: [{ createdAt: before }] } as never)
+      .mockResolvedValueOnce({ ...group, activityLogs: [{ createdAt: after }] } as never);
+
+    const first = await request(app).get('/groups/ABCD2345');
+    const second = await request(app).get('/groups/ABCD2345');
+
+    expect(first.body.lastActivityAt).toBe(before.toISOString());
+    expect(second.body.lastActivityAt).toBe(after.toISOString());
+  });
+});
+
 describe('PATCH /groups/:code/settle-mode', () => {
   it('switches the group to the simplified plan and logs it', async () => {
     vi.mocked(prisma.group.findUnique).mockResolvedValue({
