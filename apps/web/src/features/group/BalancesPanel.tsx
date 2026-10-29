@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { BalanceRow } from '../../components/BalanceRow';
 import { EmptyState } from '../../shared/RouteStates';
 import { SETTLE_MODE_LABEL, effectiveSettleMode, minimizeTransactions } from './settleUp';
@@ -57,10 +59,10 @@ export function BalancesPanel({
   function renderRows(list: Balance[]) {
     return (
       <ul className="flex flex-col gap-2">
-        {list.map((row) => {
+        {list.map((row, index) => {
           const key = balanceKey(row);
           return (
-            <li key={key} className={`entry-card ${pulsingIds.has(key) ? 'row-pulse' : ''}`}>
+            <li key={key} style={{ '--i': index } as CSSProperties} className={`entry-card row-in ${pulsingIds.has(key) ? 'row-pulse' : ''}`}>
               <BalanceRow
                 fromName={nameOf(row.fromPersonId)}
                 toName={nameOf(row.toPersonId)}

@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../components/Button";
@@ -282,14 +282,15 @@ export function GroupPage() {
                         {formatDateGroupLabel(dateGroup.date)}
                       </h3>
                       <ul className="flex flex-col gap-1.5">
-                        {dateGroup.expenses.map((expense) => {
+                        {dateGroup.expenses.map((expense, index) => {
                           const payer = group.people.find(
                             (p) => p.id === expense.payerId,
                           );
                           return (
                             <li
                               key={expense.id}
-                              className={`entry-card entry-card-tappable ${pulsingIds.has(expense.id) ? "row-pulse" : ""}`}
+                              style={{ "--i": index } as CSSProperties}
+                              className={`entry-card entry-card-tappable row-in ${pulsingIds.has(expense.id) ? "row-pulse" : ""}`}
                             >
                               <ExpenseRow
                                 title={expense.title}
@@ -316,7 +317,7 @@ export function GroupPage() {
               role="tabpanel"
               id="panel-balances"
               aria-labelledby="tab-balances"
-              className="mt-2 sm:px-2"
+              className="panel-in mt-2 sm:px-2"
             >
               <BalancesPanel
                 balances={group.balances}

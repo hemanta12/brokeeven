@@ -128,10 +128,10 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
             role="menu"
             aria-label="Expense period"
             onKeyDown={handleMenuKeyDown}
-            className="absolute right-0 top-full z-20 mt-1.5 flex w-60 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-card border border-line bg-surface p-1.5 shadow-dialog"
+            className="menu-in absolute right-0 top-full z-20 mt-1.5 flex w-60 max-w-[calc(100vw-2rem)] flex-col gap-1 rounded-card border border-line bg-surface p-1.5 shadow-dialog"
           >
             {menu === "main" ? (
-              <>
+              <div key="main" className="menu-swap flex flex-col gap-1">
                 <MenuItem
                   autoFocus
                   name="All time"
@@ -163,9 +163,9 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
                     setRangeOpen(true);
                   }}
                 />
-              </>
+              </div>
             ) : (
-              <>
+              <div key="year" className="menu-swap flex flex-col gap-1">
                 <button
                   type="button"
                   role="menuitem"
@@ -186,7 +186,7 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
                     onClick={() => choose({ kind: "year", year })}
                   />
                 ))}
-              </>
+              </div>
             )}
           </div>
         </>
@@ -240,7 +240,7 @@ function MenuItem({
       }`}
     >
       <Check aria-hidden="true" className={`size-4 shrink-0 text-accent ${checked ? "" : "invisible"}`} strokeWidth={2.25} />
-      <span className="flex-1 font-sans text-body font-semibold text-ink">{name}</span>
+      <span className="flex-1 whitespace-nowrap font-sans text-label font-semibold text-ink">{name}</span>
       {hint && <span className="font-sans text-micro text-dim">{hint}</span>}
       {drill && <ChevronRight aria-hidden="true" className="size-4 shrink-0 text-dim" />}
     </button>

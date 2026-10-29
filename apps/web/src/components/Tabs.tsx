@@ -1,4 +1,4 @@
-import { type KeyboardEvent } from 'react';
+import { type CSSProperties, type KeyboardEvent } from 'react';
 
 export interface TabItem {
   id: string;
@@ -26,7 +26,13 @@ export function Tabs({ items, activeId, onChange, label }: TabsProps) {
   }
 
   return (
-    <div role="tablist" aria-label={label} className="segmented">
+    <div
+      role="tablist"
+      aria-label={label}
+      className="segmented segmented-sliding"
+      style={{ '--n': items.length, '--i': Math.max(0, items.findIndex((item) => item.id === activeId)) } as CSSProperties}
+    >
+      <span aria-hidden="true" className="segment-thumb" />
       {items.map((item) => {
         const isActive = item.id === activeId;
         return (

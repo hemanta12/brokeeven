@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { formatCurrency, splitCurrencyFraction } from '../../shared/format';
+import { useTweenedNumber } from '../../shared/useTweenedNumber';
 import { claimIdentity } from './claimIdentity';
 import {
   fitFontSize,
@@ -77,12 +78,15 @@ export function GroupSummary({
 
   return (
     <section aria-label="Your position in this group" className={CARD}>
-      {/* Row 1 is the ring's height: the heading sits at its top and the settle link
-          at its bottom, the figure between. The period control gets its own row 2. */}
+      {/* The left column spans both rows: the heading sits at the top beside the ring,
+          the figure right under it, and the settle link drops to the period control's row. */}
       <div className="grid grid-cols-[1fr_min(46%,10.25rem)] gap-x-4 gap-y-2">
-        <div className="flex min-w-0 flex-col justify-between gap-2 py-2">
-          <Cue>Net position</Cue>
-          <NetFigure netCents={netCents} currency={currency} />
+        <div className="row-span-2 flex min-w-0 flex-col justify-between gap-2 py-2">
+          {/* Label and figure stay together at the top; only the settle link drops. */}
+          <div className="flex flex-col gap-1.5">
+            <Cue>Net position</Cue>
+            <NetFigure netCents={netCents} currency={currency} />
+          </div>
           {openPayments > 0 && (
             <button
               type="button"
@@ -107,6 +111,8 @@ export function GroupSummary({
 }
 
 function NetFigure({ netCents, currency }: { netCents: number; currency: string }) {
+  // The figure rolls to a new total when a payment lands; it does not count up on first paint.
+  const shownCents = Math.round(useTweenedNumber(Math.abs(netCents)));
   if (netCents === 0) {
     return (
       <p className="flex items-center gap-1.5 font-sans text-title font-semibold text-accent">
@@ -117,15 +123,16 @@ function NetFigure({ netCents, currency }: { netCents: number; currency: string 
   }
 
   const owes = netCents < 0;
-  const { whole, fraction } = splitCurrencyFraction(Math.abs(netCents) / 100, currency);
+  const { whole: finalWhole, fraction: finalFraction } = splitCurrencyFraction(Math.abs(netCents) / 100, currency);
+  const { whole, fraction } = splitCurrencyFraction(shownCents / 100, currency);
   return (
     <div>
       {/* The direction label belongs to the figure, so it sits directly on it. */}
       <p className="font-sans text-label text-dim">{owes ? "You need to pay" : "Coming back to you"}</p>
-      {/* Cents set smaller so the dollars carry the figure. */}
+      {/* Cents set smaller so the dollars carry the figure; the fit counts them at 0.6 width. */}
       <p
         className={`mt-0.5 font-mono font-semibold leading-none tracking-[-0.03em] ${owes ? "text-down" : "text-accent"}`}
-        style={{ fontSize: `${fitFontSize(whole + fraction, 2.125, 9.5, 1.25)}rem` }}
+        style={{ fontSize: `${fitFontSize('0'.repeat(Math.ceil(finalWhole.length + finalFraction.length * 0.6)), 3.25, 9.75, 1.25)}rem` }}
       >
         {whole}
         {fraction && <span className="text-[0.6em] tracking-normal">{fraction}</span>}
