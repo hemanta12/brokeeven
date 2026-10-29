@@ -1,4 +1,4 @@
-import type { Balance } from './types';
+import type { Balance, SettleMode } from './types';
 
 export interface Transfer {
   fromPersonId: string;
@@ -51,3 +51,20 @@ export function minimizeTransactions(balances: Balance[]): Transfer[] {
   }
   return plan;
 }
+
+// Self-suppressing: a second way that saves nobody a payment is never offered.
+export function offersFewestPayments(balances: Balance[]): boolean {
+  const planLength = minimizeTransactions(balances).length;
+  return planLength > 0 && planLength < balances.length;
+}
+
+// The stored mode only applies while Fewest payments actually helps; otherwise
+// every surface falls back to the raw balances.
+export function effectiveSettleMode(balances: Balance[], settleMode: SettleMode): SettleMode {
+  return offersFewestPayments(balances) ? settleMode : 'direct';
+}
+
+export const SETTLE_MODE_LABEL: Record<SettleMode, string> = {
+  direct: 'Each balance',
+  simplified: 'Fewest payments'
+};

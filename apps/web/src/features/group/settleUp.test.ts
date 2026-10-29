@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { forgiveBelow, minimizeTransactions } from './settleUp';
+import { effectiveSettleMode, forgiveBelow, minimizeTransactions, offersFewestPayments } from './settleUp';
 import type { Balance } from './types';
 
 const bal = (fromPersonId: string, toPersonId: string, amount: string): Balance => ({
@@ -36,5 +36,26 @@ describe('minimizeTransactions', () => {
       return Object.fromEntries(map);
     };
     expect(net(plan)).toEqual(net(balances.map((b) => ({ ...b, amountCents: Math.round(Number(b.amount) * 100) }))));
+  });
+});
+
+describe('offersFewestPayments / effectiveSettleMode', () => {
+  const chain = [bal('a', 'b', '5.00'), bal('b', 'c', '5.00')];
+  const unrelated = [bal('a', 'b', '5.00'), bal('c', 'd', '5.00')];
+
+  it('offers fewest only when netting drops a payment', () => {
+    expect(offersFewestPayments(chain)).toBe(true);
+    expect(offersFewestPayments(unrelated)).toBe(false);
+    expect(offersFewestPayments([])).toBe(false);
+  });
+
+  it('keeps the stored mode while it helps and falls back to direct when it does not', () => {
+    expect(effectiveSettleMode(chain, 'simplified')).toBe('simplified');
+    expect(effectiveSettleMode(unrelated, 'simplified')).toBe('direct');
+  });
+
+  it('treats a debt cycle that nets to nothing as not offering fewest', () => {
+    const cycle = [bal('a', 'b', '5.00'), bal('b', 'c', '5.00'), bal('c', 'a', '5.00')];
+    expect(offersFewestPayments(cycle)).toBe(false);
   });
 });

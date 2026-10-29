@@ -1,10 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { claimIdentity } from './claimIdentity';
 import { GroupSummary } from './GroupSummary';
-import type { Balance, Expense } from './types';
+import type { Balance, Expense, Person } from './types';
+
+vi.mock('./claimIdentity', () => ({ claimIdentity: vi.fn() }));
 
 const ME = 'p-me';
+
+function person(id: string, name: string): Person {
+  return { id, groupId: 'g1', name, paymentHandle: null, userId: null, removedAt: null, createdAt: '2026-01-01' };
+}
+const PEOPLE = [person(ME, 'Me'), person('p-sofia', 'Sofia'), person('p-nikita', 'Nikita')];
 
 function balance(fromPersonId: string, toPersonId: string, amount: string): Balance {
   return { fromPersonId, toPersonId, amount };
@@ -35,106 +43,128 @@ function expense(payerId: string, amount: string, splits: Array<[string, string]
 }
 
 const EXPENSES = [
-  expense(ME, '150.00', [[ME, '50.00'], ['p-alice', '50.00'], ['p-bob', '50.00']]),
-  expense('p-alice', '90.00', [[ME, '30.00'], ['p-alice', '30.00'], ['p-bob', '30.00']]),
+  expense(ME, '150.00', [[ME, '50.00'], ['p-sofia', '50.00'], ['p-nikita', '50.00']]),
+  expense('p-sofia', '90.00', [[ME, '30.00'], ['p-sofia', '30.00'], ['p-nikita', '30.00']]),
 ];
 
+// The cents are their own span, so match the whole paragraph rather than one text node.
+const netFigure = (text: string) =>
+  screen.getByText((_, element) => element?.tagName === 'P' && element.textContent === text);
+
+function setup(overrides: Partial<React.ComponentProps<typeof GroupSummary>> = {}) {
+  const onSettleUp = vi.fn();
+  const onClaimed = vi.fn();
+  render(
+    <GroupSummary
+      code="ABC123"
+      people={PEOPLE}
+      personId={ME}
+      balances={[]}
+      expenses={EXPENSES}
+      currency="USD"
+      settleMode="direct"
+      onSettleUp={onSettleUp}
+      onClaimed={onClaimed}
+      {...overrides}
+    />
+  );
+  return { onSettleUp, onClaimed };
+}
+
 describe('GroupSummary', () => {
-  it('sums each side of the balances and shows the spend it sits against', () => {
-    render(
-      <GroupSummary
-        balances={[
-          balance('p-alice', ME, '120.00'),
-          balance('p-bob', ME, '80.00'),
-          balance(ME, 'p-cara', '30.00'),
-        ]}
-        expenses={EXPENSES}
-        personId={ME}
-        currency="USD"
-        onSettleUp={vi.fn()}
-      />
-    );
+  it('says what you need to pay when the net is negative, with the way to settle', () => {
+    const { onSettleUp } = setup({ balances: [balance(ME, 'p-sofia', '42.00')] });
 
-    expect(screen.getByText('You’re owed')).toBeInTheDocument();
-    expect(screen.getByText('$200.00')).toBeInTheDocument();
-    expect(screen.getByText('You owe')).toBeInTheDocument();
-    expect(screen.getByText('$30.00')).toBeInTheDocument();
-    expect(screen.getByText('Total group expense')).toBeInTheDocument();
-    expect(screen.getByText('$240.00')).toBeInTheDocument();
-    expect(screen.getByText('Your share')).toBeInTheDocument();
-    expect(screen.getByText('$80.00')).toBeInTheDocument();
-  });
+    expect(screen.getByText('You need to pay')).toBeInTheDocument();
+    expect(netFigure('$42.00')).toBeInTheDocument();
+    expect(screen.getByText('Net position')).toBeInTheDocument();
+    expect(screen.getByText('1 payment to sort out')).toBeInTheDocument();
 
-  it('jumps to settle up and reports how many payments are left', () => {
-    const onSettleUp = vi.fn();
-    render(
-      <GroupSummary
-        balances={[balance('p-alice', ME, '50.00'), balance(ME, 'p-bob', '80.00')]}
-        expenses={EXPENSES}
-        personId={ME}
-        currency="USD"
-        onSettleUp={onSettleUp}
-      />
-    );
-
-    expect(screen.getByText('2 payments left to settle')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /settle up/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Settle in Balances/ }));
     expect(onSettleUp).toHaveBeenCalledTimes(1);
   });
 
-  it('counts only the balances the viewer is a party to', () => {
-    render(
-      <GroupSummary
-        balances={[
-          balance('p-alice', ME, '50.00'), // mine
-          balance('p-bob', 'p-cara', '80.00'), // not mine
-        ]}
-        expenses={EXPENSES}
-        personId={ME}
-        currency="USD"
-        onSettleUp={vi.fn()}
-      />
-    );
+  it('says what is coming back when the net is positive', () => {
+    setup({ balances: [balance('p-sofia', ME, '120.00'), balance('p-nikita', ME, '80.00')] });
 
-    expect(screen.getByText('1 payment left to settle')).toBeInTheDocument();
+    expect(screen.getByText('Coming back to you')).toBeInTheDocument();
+    expect(netFigure('$200.00')).toBeInTheDocument();
+    expect(screen.getByText('2 payments to sort out')).toBeInTheDocument();
   });
 
-  it('keeps the payments-left status but drops the jump link when already on Balances', () => {
-    render(
-      <GroupSummary
-        balances={[balance('p-alice', ME, '50.00')]}
-        expenses={EXPENSES}
-        personId={ME}
-        currency="USD"
-      />
-    );
+  it('headlines the card Net position, so a two-way net is not read as "nothing owed"', () => {
+    // Pay Sofia $25, Nikita pays you $35: the net is +$10 but a payment is still owed.
+    setup({ balances: [balance(ME, 'p-sofia', '25.00'), balance('p-nikita', ME, '35.00')] });
 
-    // Status stays so the card is the same height on every tab.
-    expect(screen.getByText('1 payment left to settle')).toBeInTheDocument();
-    // The redundant "go to Balances" action does not.
-    expect(screen.queryByRole('button', { name: /settle up/i })).not.toBeInTheDocument();
+    expect(screen.getByText('Net position')).toBeInTheDocument();
+    expect(screen.getByText('Coming back to you')).toBeInTheDocument();
+    expect(netFigure('$10.00')).toBeInTheDocument();
+    expect(screen.getByText('2 payments to sort out')).toBeInTheDocument();
   });
 
-  it('shows an all-settled state once every balance is cleared', () => {
-    render(
-      <GroupSummary balances={[]} expenses={EXPENSES} personId={ME} currency="USD" onSettleUp={vi.fn()} />
-    );
+  it('shows even with no settle link when nothing is open', () => {
+    setup();
 
-    expect(screen.getByText('You’re all settled up')).toBeInTheDocument();
-    expect(screen.queryByText(/left to settle/)).not.toBeInTheDocument();
+    expect(screen.getByText('Net position')).toBeInTheDocument();
+    expect(screen.getByText('You’re even')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Settle in Balances/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/to sort out/)).not.toBeInTheDocument();
   });
 
-  it('renders nothing when the viewer has no share and no open balance', () => {
+  it('counts plan rows, not raw balances, in Fewest payments mode', () => {
+    // me -> sofia -> nikita nets to a single me -> nikita payment.
+    setup({
+      settleMode: 'simplified',
+      balances: [balance(ME, 'p-sofia', '5.00'), balance('p-sofia', 'p-nikita', '5.00')],
+    });
+
+    expect(screen.getByText('1 payment to sort out')).toBeInTheDocument();
+  });
+
+  it('draws the ring from your share of the period total', () => {
+    setup();
+
+    expect(screen.getByRole('img', { name: 'Your share $80.00 of the group total $240.00' })).toBeInTheDocument();
+  });
+
+  it('shows $0.00 and no arc for an empty period', () => {
     const { container } = render(
       <GroupSummary
-        balances={[balance('p-alice', 'p-bob', '25.00')]}
-        expenses={[expense('p-alice', '25.00', [['p-alice', '25.00']])]}
+        code="ABC123"
+        people={PEOPLE}
         personId={ME}
+        balances={[]}
+        expenses={[]}
         currency="USD"
+        settleMode="direct"
         onSettleUp={vi.fn()}
+        onClaimed={vi.fn()}
       />
     );
 
-    expect(container).toBeEmptyDOMElement();
+    const ring = container.querySelector('svg[role="img"]') as SVGElement;
+    expect(ring).toHaveAccessibleName('Your share $0.00 of the group total $0.00');
+    expect(ring.querySelectorAll('circle')).toHaveLength(1);
+  });
+
+  describe('viewer has not picked a person', () => {
+    it('asks which one is you and lists everyone', () => {
+      setup({ personId: null });
+
+      expect(screen.getByText('Which one is you?')).toBeInTheDocument();
+      for (const name of ['Me', 'Sofia', 'Nikita']) {
+        expect(screen.getByRole('button', { name: new RegExp(name) })).toBeInTheDocument();
+      }
+      expect(screen.queryByText('You need to pay')).not.toBeInTheDocument();
+    });
+
+    it('claims the picked person and tells the page', () => {
+      const { onClaimed } = setup({ personId: null });
+
+      fireEvent.click(screen.getByRole('button', { name: /Sofia/ }));
+
+      expect(claimIdentity).toHaveBeenCalledWith('ABC123', 'p-sofia');
+      expect(onClaimed).toHaveBeenCalledTimes(1);
+    });
   });
 });

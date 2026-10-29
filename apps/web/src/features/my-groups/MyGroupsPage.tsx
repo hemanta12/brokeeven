@@ -1,3 +1,4 @@
+import { Check, ChevronRight, Lock, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { buttonClass } from '../../components/Button';
@@ -34,22 +35,6 @@ function BalanceAmount({
         {formatCurrency(Number(amount), currency)}
       </span>
     </span>
-  );
-}
-
-function LockGlyph() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-      className="h-3 w-3 shrink-0"
-    >
-      <rect x="4.5" y="8.75" width="11" height="7.25" rx="1.75" />
-      <path d="M7.25 8.75V6.5a2.75 2.75 0 0 1 5.5 0v2.25" strokeLinecap="round" />
-    </svg>
   );
 }
 
@@ -92,7 +77,7 @@ function GroupCard({ group }: { group: MyGroup }) {
         <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
           {closed ? (
             <span className="flex min-h-11 items-center gap-1.5 font-sans text-micro font-semibold uppercase tracking-[0.06em] text-dim">
-              <LockGlyph />
+              <Lock aria-hidden="true" className="size-3 shrink-0" strokeWidth={2} />
               Closed {formatDate(group.closedAt as string)}
             </span>
           ) : (
@@ -102,9 +87,7 @@ function GroupCard({ group }: { group: MyGroup }) {
               className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink transition-transform duration-100 active:scale-95"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3 w-3 text-accent">
-                  <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-                </svg>
+                <Plus aria-hidden="true" className="size-3 text-accent" strokeWidth={2.25} />
               </span>
               Add expense
             </Link>
@@ -142,16 +125,7 @@ function BandHeader({ groups }: { groups?: MyGroup[] }) {
 
       {groups && settled && (
         <div className="relative mt-5 flex items-center gap-2.5 rounded-card bg-surface px-4 py-3.5 shadow-sheet">
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.25"
-            aria-hidden="true"
-            className="h-4 w-4 shrink-0 text-accent"
-          >
-            <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Check aria-hidden="true" className="size-4 shrink-0 text-accent" strokeWidth={2.25} />
           <p className="font-sans text-label text-dim">
             <span className="font-semibold text-ink">All settled up</span> across {groups.length}{' '}
             {groups.length === 1 ? 'group' : 'groups'}.
@@ -275,16 +249,7 @@ export function MyGroupsPage() {
         {closedGroups.length > 0 && (
           <details open={openGroups.length === 0} className="group mt-6 sm:px-2">
             <summary className="focus-ring flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-inner font-sans text-label font-medium text-dim [&::-webkit-details-marker]:hidden">
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-                className="h-3.5 w-3.5 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none"
-              >
-                <path d="M7.5 4.5l6 5.5-6 5.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronRight aria-hidden="true" className="size-3.5 transition-transform duration-150 group-open:rotate-90 motion-reduce:transition-none" />
               Closed groups
               <span className="rounded-full bg-sunken px-2 py-0.5 font-sans text-micro font-semibold text-dim">
                 {closedGroups.length}
@@ -312,9 +277,7 @@ export function MyGroupsPage() {
             to="/create"
             className={buttonClass()}
           >
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-4 w-4">
-              <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-            </svg>
+            <Plus aria-hidden="true" className="size-4" />
             New group
           </Link>
         </div>

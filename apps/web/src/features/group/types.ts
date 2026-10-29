@@ -79,6 +79,8 @@ export interface GroupWithPeople extends Group {
   expenses: Expense[];
   settlements: Settlement[];
   balances: Balance[];
+  // Newest ActivityLog entry, or null before any. Drives the header's unread dot.
+  lastActivityAt: string | null;
   // Who the API thinks is asking. On the REST fetch only — the realtime broadcast
   // is one shared payload, so useGroupRealtime carries this forward itself.
   viewerUserId: string | null;

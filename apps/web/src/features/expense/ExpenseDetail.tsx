@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar } from '../../components/Avatar';
@@ -20,18 +21,6 @@ interface ExpenseDetailProps {
   onDelete: () => void;
   deletePending?: boolean;
   deleteError?: string;
-}
-
-function TrashGlyph() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" className="h-4 w-4">
-      <path
-        d="M4.5 6h11M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6M6 6l.6 8.6A1.5 1.5 0 0 0 8.1 16h3.8a1.5 1.5 0 0 0 1.5-1.4L14 6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 export function ExpenseDetail({
@@ -80,16 +69,7 @@ export function ExpenseDetail({
               aria-label="Edit"
               className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-[var(--field-bg,var(--color-surface))] text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
             >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                aria-hidden="true"
-                className="size-5"
-              >
-                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Pencil className="size-5" strokeWidth={1.75} />
             </button>
             <button
               type="button"
@@ -97,7 +77,7 @@ export function ExpenseDetail({
               aria-label="Delete"
               className="focus-ring flex h-11 w-11 items-center justify-center rounded-full bg-down/10 text-down transition-transform duration-100 hover:bg-down/20 active:scale-90"
             >
-              <TrashGlyph />
+              <Trash2 className="size-4" />
             </button>
           </div>
         ) : undefined

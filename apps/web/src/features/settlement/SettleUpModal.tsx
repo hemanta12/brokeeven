@@ -1,3 +1,4 @@
+import { Pencil } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { Amount } from '../../components/Amount';
@@ -13,6 +14,7 @@ import type { Balance, Person } from '../group/types';
 import { useCreateSettlement } from './api';
 import { checkOverpayment, owedCents } from './overpayment';
 import { paymentCopyText } from './paymentHandle';
+import { SETTLE_TITLE, type SettleRole } from './settleRole';
 
 const selectClassName =
   'focus-ring min-h-12 w-full rounded-inner border border-line-strong bg-[var(--field-bg,var(--color-surface))] px-3 font-sans text-body text-ink';
@@ -22,15 +24,6 @@ const COPIED_MESSAGE_MS = 2000;
 // Field fill, not white: on desktop the sheet behind it is already white.
 const cardClassName =
   'settle-card relative overflow-hidden rounded-card bg-[var(--field-bg,var(--color-surface))]';
-
-function PencilGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-4.5">
-      <path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13.5 6.5l4 4" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function Faces({ from, to }: { from: string; to: string }) {
   const ring = 'ring-[3px] ring-[var(--field-bg,var(--color-surface))]';
@@ -50,12 +43,14 @@ interface SettleUpModalProps {
   // re-derived per pair.
   balances: Balance[];
   currency: string;
+  // The viewer's side of the tapped row; drives wording and whether the payee's handle shows.
+  role: SettleRole;
   onClose: () => void;
 }
 
 // Prefills From/To/Amount from the tapped balance row; all three stay editable
 // (APP_FLOW §2.9) behind a disclosure rather than as stacked selects.
-export function SettleUpModal({ code, people, balance, balances, currency, onClose }: SettleUpModalProps) {
+export function SettleUpModal({ code, people, balance, balances, currency, role, onClose }: SettleUpModalProps) {
   const createSettlement = useCreateSettlement(code);
 
   const [touched, setTouched] = useState(false);
@@ -72,7 +67,9 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
   const nameOf = (id: string) => people.find((person) => person.id === id)?.name ?? 'they';
   const fromPersonName = nameOf(fromPersonId);
   const toPersonName = nameOf(toPersonId);
-  const payeeHandle = people.find((person) => person.id === toPersonId)?.paymentHandle ?? null;
+  const payeeHandle =
+    role === 'pay' ? (people.find((person) => person.id === toPersonId)?.paymentHandle ?? null) : null;
+  const title = SETTLE_TITLE[role];
 
   // Handle and amount together: what you paste into the payment app is both.
   async function copyHandle() {
@@ -115,7 +112,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
 
   if (settled) {
     return (
-      <Overlay title="Settle up" isDirty={false} onClose={onClose}>
+      <Overlay title={title} isDirty={false} onClose={onClose}>
         <div className="flex flex-1 flex-col justify-center gap-6 pb-10">
           <div className={`${cardClassName} shadow-sheet`}>
             <div className="px-4 pb-4 pt-6 text-center">
@@ -144,7 +141,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
   }
 
   return (
-    <Overlay title="Settle up" isDirty={touched} onClose={onClose}>
+    <Overlay title={title} isDirty={touched} onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className={cardClassName}>
           {/* aria-label names what the pencil edits. */}
@@ -157,7 +154,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
             onClick={() => setEditing((current) => !current)}
             className="absolute right-1 top-1 text-dim aria-expanded:bg-accent-wash aria-expanded:text-accent"
           >
-            <PencilGlyph />
+            <Pencil aria-hidden="true" className="size-4.5" strokeWidth={1.75} />
           </Button>
 
           <div className="px-4 pb-4 pt-6 text-center">
@@ -311,13 +308,19 @@ export function SettleUpModal({ code, people, balance, balances, currency, onClo
           </div>
         )}
 
+        <p className="-mt-1 font-sans text-micro text-dim">
+          {role === 'pay'
+            ? `Pay ${toPersonName} in your usual app, then record it here so the balance clears for everyone.`
+            : `Got the money from ${fromPersonName}? Mark it here so the balance clears for both of you.`}
+        </p>
+
         {createSettlement.isError && <ErrorState message={createSettlement.error.message} />}
         <Button
           type="submit"
           size="lg"
           disabled={createSettlement.isPending || fromPersonId === toPersonId || blockedByOverpayment}
         >
-          {createSettlement.isPending ? 'Saving…' : 'Record payment'}
+          {createSettlement.isPending ? 'Saving…' : role === 'pay' ? `I’ve paid ${toPersonName}` : 'Mark as received'}
         </Button>
       </form>
     </Overlay>

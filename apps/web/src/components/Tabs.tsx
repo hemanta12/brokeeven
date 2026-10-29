@@ -3,6 +3,8 @@ import { type KeyboardEvent } from 'react';
 export interface TabItem {
   id: string;
   label: string;
+  // A count pill after the label; hidden at 0. `label` is its accessible name.
+  badge?: { count: number; label: string };
 }
 
 interface TabsProps {
@@ -40,7 +42,17 @@ export function Tabs({ items, activeId, onChange, label }: TabsProps) {
             onKeyDown={handleKeyDown}
             className="segment focus-ring min-h-11 px-4 py-2 font-sans text-label font-semibold"
           >
-            {item.label}
+            <span className="inline-flex items-center gap-1.5">
+              {item.label}
+              {item.badge && item.badge.count > 0 && (
+                <span
+                  aria-label={item.badge.label}
+                  className="inline-grid h-5 min-w-5 place-items-center rounded-full bg-ink px-1.5 font-mono text-[11px] font-bold text-surface"
+                >
+                  {item.badge.count}
+                </span>
+              )}
+            </span>
           </button>
         );
       })}

@@ -1,3 +1,4 @@
+import { ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // Back control for indexed pages (create, join, quick, group); modals use their
@@ -13,22 +14,14 @@ const TONE = {
     'min-h-11 -ml-1 gap-1 text-body text-white/85 hover:text-white hover:underline underline-offset-4 active:opacity-70',
 } as const;
 
-// `band`'s squared corner is deliberate: its siblings there are circular icon
-// buttons, so back-navigation never reads as one of the action buttons.
+// On the band all three header controls are borderless icon buttons; the title
+// is the only strong element there.
 const ICON_TONE = {
   light:
     'h-9 w-9 justify-center rounded-full border border-line-strong bg-surface text-ink shadow-card hover:bg-sunken active:scale-95',
   band:
-    'h-11 w-11 justify-center rounded-xl border border-band-dim bg-white/8 text-white/85 hover:bg-white/15 hover:text-white active:scale-95',
+    'size-11 justify-center rounded-full text-white hover:bg-white/10 active:scale-95 active:bg-white/15',
 } as const;
-
-function Chevron() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="h-4 w-4 shrink-0">
-      <path d="M12 4.5 6.5 10l5.5 5.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // `to` renders an anchor; `onClick` renders a button (in-page step-back). `label`
 // names the destination.
@@ -48,7 +41,7 @@ export function BackButton({
   const className = `${BASE} ${iconOnly ? ICON_TONE[tone] : TONE[tone]}`;
   const content = (
     <>
-      <Chevron />
+      <ChevronLeft className="size-4 shrink-0" strokeWidth={2} />
       <span className={iconOnly ? 'sr-only' : undefined}>{label}</span>
     </>
   );

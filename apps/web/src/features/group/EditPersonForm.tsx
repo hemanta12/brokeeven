@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { useState, type ChangeEvent, type FormEvent } from "react";
 
 import { Button } from "../../components/Button";
@@ -5,24 +6,6 @@ import { hueFor } from "../../components/Avatar";
 import { ErrorState } from "../../shared/RouteStates";
 import { useRenamePerson, useUpdatePaymentHandle } from "./api";
 import type { Person } from "./types";
-
-function TrashGlyph() {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className="h-3.5 w-3.5"
-    >
-      <path
-        d="M4.5 6h11M8 6V4.5A1.5 1.5 0 0 1 9.5 3h1A1.5 1.5 0 0 1 12 4.5V6M6 6l.6 8.6A1.5 1.5 0 0 0 8.1 16h3.8a1.5 1.5 0 0 0 1.5-1.4L14 6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 interface EditPersonFormProps {
   code: string;
@@ -238,7 +221,7 @@ export function EditPersonForm({
           aria-label={`Remove ${person.name}`}
           className="focus-ring absolute right-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-down/10 text-down transition-transform hover:bg-down/20 active:scale-90"
         >
-          <TrashGlyph />
+          <Trash2 aria-hidden="true" className="size-3.5" />
         </button>
       )}
     </div>

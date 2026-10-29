@@ -1,3 +1,4 @@
+import { LogOut, User } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -6,34 +7,14 @@ import { Overlay } from '../shared/Overlay';
 import { DeleteAccountPanel } from '../features/auth/DeleteAccountPanel';
 import { SignInPrompt } from '../features/auth/SignInPrompt';
 import { useSession, useSignOut } from '../features/auth/api';
-
-function PersonGlyph({ className }: { className: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.75">
-      <circle cx="12" cy="8" r="3.5" />
-      <path d="M4.5 20c1.2-3.6 4.2-5.5 7.5-5.5s6.3 1.9 7.5 5.5" strokeLinecap="round" />
-    </svg>
-  );
-}
+import { GroupActivityBell } from '../features/group/GroupActivityBell';
 
 // Generic glyph on an ink disc, not a Google photo.
 function AccountDisc({ sizeClass, glyphClass }: { sizeClass: string; glyphClass: string }) {
   return (
     <span className={`${sizeClass} flex shrink-0 items-center justify-center rounded-full bg-ink text-surface`}>
-      <PersonGlyph className={glyphClass} />
+      <User className={glyphClass} strokeWidth={1.75} />
     </span>
-  );
-}
-
-function SignOutGlyph() {
-  return (
-    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" className="h-4 w-4">
-      <path
-        d="M8 5.5V4a1.5 1.5 0 0 0-1.5-1.5h-3A1.5 1.5 0 0 0 2 4v12a1.5 1.5 0 0 0 1.5 1.5h3A1.5 1.5 0 0 0 8 16v-1.5"
-        strokeLinecap="round"
-      />
-      <path d="M11 10h7M15.5 6.5 18.5 10l-3 3.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }
 
@@ -70,30 +51,33 @@ export function Navbar() {
               broke<span className="text-accent">even</span>
             </span>
           </Link>
-          {isSignedIn && user ? (
-            <button
-              type="button"
-              aria-label="Profile"
-              onClick={() => setIsProfileOpen(true)}
-              className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
-            >
-              <AccountDisc sizeClass="h-8 w-8" glyphClass="size-4.5" />
-            </button>
-          ) : isSessionPending ? (
-            // Neutral placeholder while /auth/me is in flight.
-            <span className="flex h-11 w-11 items-center justify-center text-dim">
-              <PersonGlyph className="h-6 w-6" />
-            </span>
-          ) : (
-            // Signed out: explicit "Sign in", not a profile glyph.
-            <button
-              type="button"
-              onClick={() => setIsProfileOpen(true)}
-              className="focus-ring flex h-11 items-center rounded-full border border-line-strong px-4 font-sans text-label font-medium text-ink transition-transform duration-100 hover:bg-sunken active:scale-95"
-            >
-              Sign in
-            </button>
-          )}
+          <div className="flex items-center gap-1">
+            <GroupActivityBell />
+            {isSignedIn && user ? (
+              <button
+                type="button"
+                aria-label="Profile"
+                onClick={() => setIsProfileOpen(true)}
+                className="focus-ring flex h-11 w-11 items-center justify-center rounded-full text-ink transition-transform duration-100 hover:bg-ink/10 active:scale-90"
+              >
+                <AccountDisc sizeClass="h-8 w-8" glyphClass="size-4.5" />
+              </button>
+            ) : isSessionPending ? (
+              // Neutral placeholder while /auth/me is in flight.
+              <span className="flex h-11 w-11 items-center justify-center text-dim">
+                <User className="h-6 w-6" strokeWidth={1.75} />
+              </span>
+            ) : (
+              // Signed out: explicit "Sign in", not a profile glyph.
+              <button
+                type="button"
+                onClick={() => setIsProfileOpen(true)}
+                className="focus-ring flex h-11 items-center rounded-full border border-line-strong px-4 font-sans text-label font-medium text-ink transition-transform duration-100 hover:bg-sunken active:scale-95"
+              >
+                Sign in
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -131,7 +115,7 @@ export function Navbar() {
                     onClick={() => signOut.mutate(undefined, { onSuccess: closeAndGoHome })}
                     disabled={signOut.isPending}
                   >
-                    <SignOutGlyph />
+                    <LogOut className="size-4" />
                     {signOut.isPending ? 'Signing out…' : 'Sign out'}
                   </Button>
                 </div>

@@ -1,163 +1,201 @@
-import { Amount } from '../../components/Amount';
-import type { Balance, Expense } from './types';
+import { ArrowRight, Check } from 'lucide-react';
+import type { ReactNode } from 'react';
+
+import { Avatar } from '../../components/Avatar';
+import { Button } from '../../components/Button';
+import { formatCurrency, splitCurrencyFraction } from '../../shared/format';
+import { claimIdentity } from './claimIdentity';
+import {
+  fitFontSize,
+  periodTotals,
+  shareFraction,
+  viewerNetCents,
+  viewerOpenPayments,
+} from './summaryMath';
+import type { Balance, Expense, Person, SettleMode } from './types';
 
 interface GroupSummaryProps {
+  code: string;
+  people: Person[];
+  // Null until the viewer has picked who they are.
+  personId: string | null;
   balances: Balance[];
+  // The period the ring covers; the net amount ignores it.
   expenses: Expense[];
-  personId: string;
   currency: string;
-  // Passed only when the viewer isn't on the Balances tab; absent hides the settle jump.
-  onSettleUp?: () => void;
+  settleMode: SettleMode;
+  // Under the ring: the expense period control.
+  periodControl?: ReactNode;
+  onSettleUp: () => void;
+  onClaimed: () => void;
 }
 
-function sum(values: string[]): number {
-  return values.reduce((total, value) => total + Number(value), 0);
-}
+const CARD =
+  'relative z-1 -mt-16 rounded-card bg-surface p-4 shadow-sheet sm:mx-2';
 
-const DOT_CAP = 5;
+export function GroupSummary({
+  code,
+  people,
+  personId,
+  balances,
+  expenses,
+  currency,
+  settleMode,
+  periodControl,
+  onSettleUp,
+  onClaimed,
+}: GroupSummaryProps) {
+  if (!personId) {
+    return (
+      <section aria-label="Which one is you?" className={CARD}>
+        <p className="font-sans text-body text-ink">Which one is you?</p>
+        <p className="mb-2.5 mt-0.5 font-sans text-label text-dim">
+          Pick your name to see what you pay or get back.
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {people.map((person) => (
+            <Button
+              key={person.id}
+              variant="secondary"
+              onClick={() => {
+                claimIdentity(code, person.id);
+                onClaimed();
+              }}
+            >
+              <Avatar name={person.name} />
+              {person.name}
+            </Button>
+          ))}
+        </div>
+      </section>
+    );
+  }
 
-// Balances tab lists these per person but never sums either side — this is the only total.
-export function GroupSummary({ balances, expenses, personId, currency, onSettleUp }: GroupSummaryProps) {
-  const total = sum(expenses.map((e) => e.amount));
-  const share = sum(
-    expenses.flatMap((e) => e.splits.filter((s) => s.personId === personId)).map((s) => s.amount),
-  );
-  const owed = sum(balances.filter((b) => b.toPersonId === personId).map((b) => b.amount));
-  const owe = sum(balances.filter((b) => b.fromPersonId === personId).map((b) => b.amount));
-
-  // No split, no balance: nothing here is the viewer's.
-  if (share === 0 && owed === 0 && owe === 0) return null;
-
-  // Others' balances aren't the viewer's to settle.
-  const pending = balances.filter(
-    (b) => b.fromPersonId === personId || b.toPersonId === personId,
-  ).length;
+  const netCents = viewerNetCents(balances, personId);
+  const openPayments = viewerOpenPayments(balances, personId, settleMode);
+  const { totalCents, shareCents } = periodTotals(expenses, personId);
 
   return (
-    /* Straddles the band's lower edge. */
-    <section
-      aria-label="Your position in this group"
-      className="relative z-1 -mt-16 flex flex-col gap-2.5 overflow-hidden rounded-card bg-surface px-3.5 pb-3.5 pt-2.5 shadow-sheet sm:mx-2"
-    >
-      <div className="grid grid-cols-2 gap-2">
-        <Chip label="You’re owed" value={owed} variant="in" currency={currency} />
-        <Chip label="You owe" value={owe} variant="out" currency={currency} />
-      </div>
-
-      <dl className="flex items-start justify-between gap-3 border-t border-line pt-2.5">
-        <div className="min-w-0">
-          <dt className="font-sans text-micro text-dim">Total group expense</dt>
-          <dd>
-            <Amount value={total} currency={currency} className="block truncate text-title font-semibold text-ink" />
-          </dd>
-        </div>
-        <div className="min-w-0 text-right">
-          <dt className="font-sans text-micro text-dim">Your share</dt>
-          <dd>
-            <Amount value={share} currency={currency} className="block truncate text-title font-semibold text-ink" />
-          </dd>
-        </div>
-      </dl>
-
-      {/* Always rendered so the card keeps its height across tabs. */}
-      <div className="flex min-h-5 items-center justify-between gap-3 border-t border-line pt-2.5">
-        {pending > 0 ? (
-          <span className="flex min-w-0 items-center gap-2 font-sans text-label text-dim">
-            <span aria-hidden="true" className="flex shrink-0 items-center gap-1">
-              {Array.from({ length: Math.min(pending, DOT_CAP) }).map((_, i) => (
-                <span key={i} className="size-2 rounded-full border border-line-strong" />
-              ))}
-            </span>
-            <span className="truncate">
-              {pending} {pending === 1 ? 'payment' : 'payments'} left to settle
-            </span>
-          </span>
-        ) : (
-          <span className="flex items-center gap-2 font-sans text-label font-medium text-ink">
-            <svg
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.25"
-              aria-hidden="true"
-              className="h-4 w-4 text-accent"
+    <section aria-label="Your position in this group" className={CARD}>
+      {/* Row 1 is the ring's height: the heading sits at its top and the settle link
+          at its bottom, the figure between. The period control gets its own row 2. */}
+      <div className="grid grid-cols-[1fr_min(46%,10.25rem)] gap-x-4 gap-y-2">
+        <div className="flex min-w-0 flex-col justify-between gap-2 py-2">
+          <Cue>Net position</Cue>
+          <NetFigure netCents={netCents} currency={currency} />
+          {openPayments > 0 && (
+            <button
+              type="button"
+              onClick={onSettleUp}
+              className="focus-ring -mb-2 -ml-2 -mt-1 flex min-h-11 flex-col items-start justify-center gap-0.5 self-start rounded-inner px-2 py-1 text-left font-sans text-micro text-dim transition-colors duration-150 hover:bg-ink/6 active:bg-ink/10"
             >
-              <path d="M4.5 10.5l3.5 3.5 7.5-8" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            You’re all settled up
-          </span>
-        )}
-        {onSettleUp && pending > 0 && (
-          <button
-            type="button"
-            onClick={onSettleUp}
-            className="focus-ring flex shrink-0 items-center gap-1 rounded font-sans text-label font-semibold text-accent"
-          >
-            Settle up
-            <svg
-              viewBox="0 0 20 20"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              aria-hidden="true"
-              className="h-3.5 w-3.5"
-            >
-              <path d="M4 10h11M11 5.5 15.5 10 11 14.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-        )}
+              <span>
+                {openPayments} {openPayments === 1 ? "payment" : "payments"} to sort out
+              </span>
+              <span className="flex items-center gap-1 text-label font-semibold text-accent">
+                Settle in Balances
+                <ArrowRight aria-hidden="true" className="size-3.5" />
+              </span>
+            </button>
+          )}
+        </div>
+        <ShareRing shareCents={shareCents} totalCents={totalCents} currency={currency} />
+        {periodControl && <div className="col-start-2">{periodControl}</div>}
       </div>
     </section>
   );
 }
 
-// 'in' = money back to you, 'out' = money you owe.
-function FlowArrow({ variant, className }: { variant: 'in' | 'out'; className: string }) {
+function NetFigure({ netCents, currency }: { netCents: number; currency: string }) {
+  if (netCents === 0) {
+    return (
+      <p className="flex items-center gap-1.5 font-sans text-title font-semibold text-accent">
+        <Check aria-hidden="true" className="size-5.5 shrink-0" strokeWidth={2.25} />
+        You’re even
+      </p>
+    );
+  }
+
+  const owes = netCents < 0;
+  const { whole, fraction } = splitCurrencyFraction(Math.abs(netCents) / 100, currency);
   return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-      className={`h-4 w-4 shrink-0 ${className}`}
-    >
-      <path
-        d={variant === 'in' ? 'M8 2.5V9.5M5 6.5 8 9.5 11 6.5' : 'M8 9.5V2.5M5 5.5 8 2.5 11 5.5'}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path d="M3.5 10.5V13h9v-2.5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
+    <div>
+      {/* The direction label belongs to the figure, so it sits directly on it. */}
+      <p className="font-sans text-label text-dim">{owes ? "You need to pay" : "Coming back to you"}</p>
+      {/* Cents set smaller so the dollars carry the figure. */}
+      <p
+        className={`mt-0.5 font-mono font-semibold leading-none tracking-[-0.03em] ${owes ? "text-down" : "text-accent"}`}
+        style={{ fontSize: `${fitFontSize(whole + fraction, 2.125, 9.5, 1.25)}rem` }}
+      >
+        {whole}
+        {fraction && <span className="text-[0.6em] tracking-normal">{fraction}</span>}
+      </p>
+    </div>
   );
 }
 
-function Chip({
-  label,
-  value,
-  variant,
-  currency,
-}: {
-  label: string;
-  value: number;
-  variant: 'in' | 'out';
-  currency: string;
-}) {
-  // A zero side is not an "owed" / "owe" item — leave it uncoloured.
-  const direction = value === 0 ? 'flat' : variant === 'in' ? 'up' : 'down';
-  const iconColour = value === 0 ? 'text-dim' : variant === 'in' ? 'text-accent' : 'text-down';
+// The card's heading for the left side, like the home screen's: it is the sum of
+// everything the viewer owes and is owed.
+function Cue({ children }: { children: ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-card bg-sunken px-2.5 py-2">
-      <FlowArrow variant={variant} className={iconColour} />
-      <span className="min-w-0">
-        <span className="block truncate font-sans text-micro text-dim">{label}</span>
-        <Amount
-          value={value}
-          currency={currency}
-          direction={direction}
-          className="block truncate text-row-amount font-semibold"
+    <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.08em] text-dim">{children}</p>
+  );
+}
+
+const RING_C = 2 * Math.PI * 44;
+
+function ShareRing({ shareCents, totalCents, currency }: { shareCents: number; totalCents: number; currency: string }) {
+  const share = formatCurrency(shareCents / 100, currency);
+  const total = formatCurrency(totalCents / 100, currency);
+  const arc = RING_C * shareFraction(shareCents, totalCents);
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      role="img"
+      aria-label={`Your share ${share} of the group total ${total}`}
+      className="aspect-square w-full"
+    >
+      <circle cx="50" cy="50" r="44" fill="none" strokeWidth="8" className="stroke-sunken" />
+      {arc > 0 && (
+        <circle
+          cx="50"
+          cy="50"
+          r="44"
+          fill="none"
+          strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${arc} ${RING_C}`}
+          transform="rotate(-90 50 50)"
+          className="stroke-accent transition-[stroke-dasharray] duration-200 ease-out"
         />
-      </span>
-    </div>
+      )}
+      <text x="50" y="35" textAnchor="middle" fontSize="8.5" className="fill-dim font-sans">
+        Your share
+      </text>
+      <text
+        x="50"
+        y="49"
+        textAnchor="middle"
+        fontSize={fitFontSize(share, 13, 56, 8)}
+        fontWeight="600"
+        className={`font-mono ${shareCents > 0 ? "fill-accent" : "fill-dim"}`}
+      >
+        {share}
+      </text>
+      <line x1="30" y1="56" x2="70" y2="56" strokeWidth="1" className="stroke-line" />
+      <text x="50" y="67" textAnchor="middle" fontSize="8.5" className="fill-dim font-sans">
+        Group total
+      </text>
+      <text
+        x="50"
+        y="78"
+        textAnchor="middle"
+        fontSize={fitFontSize(total, 10, 56, 7)}
+        fontWeight="600"
+        className="fill-ink font-mono"
+      >
+        {total}
+      </text>
+    </svg>
   );
 }

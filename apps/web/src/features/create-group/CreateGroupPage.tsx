@@ -1,3 +1,4 @@
+import { Save } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -130,10 +131,7 @@ export function CreateGroupPage() {
             disabled={addPerson.isPending}
             className="min-h-12 shrink-0"
           >
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true" className="h-4 w-4">
-              <path d="M4 3h9.5L17 6.5V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" strokeLinejoin="round" />
-              <path d="M6.5 3v4h6V3M6 17v-5h8v5" strokeLinejoin="round" />
-            </svg>
+            <Save className="size-4" />
             Save
           </Button>
         </form>

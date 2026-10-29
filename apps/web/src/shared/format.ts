@@ -96,6 +96,20 @@ export function formatCurrency(amount: number, currency = 'USD'): string {
   return currencyFormatterFor(currency).format(amount);
 }
 
+// The figure cut where the decimals start, so a display amount can set the cents
+// smaller. `fraction` holds the decimal mark, the digits and anything the locale
+// places after them (a trailing currency sign); both are empty-safe for currencies
+// without decimals.
+export function splitCurrencyFraction(amount: number, currency = 'USD'): { whole: string; fraction: string } {
+  const parts = currencyFormatterFor(currency).formatToParts(amount);
+  const at = parts.findIndex((part) => part.type === 'decimal');
+  if (at === -1) return { whole: parts.map((part) => part.value).join(''), fraction: '' };
+  return {
+    whole: parts.slice(0, at).map((part) => part.value).join(''),
+    fraction: parts.slice(at).map((part) => part.value).join('')
+  };
+}
+
 export function formatExpenseTitle(title: string): string {
   if (!title) return '';
   return `${title.charAt(0).toUpperCase()}${title.slice(1).toLowerCase()}`;

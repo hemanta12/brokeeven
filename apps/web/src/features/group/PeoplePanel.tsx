@@ -23,6 +23,8 @@ interface PeoplePanelProps {
   viewerUserId: string | null;
   // Closed group: roster view only — no add, rename, or remove.
   readOnly?: boolean;
+  // Replaces the closed-group sentence when the lock has another reason.
+  readOnlyMessage?: string;
   onClose: () => void;
 }
 
@@ -37,6 +39,7 @@ export function PeoplePanel({
   createdByUserId,
   viewerUserId,
   readOnly = false,
+  readOnlyMessage,
   onClose,
 }: PeoplePanelProps) {
   const addPerson = useAddPerson(code);
@@ -155,7 +158,7 @@ export function PeoplePanel({
 
         {readOnly ? (
           <p className="mt-auto pt-2 font-sans text-label text-dim">
-            This group is closed. Reopen it to change who&apos;s in the group.
+            {readOnlyMessage ?? "This group is closed. Reopen it to change who's in the group."}
           </p>
         ) : showAddPersonForm ? (
           <form onSubmit={handleAddPerson} className="flex flex-col gap-3">

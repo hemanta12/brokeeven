@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   currencySymbol,
   formatCurrency,
+  splitCurrencyFraction,
   formatDate,
   formatDateGroupLabel,
   formatExpenseTitle,
@@ -100,5 +101,20 @@ describe('formatUpdatedLabel', () => {
 
   it('treats a future timestamp as today rather than a negative count', () => {
     expect(formatUpdatedLabel(at(2026, 7, 25), now)).toBe('today');
+  });
+});
+
+describe('splitCurrencyFraction', () => {
+  it('cuts at the decimal mark so the pieces rejoin to the formatted figure', () => {
+    expect(splitCurrencyFraction(480.71)).toEqual({ whole: '$480', fraction: '.71' });
+    expect(splitCurrencyFraction(1234.5)).toEqual({ whole: '$1,234', fraction: '.50' });
+    expect(splitCurrencyFraction(0)).toEqual({ whole: '$0', fraction: '.00' });
+  });
+
+  it('has no fraction for a currency without decimals', () => {
+    const { whole, fraction } = splitCurrencyFraction(1500, 'JPY');
+
+    expect(fraction).toBe('');
+    expect(whole).toBe(formatCurrency(1500, 'JPY'));
   });
 });

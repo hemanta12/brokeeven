@@ -46,6 +46,7 @@ function baseGroup(overrides: Partial<GroupWithPeople> = {}): GroupWithPeople {
     expenses: [],
     settlements: [],
     balances: [],
+    lastActivityAt: null,
     viewerUserId: null,
     ...overrides
   };

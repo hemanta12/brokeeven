@@ -1,3 +1,4 @@
+import { Check, ChevronRight, Plus } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -87,9 +88,7 @@ function PhoneFrame({ children }: { children: ReactNode }) {
 function Tick() {
   return (
     <span aria-hidden="true" className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-full bg-accent-wash">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="size-2.5 text-accent">
-        <path d="M4 12.5l5.5 5.5L20 7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
+      <Check className="size-2.5 text-accent" strokeWidth={3.5} />
     </span>
   );
 }
@@ -180,9 +179,7 @@ function RecentGroups() {
                     Opened {formatUpdatedLabel(group.visitedAt)}
                   </span>
                 </span>
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-dim">
-                  <path d="M7.5 4.5l6 5.5-6 5.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                <ChevronRight aria-hidden="true" className="mt-1 size-4 shrink-0 text-dim" />
               </Link>
               <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
                 <Link
@@ -190,9 +187,7 @@ function RecentGroups() {
                   className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink transition-transform duration-100 active:scale-95"
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true" className="h-3 w-3 text-accent">
-                      <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-                    </svg>
+                    <Plus aria-hidden="true" className="size-3 text-accent" strokeWidth={2.25} />
                   </span>
                   Add expense
                 </Link>

@@ -24,6 +24,9 @@
      10  Navbar                       sticky page chrome
      50  .overlay                     a modal, over the page
      60  the discard prompt           over the modal it interrupts
+
+   The expense-period dropdown uses z-10/z-20 only inside the summary card's own
+   stacking context (relative z-1), so it never competes with this ladder.
 */
 @theme {
   /* Three depths: page ground is tinted, card is white, sunken is the tinted
@@ -351,18 +354,6 @@
   }
 }
 
-/* Eases GroupPage's reserved tab-panel height back down; without it a shorter
-   panel snaps instead of settling. */
-.tab-panels {
-  transition: min-height 300ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tab-panels {
-    transition: none;
-  }
-}
-
 .overlay-header {
   display: flex;
   align-items: center;
@@ -597,4 +588,116 @@ li.row-pulse {
   height: 0;
   border-top: 2px dashed var(--color-line);
   transform: translateY(-50%);
+}
+
+/* Custom-range month grid (expense date filter). A band runs behind the
+   selected months; the From and To months are solid accent. */
+.range-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px 0;
+}
+
+.range-month {
+  position: relative;
+  display: grid;
+  height: 46px;
+  place-items: center;
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.range-month > span {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  height: 40px;
+  width: calc(100% - 8px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-inner);
+  line-height: 1.15;
+  transition: background-color 150ms ease-out;
+}
+
+.range-month em {
+  font-size: 0.625rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.range-month:hover:not(:disabled) > span {
+  background: color-mix(in srgb, var(--color-ink) 6%, transparent);
+}
+
+.range-month:active:not(:disabled) > span {
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
+}
+
+.range-month::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  right: 0;
+}
+
+.range-month[data-in="true"]::before {
+  background: var(--color-accent-wash);
+}
+
+.range-month[data-edge="start"]::before {
+  left: 4px;
+  border-radius: var(--radius-inner) 0 0 var(--radius-inner);
+}
+
+.range-month[data-edge="end"]::before {
+  right: 4px;
+  border-radius: 0 var(--radius-inner) var(--radius-inner) 0;
+}
+
+.range-month[data-edge="both"]::before {
+  left: 4px;
+  right: 4px;
+  border-radius: var(--radius-inner);
+}
+
+.range-month[data-edge] > span,
+.range-month[data-edge]:hover:not(:disabled) > span {
+  background: var(--color-accent);
+  color: var(--color-surface);
+  font-weight: 600;
+}
+
+.range-month:disabled {
+  color: var(--color-line-strong);
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.range-month > i {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  z-index: 2;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 9999px;
+  background: var(--color-line-strong);
+}
+
+.range-month[data-edge] > i {
+  background: var(--color-surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .range-month > span {
+    transition: none;
+  }
 }

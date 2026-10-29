@@ -1,14 +1,14 @@
+import { Check } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
 import { Overlay } from '../../shared/Overlay';
-import { setIdentity } from '../../shared/identity';
 import { ErrorState } from '../../shared/RouteStates';
 import { useBlurValidation } from '../../shared/useBlurValidation';
-import { claimPerson } from '../auth/api';
 import { useAddPerson } from './api';
+import { claimIdentity } from './claimIdentity';
 import type { Person } from './types';
 
 interface WhoAreYouPromptProps {
@@ -27,18 +27,14 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
   const { touch, isRequiredError } = useBlurValidation();
 
   function pickExisting(personId: string) {
-    setIdentity(code, personId);
-    // Also links this person to the session (survives a new device once signed in).
-    // Not awaited: the overlay closes instantly and a failed claim costs nothing locally.
-    void claimPerson(personId, code);
+    claimIdentity(code, personId);
     onClose();
   }
 
   async function handleAddSelf(event: FormEvent) {
     event.preventDefault();
     const person = await addPerson.mutateAsync({ code, name });
-    setIdentity(code, person.id);
-    void claimPerson(person.id, code);
+    claimIdentity(code, person.id);
     onClose();
   }
 
@@ -75,9 +71,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
                       }`}
                     >
                       {isSelected && (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="size-3 text-surface">
-                          <path d="M4 12.5l5.5 5.5L20 7" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <Check aria-hidden="true" className="size-3 text-surface" strokeWidth={3.5} />
                       )}
                     </span>
                   </label>

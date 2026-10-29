@@ -1,14 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
-import { BackButton } from "../../components/BackButton";
 import { Button } from "../../components/Button";
-import { CornerDecor } from "../../components/CornerDecor";
 import { ExpenseRow } from "../../components/ExpenseRow";
 import { Tabs } from "../../components/Tabs";
 import { ApiError, hasCompletedWrite } from "../../lib/apiClient";
 import { EmptyState, ErrorState, NotFoundState } from "../../shared/RouteStates";
-import { capitalizeFirst, formatDate, formatDateGroupLabel } from "../../shared/format";
+import { formatDateGroupLabel } from "../../shared/format";
 import { getIdentity } from "../../shared/identity";
 import { forgetRecentGroup, rememberRecentGroup } from "../../shared/recentGroups";
 import { isInviteSaved } from "../../shared/inviteSaved";
@@ -17,23 +16,36 @@ import { useDeleteExpense } from "../expense/api";
 import { ExpenseDetail } from "../expense/ExpenseDetail";
 import { ExpenseModal } from "../expense/ExpenseModal";
 import { SettleUpModal } from "../settlement/SettleUpModal";
+import { settleRole } from "../settlement/settleRole";
 import { useSession } from "../auth/api";
-import { useGroupActivity, useGroupByCode, useReopenGroup } from "./api";
+import { useGroupByCode, useReopenGroup } from "./api";
 import { CloseGroupModal } from "./CloseGroupModal";
 import { groupExpensesByDate } from "./expenseGroups";
-import { GroupInfoOverlay } from "./GroupInfoOverlay";
 import { InviteReminder } from "./InviteReminder";
+import { GroupHeader } from "./GroupHeader";
 import { GroupPageSkeleton } from "./GroupPageSkeleton";
 import { GroupSummary } from "./GroupSummary";
 import { BalancesPanel } from "./BalancesPanel";
 import { PeoplePanel } from "./PeoplePanel";
+import { SettingsSheet } from "./SettingsSheet";
 import { SettlementHistory } from "./SettlementHistory";
-import { ActivityFeed } from "./ActivityFeed";
-import type { Balance, Expense } from "./types";
+import type { Balance, Expense, Person } from "./types";
+import { viewerOpenPayments } from "./summaryMath";
+import { ALL_TIME, type Period } from "./expensePeriod";
+import { ExpensePeriodControl } from "./ExpensePeriodControl";
+import { useExpensePeriod } from "./useExpensePeriod";
+import { useHealIdentityClaim } from "./useHealIdentityClaim";
 import { useGroupRealtime } from "./useGroupRealtime";
 import { WhoAreYouPrompt } from "./WhoAreYouPrompt";
 
-type Tab = "expenses" | "balances" | "activity";
+const NO_EXPENSES: Expense[] = [];
+const NO_PEOPLE: Person[] = [];
+
+function countLabel(count: number): string {
+  return `${count} ${count === 1 ? "expense" : "expenses"}`;
+}
+
+type Tab = "expenses" | "balances";
 
 export function GroupPage() {
   const { code } = useParams<{ code: string }>();
@@ -51,41 +63,18 @@ export function GroupPage() {
   const openAddExpense = searchParams.get("add") === "expense";
 
   const [tab, setTab] = useState<Tab>("expenses");
-  // Floors panel height across tab switches — stops the scroll-jump when the doc collapses.
-  // ponytail: one transition only, async growth inside a panel still jumps.
-  const panelsRef = useRef<HTMLDivElement>(null);
-  const [reservedHeight, setReservedHeight] = useState(0);
-  // Same query key/gate as ActivityFeed — react-query dedupes, no extra request.
-  const { isLoading: activityLoading } = useGroupActivity(code, tab === "activity");
-
-  function changeTab(next: Tab) {
-    if (next === tab) return;
-    setReservedHeight(panelsRef.current?.offsetHeight ?? 0);
-    setTab(next);
-  }
-
-  // Waits a frame (lets the transition ease from the old height) and for
-  // activityLoading to clear (else Activity's blank state snaps back).
-  useLayoutEffect(() => {
-    if (reservedHeight === 0 || activityLoading) return;
-    const frame = requestAnimationFrame(() => setReservedHeight(0));
-    return () => cancelAnimationFrame(frame);
-  }, [tab, reservedHeight, activityLoading]);
-
   const [identityPersonId, setIdentityPersonId] = useState<string | null>(() =>
     code ? getIdentity(code) : null,
   );
   const [dismissedWhoAreYou, setDismissedWhoAreYou] = useState(false);
-  const [showInfo, setShowInfo] = useState(false);
+  // What the viewer was about to do when we asked who they are; runs once they pick.
+  const [afterIdentify, setAfterIdentify] = useState<(() => void) | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const [showPeople, setShowPeople] = useState(false);
   const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
   const [editingExpense, setEditingExpense] = useState<Expense | "new" | null>(
     null,
   );
-  // Derived, not state — inert on a closed group, which takes no new expenses.
-  const expenseModal =
-    editingExpense ?? (openAddExpense && !group?.closedAt ? "new" : null);
-
   function closeExpenseModal() {
     setEditingExpense(null);
     if (openAddExpense) setSearchParams({}, { replace: true });
@@ -101,6 +90,20 @@ export function GroupPage() {
   const deleteExpense = useDeleteExpense(code);
   const reopenGroup = useReopenGroup(code);
   const pulsingIds = useGroupRealtime(code, group?.id);
+  const expensePeriod = useExpensePeriod(group?.expenses ?? NO_EXPENSES);
+  // Account claim outranks the local hint; derived per render, never cached, so it can't drift.
+  const resolvedIdentityPersonId = resolveIdentityPersonId(
+    group?.people ?? NO_PEOPLE,
+    group?.viewerUserId ?? null,
+    identityPersonId,
+  );
+  useHealIdentityClaim(code, group?.people ?? NO_PEOPLE, resolvedIdentityPersonId);
+
+  // Picking a period switches to Expenses: that is the list it changes.
+  function pickPeriod(next: Period) {
+    expensePeriod.setPeriod(next);
+    setTab("expenses");
+  }
   const { isSignedIn, isPending: sessionPending } = useSession();
 
   // Signed-out visitors have no server-side group list; this is how they find the
@@ -110,8 +113,11 @@ export function GroupPage() {
   }, [code, group?.name, group?.label]);
 
   function closeWhoAreYou() {
-    setIdentityPersonId(code ? getIdentity(code) : null);
+    const picked = code ? getIdentity(code) : null;
+    setIdentityPersonId(picked);
     setDismissedWhoAreYou(true);
+    if (picked) afterIdentify?.();
+    setAfterIdentify(null);
   }
 
   if (isLoading) {
@@ -143,20 +149,41 @@ export function GroupPage() {
     return null;
   }
 
-  // Account claim outranks the local hint; derived per render, never cached, so it can't drift.
-  const resolvedIdentityPersonId = resolveIdentityPersonId(
-    group.people,
-    group.viewerUserId,
-    identityPersonId,
-  );
-
   // A write always mints a session; a null viewer id after one means the cookie never stuck.
   const cookiesBlocked = hasCompletedWrite() && group.viewerUserId === null;
+
+  // Every change is logged under the name of whoever made it, so changing anything
+  // needs a picked name. Without one, ask who they are first, then carry on.
+  function requireIdentity(action: () => void) {
+    if (resolvedIdentityPersonId || group!.people.length === 0) {
+      action();
+      return;
+    }
+    setAfterIdentify(() => action);
+    setDismissedWhoAreYou(false);
+  }
+
+  // Derived, not state: inert on a closed group, and held back until a name is
+  // picked (?add=expense opens it as soon as one is).
+  const expenseModal =
+    editingExpense ??
+    (openAddExpense && !group.closedAt && (resolvedIdentityPersonId || group.people.length === 0) ? "new" : null);
 
   const shouldShowWhoAreYou =
     !resolvedIdentityPersonId && group.people.length > 0 && !dismissedWhoAreYou;
   const inviteLink = `${window.location.origin}/g/${code}`;
   const closed = Boolean(group.closedAt);
+  // Without a picked person there is no summary card to hold the period control,
+  // so the list stays unfiltered rather than hiding expenses behind a filter that
+  // can't be changed.
+  const periodApplies = Boolean(resolvedIdentityPersonId);
+  const visibleExpenses = periodApplies ? expensePeriod.filtered : group.expenses;
+  const settleSide = settling ? settleRole(settling.balance, resolvedIdentityPersonId) : null;
+  // The Balances tab badge: the viewer's own rows, none once the ledger is closed.
+  const openPayments =
+    closed || !resolvedIdentityPersonId
+      ? 0
+      : viewerOpenPayments(group.balances, resolvedIdentityPersonId, group.settleMode);
 
   return (
     <main className="flex flex-col pt-2">
@@ -166,76 +193,16 @@ export function GroupPage() {
         </p>
       )}
       <div className="flex flex-1 flex-col">
-        {/* No closed banner here — it'd push the header down and break the straddling summary card. */}
-        <header
-          className={`relative -mx-4 -mt-2 overflow-hidden px-4 pt-3 text-white sm:rounded-t-card sm:px-6 ${
-            closed ? "bg-band-closed" : "bg-band"
-          } ${resolvedIdentityPersonId ? "pb-20" : "pb-11"}`}
+        <GroupHeader
+          name={group.name}
+          label={group.label}
+          peopleCount={group.people.length}
+          closedAt={group.closedAt}
+          showBack={isSignedIn}
+          roomForSummary={group.people.length > 0}
+          onOpenPeople={() => setShowPeople(true)}
+          onOpenSettings={() => requireIdentity(() => setShowSettings(true))}
         >
-          <CornerDecor />
-          <div className="relative flex items-start gap-5">
-            {/* Signed out there is no My Groups to go back to — /groups is a sign-in
-                wall, so the navbar wordmark is the only way out. */}
-            {isSignedIn && (
-              <div className="pt-2">
-                <BackButton to="/groups" label="Back to My groups" tone="band" iconOnly />
-              </div>
-            )}
-            {/* Title and label share one column so the label tracks the title's left
-                edge whether or not the back button is there. pt-2 lines its top up
-                with the back/People/Info buttons instead of sitting above them. */}
-            <div className="min-w-0 flex-1 pt-2">
-              <h1 className="heading text-hero-balance text-white">{group.name}</h1>
-              {group.label && group.label !== "Individual" && (
-                <p className="mt-0.5 truncate font-sans text-micro uppercase tracking-wide text-band-dim">
-                  {capitalizeFirst(group.label)}
-                </p>
-              )}
-            </div>
-            <div className="flex shrink-0 items-center gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setShowPeople(true)}
-              aria-haspopup="dialog"
-              aria-label={`People (${group.people.length})`}
-              className="focus-ring flex h-11 min-h-11 items-center gap-1.5 rounded-full border border-band-dim bg-white/8 px-3 font-sans text-label font-medium text-white transition-transform duration-100 hover:bg-white/15 active:scale-95"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden="true"
-                className="h-4 w-4"
-              >
-                <circle cx="7.5" cy="7" r="2.75" />
-                <path d="M2.5 16c.5-2.6 2.5-4 5-4s4.5 1.4 5 4" strokeLinecap="round" />
-                <path d="M13.5 5.2a2.5 2.5 0 0 1 0 4.6M14.8 12.2c1.7.5 2.9 1.8 3.4 3.8" strokeLinecap="round" />
-              </svg>
-              {group.people.length}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowInfo(true)}
-              aria-haspopup="dialog"
-              aria-label="Group info"
-              className="focus-ring flex h-11 w-11 min-h-11 shrink-0 items-center justify-center rounded-full border border-band-dim bg-white/8 text-white transition-transform duration-100 hover:bg-white/15 active:scale-95"
-            >
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                aria-hidden="true"
-                className="size-4.5"
-              >
-                <circle cx="10" cy="10" r="7.5" />
-                <path d="M10 9.25v4.25" strokeLinecap="round" />
-                <circle cx="10" cy="6.25" r="0.75" fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-            </div>
-          </div>
           {/* Signed in, the group is reachable from My Groups; signed out, this link is it. */}
           {!isSignedIn && !sessionPending && !inviteSaved && !closed && (
             <InviteReminder
@@ -244,39 +211,29 @@ export function GroupPage() {
               onSaved={() => setInviteSaved(true)}
             />
           )}
-          {closed && (
-            <div className="relative mt-2 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-band-dim px-2.5 py-1 font-sans text-micro font-bold uppercase tracking-[0.08em] text-band-closed">
-                <svg
-                  viewBox="0 0 20 20"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                  className="h-3 w-3"
-                >
-                  <rect x="4.5" y="8.75" width="11" height="7.25" rx="1.75" />
-                  <path d="M7.25 8.75V6.5a2.75 2.75 0 0 1 5.5 0v2.25" strokeLinecap="round" />
-                </svg>
-                Closed
-              </span>
-            </div>
-          )}
-          {closed && (
-            <p className="relative mt-1.5 font-sans text-label text-band-dim">
-              Closed {formatDate(group.closedAt as string)}. Nothing can be added or changed.
-            </p>
-          )}
-        </header>
+        </GroupHeader>
 
-        {/* Only meaningful once the viewer has claimed a person. */}
-        {resolvedIdentityPersonId && (
+        {group.people.length > 0 && (
           <GroupSummary
-            balances={group.balances}
-            expenses={group.expenses}
+            code={code}
+            people={group.people}
             personId={resolvedIdentityPersonId}
+            balances={group.balances}
+            expenses={visibleExpenses}
+            periodControl={
+              <ExpensePeriodControl
+                period={expensePeriod.period}
+                thisMonth={expensePeriod.thisMonth}
+                bounds={expensePeriod.bounds}
+                years={expensePeriod.years}
+                dates={group.expenses.map((expense) => expense.date)}
+                onChange={pickPeriod}
+              />
+            }
             currency={group.currency}
-            onSettleUp={tab === "balances" ? undefined : () => changeTab("balances")}
+            settleMode={group.settleMode}
+            onSettleUp={() => setTab("balances")}
+            onClaimed={closeWhoAreYou}
           />
         )}
 
@@ -285,19 +242,18 @@ export function GroupPage() {
             label="Group view"
             items={[
               { id: "expenses", label: "Expenses" },
-              { id: "balances", label: "Balances" },
-              { id: "activity", label: "Activity" },
+              {
+                id: "balances",
+                label: "Balances",
+                badge: { count: openPayments, label: `${openPayments} open ${openPayments === 1 ? "payment" : "payments"}` },
+              },
             ]}
             activeId={tab}
-            onChange={(id) => changeTab(id as Tab)}
+            onChange={(id) => setTab(id as Tab)}
           />
         </div>
 
-        <div
-          className="tab-panels"
-          ref={panelsRef}
-          style={{ minHeight: reservedHeight || undefined }}
-        >
+        <div>
           {tab === "expenses" && (
             <div
               role="tabpanel"
@@ -307,13 +263,20 @@ export function GroupPage() {
             >
               {group.expenses.length === 0 ? (
                 <EmptyState message="No expenses yet. Add the first one." />
+              ) : visibleExpenses.length === 0 ? (
+                <div className="flex flex-col items-start gap-2.5">
+                  <EmptyState message={`No expenses in ${expensePeriod.label}.`} />
+                  <Button variant="secondary" size="sm" onClick={() => expensePeriod.setPeriod(ALL_TIME)}>
+                    Show all time
+                  </Button>
+                </div>
               ) : (
                 <div>
                   <p className="mb-1.5 font-sans text-micro text-dim">
-                    {group.expenses.length}{" "}
-                    {group.expenses.length === 1 ? "expense" : "expenses"}
+                    {countLabel(visibleExpenses.length)}
+                    {periodApplies && expensePeriod.period.kind !== "all" && ` in ${expensePeriod.label}`}
                   </p>
-                  {groupExpensesByDate(group.expenses).map((dateGroup) => (
+                  {groupExpensesByDate(visibleExpenses).map((dateGroup) => (
                     <div key={dateGroup.date} className="mt-4 first:mt-0">
                       <h3 className="mb-1.5 font-sans text-label font-medium text-dim">
                         {formatDateGroupLabel(dateGroup.date)}
@@ -356,7 +319,6 @@ export function GroupPage() {
               className="mt-2 sm:px-2"
             >
               <BalancesPanel
-                code={code}
                 balances={group.balances}
                 people={group.people}
                 currency={group.currency}
@@ -364,6 +326,7 @@ export function GroupPage() {
                 identityPersonId={resolvedIdentityPersonId}
                 closed={closed}
                 pulsingIds={pulsingIds}
+                onChangeSettleMode={() => requireIdentity(() => setShowSettings(true))}
                 onSettle={(balance, reference) => setSettling({ balance, reference })}
               />
 
@@ -375,33 +338,6 @@ export function GroupPage() {
                 currency={group.currency}
                 readOnly={closed}
               />
-
-              {/* Secondary, not danger — closing is reversible. Full size: sm is 36px, under the 44pt touch floor. */}
-              {!closed && group.people.length > 0 && (
-                <div className="mt-8 flex flex-col items-center gap-2 border-t border-line pt-6">
-                  <Button
-                    variant="secondary"
-                    className="!border-accent hover:!bg-accent-wash"
-                    onClick={() => setShowCloseGroup(true)}
-                  >
-                    Close group
-                  </Button>
-                  <p className="text-center font-sans text-micro text-dim">
-                    Locks the ledger once everything reaches zero. You can reopen it.
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {tab === "activity" && (
-            <div
-              role="tabpanel"
-              id="panel-activity"
-              aria-labelledby="tab-activity"
-              className="mt-2 sm:px-2"
-            >
-              <ActivityFeed code={code} isActive={tab === "activity"} />
             </div>
           )}
         </div>
@@ -415,24 +351,15 @@ export function GroupPage() {
               </p>
               <Button
                 variant="secondary"
-                onClick={() => reopenGroup.mutate()}
+                onClick={() => requireIdentity(() => reopenGroup.mutate())}
                 disabled={reopenGroup.isPending}
               >
                 {reopenGroup.isPending ? "Reopening…" : "Reopen group"}
               </Button>
             </>
           ) : (
-            <Button onClick={() => setEditingExpense("new")}>
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden="true"
-                className="h-4 w-4"
-              >
-                <path d="M10 4v12M4 10h12" strokeLinecap="round" />
-              </svg>
+            <Button onClick={() => requireIdentity(() => setEditingExpense("new"))}>
+              <Plus aria-hidden="true" className="size-4" />
               Add Expense
             </Button>
           )}
@@ -448,12 +375,16 @@ export function GroupPage() {
           currency={group.currency}
           readOnly={closed}
           onClose={() => setViewingExpense(null)}
-          onEdit={() => {
-            setEditingExpense(viewingExpense);
-            setViewingExpense(null);
-          }}
+          onEdit={() =>
+            requireIdentity(() => {
+              setEditingExpense(viewingExpense);
+              setViewingExpense(null);
+            })
+          }
           onDelete={() =>
-            deleteExpense.mutate(viewingExpense.id, { onSuccess: () => setViewingExpense(null) })
+            requireIdentity(() =>
+              deleteExpense.mutate(viewingExpense.id, { onSuccess: () => setViewingExpense(null) }),
+            )
           }
           deletePending={deleteExpense.isPending}
           deleteError={deleteExpense.isError ? deleteExpense.error.message : undefined}
@@ -471,13 +402,14 @@ export function GroupPage() {
         />
       )}
 
-      {settling && (
+      {settling && settleSide && (
         <SettleUpModal
           code={code}
           people={group.people}
           balance={settling.balance}
           balances={settling.reference}
           currency={group.currency}
+          role={settleSide}
           onClose={() => setSettling(null)}
         />
       )}
@@ -493,18 +425,25 @@ export function GroupPage() {
         />
       )}
 
-      {showInfo && (
-        <GroupInfoOverlay
+      {showSettings && (
+        <SettingsSheet
           joinCode={group.joinCode}
           inviteLink={inviteLink}
           name={group.name}
           label={group.label}
           currency={group.currency}
+          settleMode={group.settleMode}
+          balances={group.balances}
+          closedAt={group.closedAt}
           createdByUserId={group.createdByUserId}
           owner={groupOwner(group)}
           viewerUserId={group.viewerUserId}
-          readOnly={closed}
-          onClose={() => setShowInfo(false)}
+          canClose={group.people.length > 0}
+          onRequestClose={() => {
+            setShowSettings(false);
+            setShowCloseGroup(true);
+          }}
+          onClose={() => setShowSettings(false)}
           onDeleted={() => {
             forgetRecentGroup(group.joinCode);
             navigate(isSignedIn ? "/groups" : "/", { replace: true });
@@ -521,7 +460,10 @@ export function GroupPage() {
           owner={groupOwner(group)}
           createdByUserId={group.createdByUserId}
           viewerUserId={group.viewerUserId}
-          readOnly={closed}
+          readOnly={closed || !resolvedIdentityPersonId}
+          readOnlyMessage={
+            closed ? undefined : "Pick who you are on the group page to change who's in the group."
+          }
           onClose={() => setShowPeople(false)}
         />
       )}

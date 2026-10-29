@@ -1,3 +1,4 @@
+import { Check, ChevronDown } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 
 import { Avatar } from '../../components/Avatar';
@@ -203,9 +204,7 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
               ) : (
                 <span className="min-w-0 flex-1 truncate text-dim">Select payer</span>
               )}
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="size-4 shrink-0 text-dim">
-                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-dim" />
             </div>
             <select
               id="expense-payer"
@@ -334,9 +333,7 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
                   }`}
                 >
                   {checked && (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="size-3 text-surface">
-                      <path d="M4 12.5l5.5 5.5L20 7" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <Check aria-hidden="true" className="size-3 text-surface" strokeWidth={3.5} />
                   )}
                 </label>
               </div>

@@ -27,6 +27,7 @@ const AMOUNT_DIRECTIONS: Record<Direction, AmountDirection> = {
 };
 
 // The caller resolves `direction` relative to the viewer; this component stays dumb.
+// The button says what the viewer does: the debtor pays, the creditor marks it received.
 export function BalanceRow({
   fromName,
   toName,
@@ -60,7 +61,7 @@ export function BalanceRow({
         />
         {onSettle && (
           <Button variant="secondary" size="sm" onClick={onSettle}>
-            Settle
+            {direction === 'owe' ? 'Pay' : 'Mark received'}
           </Button>
         )}
       </span>
