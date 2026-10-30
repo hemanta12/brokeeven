@@ -184,6 +184,7 @@ function RecentGroups() {
               <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
                 <Link
                   to={`/g/${group.code}?add=expense`}
+                  state={{ direction: 'none' }}
                   className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink pressable active:scale-95"
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
@@ -225,15 +226,16 @@ export function HomePage() {
           Split the bill, break even, and get back to being friends.
         </p>
         <div className="mt-7 flex flex-col gap-2.5">
-          <Link to="/create" className={buttonClass({ size: 'lg', className: 'w-full' })}>
+          <Link to="/create" state={{ direction: 'up' }} className={buttonClass({ size: 'lg', className: 'w-full' })}>
             Start a group
           </Link>
-          <Link to="/quick" className={buttonClass({ variant: 'secondary', size: 'lg', className: 'w-full' })}>
+          <Link to="/quick" state={{ direction: 'up' }} className={buttonClass({ variant: 'secondary', size: 'lg', className: 'w-full' })}>
             New 1:1 split
           </Link>
         </div>
         <Link
           to="/join"
+          state={{ direction: 'up' }}
           // -mx-2 offsets the px-2 tap-target padding so the link stays visually centered.
           className="focus-ring mt-3.5 inline-flex min-h-11 -mx-2 items-center rounded px-2 font-sans text-label font-medium text-dim underline transition-opacity duration-150 hover:opacity-70 active:opacity-50"
         >
@@ -314,7 +316,7 @@ export function HomePage() {
       </section>
 
       <section className="px-5 pb-11 pt-9 text-center">
-        <Link to="/create" className={buttonClass({ size: 'lg', className: 'mx-auto w-full max-w-[13.75rem]' })}>
+        <Link to="/create" state={{ direction: 'up' }} className={buttonClass({ size: 'lg', className: 'mx-auto w-full max-w-[13.75rem]' })}>
           Start a group
         </Link>
         <p className="mt-4 font-sans text-micro leading-relaxed text-dim">

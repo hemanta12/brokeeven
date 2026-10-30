@@ -17,8 +17,19 @@ import { NotFoundState } from './shared/RouteStates';
 
 const SUPPORTS_VIEW_TRANSITIONS = typeof document !== 'undefined' && 'startViewTransition' in document;
 
+function targetPathname(to: unknown): string | null {
+  const raw = typeof to === 'string' ? to : (to as { pathname?: string } | null)?.pathname;
+  if (raw === undefined) return null;
+  return new URL(raw, window.location.href).pathname;
+}
+
+// Pages opened with direction 'up' (the Home buttons) rise from the bottom; their
+// Back sinks the page back down instead of sliding it right.
+const risenPaths = new Set<string>();
+
 // Every in-app navigation runs inside a view transition so the page slides over
-// (or off) the one beneath it. The direction rides on <html data-nav> for the CSS;
+// (or off) the one beneath it. Navigating to the page already showing (the logo
+// on Home, a query-only change) comes from nowhere, so it gets no transition. The direction rides on <html data-nav> for the CSS;
 // a Back control marks its link with state.direction = 'back'. Browser back/forward
 // (POP) is handled by the browser and gets no transition.
 function withViewTransitions(router: ReturnType<typeof createBrowserRouter>) {
@@ -26,7 +37,15 @@ function withViewTransitions(router: ReturnType<typeof createBrowserRouter>) {
   const navigate = router.navigate.bind(router) as (to: unknown, opts?: Record<string, unknown>) => Promise<void>;
   router.navigate = ((to: unknown, opts?: { state?: { direction?: string } } & Record<string, unknown>) => {
     if (typeof to === 'number') return navigate(to, opts);
-    document.documentElement.dataset.nav = opts?.state?.direction === 'back' ? 'back' : 'forward';
+    const target = targetPathname(to);
+    if (target === null || target === router.state.location.pathname) return navigate(to, opts);
+    // 'none': the destination brings its own motion (e.g. a sheet opening over it).
+    const direction = opts?.state?.direction;
+    if (direction === 'none') return navigate(to, opts);
+    let nav = direction === 'back' ? 'back' : direction === 'up' ? 'up' : 'forward';
+    if (nav === 'up') risenPaths.add(target);
+    if (nav === 'back' && risenPaths.delete(router.state.location.pathname)) nav = 'down';
+    document.documentElement.dataset.nav = nav;
     return navigate(to, { ...opts, viewTransition: true });
   }) as typeof router.navigate;
   return router;
