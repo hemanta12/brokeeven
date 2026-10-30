@@ -76,6 +76,9 @@ interface OverlayProps {
   // Opened from a corner control (navbar, header): the sheet grows briefly out
   // of that corner instead of sliding the whole screen in from an edge.
   anchored?: boolean;
+  // Already on screen at mount, no entrance: for a sheet that arrives inside a
+  // page that is itself rising (Add expense from a list).
+  skipEnter?: boolean;
   // Secondary control shown left of the close button (e.g. an Edit icon).
   headerAction?: ReactNode;
   // Close doesn't render, but Escape still closes. Meaningless without headerAction.
@@ -108,6 +111,7 @@ export function Overlay({
   centerTitle = false,
   compact = false,
   anchored = false,
+  skipEnter = false,
   headerAction,
   hideClose = false,
   stackedHeader = false,
@@ -119,7 +123,7 @@ export function Overlay({
   const performCloseRef = useRef<() => void>(() => {});
   const exitingRef = useRef(false);
   // Lazy init so a reduced-motion viewer never flashes the invisible "entering" frame.
-  const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'visible' : 'entering'));
+  const [phase, setPhase] = useState<Phase>(() => (skipEnter || prefersReducedMotion() ? 'visible' : 'entering'));
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   // Frozen at mount: the exit returns to where the entrance came from.
   const [origin] = useState(readOrigin);

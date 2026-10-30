@@ -42,6 +42,8 @@ export function Navbar() {
         <div className="mx-auto flex max-w-[32.5rem] items-center justify-between px-4 py-2 sm:px-0">
           <Link
             to="/"
+            // Home is where every page came from, so it slides back, never in.
+            state={{ direction: 'back' }}
             aria-label="Home"
             className="focus-ring flex h-11 items-center gap-2 rounded-md px-1.5 pressable hover:bg-ink/10 active:scale-95"
           >

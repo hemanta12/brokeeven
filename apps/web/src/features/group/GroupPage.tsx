@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { useEffect, useState, type CSSProperties } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 
 import { Button } from "../../components/Button";
 import { ExpenseRow } from "../../components/ExpenseRow";
@@ -61,6 +61,11 @@ export function GroupPage() {
   // Strip ?add=expense once handled, or a refresh reopens the modal forever.
   const [searchParams, setSearchParams] = useSearchParams();
   const openAddExpense = searchParams.get("add") === "expense";
+  // AddExpenseLink hands over a loaded group: the page rises with the sheet already
+  // in place, so the sheet must not also play its own entrance. Frozen at mount so
+  // the Add expense button later in the session still animates.
+  const { state: locationState } = useLocation();
+  const [arrivedWithSheet] = useState(() => (locationState as { direction?: string } | null)?.direction === "sheet");
 
   const [tab, setTab] = useState<Tab>("expenses");
   const [identityPersonId, setIdentityPersonId] = useState<string | null>(() =>
@@ -130,11 +135,11 @@ export function GroupPage() {
         <main>
           <NotFoundState message="Group not found. Check the code and try again." />
           <p className="mt-4 font-sans text-body text-ink">
-            <Link to="/join" className="underline">
+            <Link to="/join" state={{ direction: "up" }} className="underline">
               Try another code
             </Link>{" "}
             or{" "}
-            <Link to="/create" className="underline">
+            <Link to="/create" state={{ direction: "up" }} className="underline">
               create a new group
             </Link>
             .
@@ -397,6 +402,7 @@ export function GroupPage() {
           identityPersonId={resolvedIdentityPersonId}
           currency={group.currency}
           expense={expenseModal === "new" ? undefined : expenseModal}
+          skipEnter={arrivedWithSheet && openAddExpense}
           onClose={closeExpenseModal}
         />
       )}

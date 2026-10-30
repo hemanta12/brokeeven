@@ -6,6 +6,7 @@ import { SignInPrompt } from '../auth/SignInPrompt';
 import { useMyGroups, useSession, type MyGroup } from '../auth/api';
 import { AvatarCluster } from '../../components/Avatar';
 import { CornerDecor } from '../../components/CornerDecor';
+import { AddExpenseLink } from '../group/AddExpenseLink';
 import { formatCurrency, formatDate, formatUpdatedLabel, spineLabel } from '../../shared/format';
 import { EmptyState, ErrorState, LoadingState } from '../../shared/RouteStates';
 
@@ -82,15 +83,15 @@ function GroupCard({ group }: { group: MyGroup }) {
             </span>
           ) : (
             /* GroupPage reads ?add=expense and opens the modal directly. */
-            <Link
-              to={`/g/${group.joinCode}?add=expense`}
+            <AddExpenseLink
+              code={group.joinCode}
               className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink pressable active:scale-95"
             >
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
                 <Plus aria-hidden="true" className="size-3 text-accent" strokeWidth={2.25} />
               </span>
               Add expense
-            </Link>
+            </AddExpenseLink>
           )}
           <AvatarCluster names={group.members} total={group.memberCount} />
         </div>
@@ -194,7 +195,7 @@ export function MyGroupsPage() {
           <SignInPrompt />
           <p className="text-center font-sans text-label text-dim">
             Or{' '}
-            <Link to="/join" className="underline">
+            <Link to="/join" state={{ direction: 'up' }} className="underline">
               join with a code
             </Link>{' '}
             instead.
@@ -265,16 +266,17 @@ export function MyGroupsPage() {
 
         <div className="bottom-bar mt-auto">
           <p className="font-sans text-label text-dim">
-            <Link to="/quick" className="focus-ring rounded underline">
+            <Link to="/quick" state={{ direction: 'up' }} className="focus-ring rounded underline">
               Split with one person
             </Link>
             <span aria-hidden="true" className="mx-3 text-line-strong">|</span>
-            <Link to="/join" className="focus-ring rounded underline">
+            <Link to="/join" state={{ direction: 'up' }} className="focus-ring rounded underline">
               Join with a code
             </Link>
           </p>
           <Link
             to="/create"
+            state={{ direction: 'up' }}
             className={buttonClass()}
           >
             <Plus aria-hidden="true" className="size-4" />

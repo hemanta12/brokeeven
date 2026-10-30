@@ -25,10 +25,11 @@ interface ExpenseModalProps {
   identityPersonId: string | null;
   currency: string;
   expense?: Expense;
+  skipEnter?: boolean;
   onClose: () => void;
 }
 
-export function ExpenseModal({ code, people, identityPersonId, currency, expense, onClose }: ExpenseModalProps) {
+export function ExpenseModal({ code, people, identityPersonId, currency, expense, skipEnter, onClose }: ExpenseModalProps) {
   const { closeRef, close } = useOverlayClose(onClose);
   const isEdit = Boolean(expense);
   const createExpense = useCreateExpense(code);
@@ -138,7 +139,7 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
     'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus';
 
   return (
-    <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose} closeRef={closeRef}>
+    <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} skipEnter={skipEnter} onClose={onClose} closeRef={closeRef}>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-3">
         <div className="flex flex-col gap-2">
           <Field

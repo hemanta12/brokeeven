@@ -42,7 +42,9 @@ function withViewTransitions(router: ReturnType<typeof createBrowserRouter>) {
     // 'none': the destination brings its own motion (e.g. a sheet opening over it).
     const direction = opts?.state?.direction;
     if (direction === 'none') return navigate(to, opts);
-    let nav = direction === 'back' ? 'back' : direction === 'up' ? 'up' : 'forward';
+    // 'sheet': a group page that arrives with its Add expense sheet already open
+    // rises like 'up', but is not a page Back should sink.
+    let nav = direction === 'back' ? 'back' : direction === 'up' || direction === 'sheet' ? 'up' : 'forward';
     if (nav === 'up') risenPaths.add(target);
     if (nav === 'back' && risenPaths.delete(router.state.location.pathname)) nav = 'down';
     document.documentElement.dataset.nav = nav;

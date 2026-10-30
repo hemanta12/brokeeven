@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { buttonClass } from '../../components/Button';
 import { CornerDecor } from '../../components/CornerDecor';
 import { useSession } from '../auth/api';
+import { AddExpenseLink } from '../group/AddExpenseLink';
 import { MyGroupsPage } from '../my-groups/MyGroupsPage';
 import { formatCurrency, formatUpdatedLabel, spineLabel } from '../../shared/format';
 import { listRecentGroups } from '../../shared/recentGroups';
@@ -182,16 +183,15 @@ function RecentGroups() {
                 <ChevronRight aria-hidden="true" className="mt-1 size-4 shrink-0 text-dim" />
               </Link>
               <div className="-mx-4 mt-3 flex items-center justify-between gap-3 border-t border-line px-4 pt-3">
-                <Link
-                  to={`/g/${group.code}?add=expense`}
-                  state={{ direction: 'none' }}
+                <AddExpenseLink
+                  code={group.code}
                   className="focus-ring flex min-h-11 items-center gap-2 rounded-full pr-2 font-sans text-label font-semibold text-ink pressable active:scale-95"
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-wash">
                     <Plus aria-hidden="true" className="size-3 text-accent" strokeWidth={2.25} />
                   </span>
                   Add expense
-                </Link>
+                </AddExpenseLink>
                 <span className="font-mono text-micro tracking-[0.04em] text-dim">{group.code}</span>
               </div>
             </div>
