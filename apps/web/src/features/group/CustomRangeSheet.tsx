@@ -2,7 +2,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../../components/Button";
-import { Overlay } from "../../shared/Overlay";
+import { Overlay, useOverlayClose } from "../../shared/Overlay";
 import {
   draftFromPeriod,
   monthIndex,
@@ -34,9 +34,10 @@ export function CustomRangeSheet({ period, thisMonth, bounds, expenseMonths, onA
   const [year, setYear] = useState(() => yearOf(draft.to));
   const withExpenses = new Set(expenseMonths);
   const count = expenseCount(expenseMonths, draft.from, draft.to);
+  const { closeRef, close } = useOverlayClose(onClose);
 
   return (
-    <Overlay title="Custom range" isDirty={false} compact onClose={onClose}>
+    <Overlay title="Custom range" isDirty={false} compact onClose={onClose} closeRef={closeRef}>
       <div className="flex flex-col">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
           {(["from", "to"] as const).map((end) => (
@@ -110,7 +111,10 @@ export function CustomRangeSheet({ period, thisMonth, bounds, expenseMonths, onA
           Has expenses
         </p>
 
-        <Button size="lg" className="mt-4 w-full" onClick={() => onApply(rangeToPeriod(draft.from, draft.to))}>
+        <Button size="lg" className="mt-4 w-full" onClick={() => {
+            onApply(rangeToPeriod(draft.from, draft.to));
+            close();
+          }}>
           Show {rangeLabel(draft.from, draft.to)} · {count} {count === 1 ? "expense" : "expenses"}
         </Button>
       </div>

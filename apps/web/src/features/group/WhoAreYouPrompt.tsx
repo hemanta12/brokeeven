@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
-import { Overlay } from '../../shared/Overlay';
+import { Overlay, useOverlayClose } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { useBlurValidation } from '../../shared/useBlurValidation';
 import { useAddPerson } from './api';
@@ -21,6 +21,7 @@ interface WhoAreYouPromptProps {
 // yourself also closes it.
 export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps) {
   const addPerson = useAddPerson(code);
+  const { closeRef, close } = useOverlayClose(onClose);
   const [touched, setTouched] = useState(false);
   const [name, setName] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -28,18 +29,18 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
 
   function pickExisting(personId: string) {
     claimIdentity(code, personId);
-    onClose();
+    close();
   }
 
   async function handleAddSelf(event: FormEvent) {
     event.preventDefault();
     const person = await addPerson.mutateAsync({ code, name });
     claimIdentity(code, person.id);
-    onClose();
+    close();
   }
 
   return (
-    <Overlay title="Who are you?" isDirty={touched} onClose={onClose} closeLabel="Just looking">
+    <Overlay title="Who are you?" isDirty={touched} onClose={onClose} closeRef={closeRef} closeLabel="Just looking">
       {people.length > 0 && (
         <>
           <ul className="flex flex-col gap-2">

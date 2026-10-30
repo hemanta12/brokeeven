@@ -382,10 +382,8 @@ export function GroupPage() {
               setViewingExpense(null);
             })
           }
-          onDelete={() =>
-            requireIdentity(() =>
-              deleteExpense.mutate(viewingExpense.id, { onSuccess: () => setViewingExpense(null) }),
-            )
+          onDelete={(close) =>
+            requireIdentity(() => deleteExpense.mutate(viewingExpense.id, { onSuccess: close }))
           }
           deletePending={deleteExpense.isPending}
           deleteError={deleteExpense.isError ? deleteExpense.error.message : undefined}

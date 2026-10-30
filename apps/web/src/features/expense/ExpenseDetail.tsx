@@ -2,7 +2,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import { Avatar } from '../../components/Avatar';
-import { Overlay } from '../../shared/Overlay';
+import { Overlay, useOverlayClose } from '../../shared/Overlay';
 import { Amount } from '../../components/Amount';
 import { formatDate, formatExpenseTitle } from '../../shared/format';
 import { canEdit } from '../group/ownership';
@@ -18,7 +18,8 @@ interface ExpenseDetailProps {
   readOnly?: boolean;
   onClose: () => void;
   onEdit: () => void;
-  onDelete: () => void;
+  // Receives the overlay's animated close, to call once the delete has landed.
+  onDelete: (close: () => void) => void;
   deletePending?: boolean;
   deleteError?: string;
 }
@@ -39,6 +40,7 @@ export function ExpenseDetail({
   const payer = people.find((person) => person.id === expense.payerId);
   const editable = !readOnly && canEdit(expense.createdByUserId, viewerUserId);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { closeRef, close } = useOverlayClose(onClose);
 
   return (
     <Overlay
@@ -46,6 +48,7 @@ export function ExpenseDetail({
       stackedHeader
       isDirty={false}
       onClose={onClose}
+      closeRef={closeRef}
       blockingConfirm={
         confirmingDelete
           ? {
@@ -55,7 +58,7 @@ export function ExpenseDetail({
               danger: true,
               pending: deletePending,
               error: deleteError,
-              onConfirm: onDelete,
+              onConfirm: () => onDelete(close),
               onCancel: () => setConfirmingDelete(false)
             }
           : null

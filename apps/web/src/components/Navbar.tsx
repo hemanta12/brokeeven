@@ -85,6 +85,7 @@ export function Navbar() {
         <Overlay
           title={isSignedIn ? 'Profile' : 'Sign in'}
           isDirty={false}
+          anchored
           onClose={() => setIsProfileOpen(false)}
           // Signed-out content is centered; match the title to it.
           centerTitle={!isSignedIn}

@@ -3,7 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { Amount } from '../../components/Amount';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
-import { Overlay } from '../../shared/Overlay';
+import { Overlay, useOverlayClose } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { currencySymbol, formatCurrency } from '../../shared/format';
 import { useCloseGroup } from './api';
@@ -46,6 +46,7 @@ function PairRow({
 
 export function CloseGroupModal({ code, people, balances, currency, defaultThreshold, onClose }: CloseGroupModalProps) {
   const closeGroup = useCloseGroup(code);
+  const { closeRef, close } = useOverlayClose(onClose);
   const [threshold, setThreshold] = useState(() => Number(defaultThreshold || 0).toFixed(2));
 
   const nameOf = (id: string) => people.find((person) => person.id === id)?.name ?? 'Someone';
@@ -60,11 +61,11 @@ export function CloseGroupModal({ code, people, balances, currency, defaultThres
 
   async function handleConfirm() {
     await closeGroup.mutateAsync(thresholdCents / 100);
-    onClose();
+    close();
   }
 
   return (
-    <Overlay title="Close group" centerTitle isDirty={Number(threshold) !== Number(defaultThreshold)} onClose={onClose}>
+    <Overlay title="Close group" centerTitle isDirty={Number(threshold) !== Number(defaultThreshold)} onClose={onClose} closeRef={closeRef}>
       <div className="flex flex-1 flex-col gap-6">
         {/* Same money-at-scale shape as Add expense: the symbol is a separate
             adornment, so nothing has to be parsed back out of the field. */}

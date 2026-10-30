@@ -198,10 +198,7 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
           thisMonth={thisMonth}
           bounds={bounds}
           expenseMonths={dates.map(monthIndexOfDate)}
-          onApply={(value) => {
-            setRangeOpen(false);
-            onChange(value);
-          }}
+          onApply={onChange}
           onClose={() => {
             setRangeOpen(false);
             pillRef.current?.focus();

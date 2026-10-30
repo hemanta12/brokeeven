@@ -1,17 +1,64 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 import { Button } from '../components/Button';
+import { readOrigin, originStyle } from './overlayOrigin';
 import { ErrorState } from './RouteStates';
 
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
-// Exits are quicker than entrances and ease-out, so the UI answers the tap at once.
-const EXIT_MS = 150;
+// Upper bound for a prompt's exit (--dur-exit in styles.css). The overlay itself
+// waits for its own computed transition length instead, so variants with
+// shorter exits don't leave a blank beat before unmounting.
+const EXIT_MS = 320;
+
+function toMs(value: string): number {
+  return value.endsWith('ms') ? parseFloat(value) : parseFloat(value) * 1000;
+}
+
+// Longest duration + delay among an element's transitions, in ms.
+function transitionLength(element: HTMLElement | null): number {
+  if (!element) return EXIT_MS;
+  const style = getComputedStyle(element);
+  const durations = style.transitionDuration.split(',').map(toMs);
+  const delays = style.transitionDelay.split(',').map(toMs);
+  const total = Math.max(...durations.map((duration, i) => duration + (delays[i % delays.length] ?? 0)));
+  return Number.isFinite(total) && total > 0 ? total : EXIT_MS;
+}
 
 type Phase = 'entering' | 'visible' | 'exiting';
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// Holds the last non-null value on screen for `ms` after it goes null, so a
+// conditionally rendered layer can play its exit before it unmounts.
+function useExitable<T>(value: T | null, ms: number): { value: T | null; exiting: boolean } {
+  const [held, setHeld] = useState<T | null>(value);
+  useEffect(() => {
+    if (value !== null) {
+      setHeld(value);
+      return;
+    }
+    if (prefersReducedMotion()) {
+      setHeld(null);
+      return;
+    }
+    const timer = setTimeout(() => setHeld(null), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  const shown = value ?? held;
+  return { value: shown, exiting: value === null && shown !== null };
+}
+
+// Lets a modal close itself after a save through the overlay's exit animation,
+// instead of unmounting mid-frame. Pass `closeRef` to <Overlay>; call `close()`.
+export function useOverlayClose(onClose: () => void): {
+  closeRef: MutableRefObject<(() => void) | null>;
+  close: () => void;
+} {
+  const closeRef = useRef<(() => void) | null>(null);
+  return { closeRef, close: () => (closeRef.current ? closeRef.current() : onClose()) };
 }
 
 interface OverlayProps {
@@ -21,9 +68,14 @@ interface OverlayProps {
   // Widens the button to a pill; the shape and tone stay the same.
   closeLabel?: string;
   onClose: () => void;
+  // Filled with a close that skips the dirty check but plays the exit.
+  closeRef?: MutableRefObject<(() => void) | null>;
   centerTitle?: boolean;
   // Float a content-sized card on a scrim instead of a full-height sheet.
   compact?: boolean;
+  // Opened from a corner control (navbar, header): the sheet grows briefly out
+  // of that corner instead of sliding the whole screen in from an edge.
+  anchored?: boolean;
   // Secondary control shown left of the close button (e.g. an Edit icon).
   headerAction?: ReactNode;
   // Close doesn't render, but Escape still closes. Meaningless without headerAction.
@@ -51,9 +103,11 @@ export function Overlay({
   title,
   isDirty,
   onClose,
+  closeRef,
   closeLabel = 'Close',
   centerTitle = false,
   compact = false,
+  anchored = false,
   headerAction,
   hideClose = false,
   stackedHeader = false,
@@ -67,11 +121,22 @@ export function Overlay({
   // Lazy init so a reduced-motion viewer never flashes the invisible "entering" frame.
   const [phase, setPhase] = useState<Phase>(() => (prefersReducedMotion() ? 'visible' : 'entering'));
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // Frozen at mount: the exit returns to where the entrance came from.
+  const [origin] = useState(readOrigin);
+  const discardLayer = useExitable(confirmingDiscard ? true : null, EXIT_MS);
+  const confirmLayer = useExitable(blockingConfirm, EXIT_MS);
   // Keydown listener is bound once; these refs keep the latest values reachable inside it.
   const confirmingRef = useRef(false);
   confirmingRef.current = confirmingDiscard;
   const blockingConfirmRef = useRef<typeof blockingConfirm>(null);
   blockingConfirmRef.current = blockingConfirm;
+  if (closeRef) closeRef.current = () => performCloseRef.current();
+  useEffect(
+    () => () => {
+      if (closeRef) closeRef.current = null;
+    },
+    [closeRef]
+  );
 
   useEffect(() => {
     if (phase !== 'entering') return;
@@ -88,7 +153,8 @@ export function Overlay({
       }
       exitingRef.current = true;
       setPhase('exiting');
-      setTimeout(onClose, EXIT_MS);
+      // Read after the phase flips and styles resolve, so the exit's own timing counts.
+      requestAnimationFrame(() => setTimeout(onClose, transitionLength(containerRef.current)));
     };
     performCloseRef.current = performClose;
     requestCloseRef.current = () => {
@@ -180,8 +246,17 @@ export function Overlay({
   // stacking-context ancestor (the route transition, the summary card) would be
   // positioned and layered against that ancestor instead of the viewport.
   return createPortal(
-    <div className={compact ? 'overlay overlay-compact' : 'overlay'} role="dialog" aria-modal="true" aria-label={title} ref={containerRef} data-phase={phase}>
-      <div className="overlay-content" data-phase={phase}>
+    <div
+      className={compact ? 'overlay overlay-compact' : anchored ? 'overlay overlay-anchored' : 'overlay'}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      ref={containerRef}
+      data-phase={phase}
+      data-from={origin.from}
+      style={originStyle(origin) as CSSProperties}
+    >
+      <div className="overlay-content">
         <div
           className={`overlay-header mb-6${stackedHeader ? ' overlay-header-stacked' : ''}${
             centerTitle && !stackedHeader ? ' overlay-header-centered' : ''
@@ -201,46 +276,46 @@ export function Overlay({
         </div>
       </div>
 
-      {blockingConfirm && (
-        <div className="scrim-in fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
+      {confirmLayer.value && (
+        <ConfirmLayer exiting={confirmLayer.exiting}>
           <div
             role="alertdialog"
             aria-modal="true"
-            aria-label={blockingConfirm.message}
-            className="dialog-in w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog"
+            aria-label={confirmLayer.value.message}
+            className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog"
           >
-            <p className="font-sans text-body font-semibold text-ink">{blockingConfirm.message}</p>
-            {blockingConfirm.detail && (
-              <p className="mt-1 font-sans text-label text-dim">{blockingConfirm.detail}</p>
+            <p className="font-sans text-body font-semibold text-ink">{confirmLayer.value.message}</p>
+            {confirmLayer.value.detail && (
+              <p className="mt-1 font-sans text-label text-dim">{confirmLayer.value.detail}</p>
             )}
             <div className="mt-5 flex gap-3">
               <Button
                 variant="tertiary"
                 className="flex-1"
                 autoFocus
-                onClick={blockingConfirm.onCancel}
-                disabled={blockingConfirm.pending}
+                onClick={confirmLayer.value.onCancel}
+                disabled={confirmLayer.value.pending}
               >
-                {blockingConfirm.cancelLabel ?? 'Cancel'}
+                {confirmLayer.value.cancelLabel ?? 'Cancel'}
               </Button>
               <Button
                 variant="primary"
-                danger={blockingConfirm.danger}
+                danger={confirmLayer.value.danger}
                 className="flex-1"
-                onClick={blockingConfirm.onConfirm}
-                disabled={blockingConfirm.pending}
+                onClick={confirmLayer.value.onConfirm}
+                disabled={confirmLayer.value.pending}
               >
-                {blockingConfirm.confirmLabel}
+                {confirmLayer.value.confirmLabel}
               </Button>
             </div>
-            {blockingConfirm.error && <ErrorState message={blockingConfirm.error} />}
+            {confirmLayer.value.error && <ErrorState message={confirmLayer.value.error} />}
           </div>
-        </div>
+        </ConfirmLayer>
       )}
 
-      {confirmingDiscard && (
-        <div className="scrim-in fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6">
-          <div className="dialog-in w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog">
+      {discardLayer.value && (
+        <ConfirmLayer exiting={discardLayer.exiting}>
+          <div className="w-full max-w-[22rem] rounded-card bg-surface p-5 shadow-dialog">
             <p className="font-sans text-body font-semibold text-ink">Discard unsaved changes?</p>
             <p className="mt-1 font-sans text-label text-dim">Leaving now clears what you entered.</p>
             <div className="mt-5 flex flex-col gap-2">
@@ -259,9 +334,25 @@ export function Overlay({
               </Button>
             </div>
           </div>
-        </div>
+        </ConfirmLayer>
       )}
     </div>,
     document.body
+  );
+}
+
+// Scrim + card for a prompt over an overlay. Grows out of the control that
+// raised it (origin read once, at mount) and returns there on exit.
+function ConfirmLayer({ exiting, children }: { exiting: boolean; children: ReactNode }) {
+  const [origin] = useState(readOrigin);
+  return (
+    <div
+      className={`${exiting ? 'scrim-out pointer-events-none' : 'scrim-in'} fixed inset-0 z-[60] flex items-center justify-center bg-scrim p-6`}
+      style={originStyle(origin) as CSSProperties}
+      aria-hidden={exiting || undefined}
+      inert={exiting || undefined}
+    >
+      <div className={`${exiting ? 'dialog-out' : 'dialog-in'} flex w-full justify-center`}>{children}</div>
+    </div>
   );
 }

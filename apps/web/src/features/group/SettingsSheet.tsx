@@ -195,7 +195,7 @@ export function SettingsSheet({
       : null;
 
   return (
-    <Overlay title="Group settings" isDirty={false} onClose={onClose} blockingConfirm={blockingConfirm}>
+    <Overlay title="Group settings" isDirty={false} anchored onClose={onClose} blockingConfirm={blockingConfirm}>
       <div className="flex flex-1 flex-col pb-4">
         {closed && (
           <p className="mb-3 flex items-center gap-1.5 rounded-inner bg-sunken px-3 py-2 font-sans text-label text-dim">

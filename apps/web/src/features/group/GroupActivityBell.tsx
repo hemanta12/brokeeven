@@ -49,7 +49,7 @@ function ActivityBell({ code }: { code: string }) {
         )}
       </button>
       {open && (
-        <Overlay title="Activity" isDirty={false} onClose={hide}>
+        <Overlay title="Activity" isDirty={false} anchored onClose={hide}>
           <ActivityFeed code={code} isActive />
         </Overlay>
       )}

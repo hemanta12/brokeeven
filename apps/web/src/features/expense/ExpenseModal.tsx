@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
-import { Overlay } from '../../shared/Overlay';
+import { Overlay, useOverlayClose } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
@@ -29,6 +29,7 @@ interface ExpenseModalProps {
 }
 
 export function ExpenseModal({ code, people, identityPersonId, currency, expense, onClose }: ExpenseModalProps) {
+  const { closeRef, close } = useOverlayClose(onClose);
   const isEdit = Boolean(expense);
   const createExpense = useCreateExpense(code);
   const updateExpense = useUpdateExpense(code);
@@ -130,14 +131,14 @@ export function ExpenseModal({ code, people, identityPersonId, currency, expense
       await createExpense.mutateAsync(input);
     }
     vibrateConfirm();
-    onClose();
+    close();
   }
 
   const focusWithin =
     'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus';
 
   return (
-    <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose}>
+    <Overlay title={isEdit ? 'Edit expense' : 'Add expense'} centerTitle isDirty={touched} onClose={onClose} closeRef={closeRef}>
       <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-3">
         <div className="flex flex-col gap-2">
           <Field

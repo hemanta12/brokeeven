@@ -5,7 +5,7 @@ import { Amount } from '../../components/Amount';
 import { Avatar } from '../../components/Avatar';
 import { Button } from '../../components/Button';
 import { Field } from '../../components/Field';
-import { Overlay } from '../../shared/Overlay';
+import { Overlay, useOverlayClose } from '../../shared/Overlay';
 import { ErrorState } from '../../shared/RouteStates';
 import { vibrateConfirm } from '../../shared/haptics';
 import { useBlurValidation } from '../../shared/useBlurValidation';
@@ -51,6 +51,7 @@ interface SettleUpModalProps {
 // Prefills From/To/Amount from the tapped balance row; all three stay editable
 // (APP_FLOW §2.9) behind a disclosure rather than as stacked selects.
 export function SettleUpModal({ code, people, balance, balances, currency, role, onClose }: SettleUpModalProps) {
+  const { closeRef, close } = useOverlayClose(onClose);
   const createSettlement = useCreateSettlement(code);
 
   const [touched, setTouched] = useState(false);
@@ -112,7 +113,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, role,
 
   if (settled) {
     return (
-      <Overlay title={title} isDirty={false} onClose={onClose}>
+      <Overlay title={title} isDirty={false} onClose={onClose} closeRef={closeRef}>
         <div className="flex flex-1 flex-col justify-center gap-6 pb-10">
           <div className={`${cardClassName} receipt-in shadow-sheet`}>
             <div className="px-4 pb-4 pt-6 text-center">
@@ -134,7 +135,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, role,
               <p className="mt-1 font-sans text-body text-dim">Even.</p>
             </div>
           </div>
-          <Button size="lg" onClick={onClose}>
+          <Button size="lg" onClick={close}>
             Done
           </Button>
         </div>
@@ -143,7 +144,7 @@ export function SettleUpModal({ code, people, balance, balances, currency, role,
   }
 
   return (
-    <Overlay title={title} isDirty={touched} onClose={onClose}>
+    <Overlay title={title} isDirty={touched} onClose={onClose} closeRef={closeRef}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className={cardClassName}>
           {/* aria-label names what the pencil edits. */}

@@ -74,6 +74,9 @@
      tab thumb. The built-in CSS easings are too weak to read as intentional. */
   --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Exits: the drawer curve front-loads almost all of its travel, which on a
+     leaving element reads as a freeze for the rest of the duration. */
+  --ease-exit: cubic-bezier(0.25, 0.8, 0.25, 1);
 
   --font-sans: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -217,11 +220,6 @@
     max(1.5rem, env(safe-area-inset-right))
     max(1.5rem, env(safe-area-inset-bottom))
     max(1.5rem, env(safe-area-inset-left));
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 300ms var(--ease-snap),
-    transform 400ms var(--ease-drawer);
 }
 
 /* A sticky footer takes over the bottom padding so its fade reaches the sheet edge. */
@@ -302,44 +300,34 @@
   width: 100%;
 }
 
-/* Flips to data-phase="visible" a frame after mount (set in JS) so the
-   transition animates in. Phase sits on both the root and the content: the root
-   fades the scrim, the content moves. */
-.overlay-content[data-phase="entering"] {
-  opacity: 0;
-  transform: translateY(20px);
+/* Overlay motion. data-phase flips to "visible" a frame after mount (set in JS)
+   so the transition runs, and to "exiting" on close. --dx/--dy (set in JS) are
+   the tapped control's offset from the viewport center, so everything grows out
+   of the control that opened it and shrinks back into it. Enter and exit use
+   the same curve as a page change; exit is slightly quicker. */
+.overlay {
+  transition:
+    transform var(--dur-enter) var(--ease-drawer),
+    opacity var(--dur-enter) var(--ease-drawer);
 }
 
-.overlay-content[data-phase="exiting"] {
-  opacity: 0;
-  transform: translateY(8px);
-  transition-duration: 200ms;
-  transition-timing-function: ease-out;
+.overlay[data-phase="exiting"] {
+  transition-duration: var(--dur-exit);
+  transition-timing-function: var(--ease-exit);
 }
 
-/* A full-page sheet is opaque: fading only its content would flash a flat
-   ground first, so the root fades as one piece and the content only slides. */
-.overlay:not(.overlay-compact) {
-  transition: opacity 280ms var(--ease-snap);
-}
-
+/* Full-page sheet: rises from the bottom edge and sinks back down. Opaque and
+   never faded: a see-through full screen blends with the page beneath it and
+   reads as dizzy. */
 .overlay:not(.overlay-compact)[data-phase="entering"],
 .overlay:not(.overlay-compact)[data-phase="exiting"] {
-  opacity: 0;
+  transform: translateY(100%);
 }
 
-.overlay:not(.overlay-compact)[data-phase="exiting"] {
-  transition-duration: 200ms;
-}
-
-.overlay:not(.overlay-compact) .overlay-content[data-phase] {
-  opacity: 1;
-}
-
-/* A compact card floats on the scrim: the scrim fades, the card rises and
-   settles from 0.96 (never from 0). */
+/* A compact card floats on the scrim: the scrim fades while the card grows out
+   of the control (never from 0). */
 .overlay-compact {
-  transition: background-color 280ms ease-out;
+  transition: background-color var(--dur-enter) var(--ease-drawer);
 }
 
 .overlay-compact[data-phase="entering"],
@@ -347,17 +335,65 @@
   background-color: transparent;
 }
 
-.overlay-compact .overlay-content[data-phase="entering"] {
-  transform: translateY(10px) scale(0.96);
+.overlay-compact .overlay-content {
+  transition:
+    transform var(--dur-enter) var(--ease-drawer),
+    opacity var(--dur-enter) var(--ease-drawer);
 }
 
-.overlay-compact .overlay-content[data-phase="exiting"] {
-  transform: scale(0.98);
+.overlay-compact[data-phase="exiting"],
+.overlay-compact[data-phase="exiting"] .overlay-content {
+  transition-duration: var(--dur-exit);
+  transition-timing-function: var(--ease-exit);
+}
+
+.overlay-compact[data-phase="entering"] .overlay-content,
+.overlay-compact[data-phase="exiting"] .overlay-content {
+  opacity: 0;
+  transform: translateY(calc(var(--shift, 16px) * var(--travel))) scale(var(--card-pop));
+}
+
+/* Full sheet opened from a corner control: the solid surface grows a little out
+   of the trigger's corner and the contents fade in on top of it. Only the
+   surface's own fade is see-through, and it is kept to a few frames: a whole
+   page fading over another shows two layers of text at once, which reads as
+   dizzy. */
+.overlay.overlay-anchored {
+  transform-origin: calc(100% - var(--anchor-right)) var(--anchor-top);
+  transition:
+    transform 220ms var(--ease-snap),
+    opacity 90ms linear;
+}
+
+.overlay.overlay-anchored[data-phase="entering"],
+.overlay.overlay-anchored[data-phase="exiting"] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.overlay.overlay-anchored[data-phase="exiting"] {
+  transition:
+    transform 160ms ease-out,
+    opacity 70ms linear 90ms;
+}
+
+.overlay.overlay-anchored .overlay-content {
+  transition: opacity 200ms ease-out 40ms;
+}
+
+.overlay.overlay-anchored[data-phase="entering"] .overlay-content,
+.overlay.overlay-anchored[data-phase="exiting"] .overlay-content {
+  opacity: 0;
+}
+
+.overlay.overlay-anchored[data-phase="exiting"] .overlay-content {
+  transition: opacity 90ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .overlay,
-  .overlay-content {
+  .overlay-compact,
+  .overlay-compact .overlay-content {
     transition: none;
   }
 }
@@ -733,12 +769,20 @@ li.row-pulse {
 :root {
   --rise: 10px;
   --pop: 0.96;
+  /* Overlays, prompts and receipts share one pair of durations (a page change
+     is 460ms). Exits are quicker, never so quick the eye misses where they go. */
+  --dur-enter: 460ms;
+  --dur-exit: 320ms;
+  --travel: 1;
+  --card-pop: 0.88;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --rise: 0px;
     --pop: 1;
+    --travel: 0;
+    --card-pop: 1;
   }
 
   .inline-in {
@@ -766,6 +810,26 @@ li.row-pulse {
   }
 }
 
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--shift, 16px) * var(--travel))) scale(var(--card-pop));
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    transform: translateY(calc(var(--shift, 16px) * var(--travel))) scale(var(--card-pop));
+  }
+}
+
 @keyframes drop-in {
   from {
     opacity: 0;
@@ -780,8 +844,8 @@ li.row-pulse {
 
 /* Inline reveal for form pieces that appear in place (errors, hints, confirm strips). */
 .inline-in {
-  animation: rise-in 260ms var(--ease-snap) backwards;
-  --rise: 6px;
+  animation: rise-in 380ms var(--ease-drawer) backwards;
+  --rise: 8px;
 }
 
 /* Tab panel swap. Shorter than a route change: tabs are used often. */
@@ -802,19 +866,28 @@ li.row-pulse {
   animation-delay: calc(150ms + var(--i, 0) * 90ms);
 }
 
-/* Inline confirm prompts above a modal. */
+/* Prompts above a modal: same timing as the modal itself, grown from the control
+   that raised them and returned to it on exit. */
 .scrim-in {
-  animation: fade-in 260ms ease-out backwards;
+  animation: fade-in var(--dur-enter) var(--ease-drawer) backwards;
+}
+
+.scrim-out {
+  animation: fade-out var(--dur-exit) var(--ease-exit) forwards;
 }
 
 .dialog-in {
-  animation: pop-in 300ms var(--ease-snap) backwards;
+  animation: dialog-in var(--dur-enter) var(--ease-drawer) backwards;
+}
+
+.dialog-out {
+  animation: dialog-out var(--dur-exit) var(--ease-exit) forwards;
 }
 
 /* Anchored popover: grows from the trigger's corner, not from its center. */
 .menu-in {
   transform-origin: top right;
-  animation: drop-in 220ms var(--ease-snap) backwards;
+  animation: drop-in 320ms var(--ease-drawer) backwards;
 }
 
 .menu-swap {
@@ -944,6 +1017,39 @@ li.row-pulse {
 :root[data-nav="back"]::view-transition-new(root) {
   z-index: 1;
   animation-name: nav-under-in;
+}
+
+/* Up: the new page rises from the bottom over a still page. Down is its Back:
+   the page sinks away. Both stay opaque: fading a full page makes the one
+   beneath show through and reads as flicker. */
+@keyframes nav-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@keyframes nav-sink {
+  to {
+    transform: translateY(100%);
+  }
+}
+
+:root[data-nav="up"]::view-transition-old(root),
+:root[data-nav="down"]::view-transition-new(root) {
+  z-index: 1;
+  animation-name: none;
+}
+
+:root[data-nav="up"]::view-transition-new(root) {
+  z-index: 2;
+  animation-name: nav-rise;
+  box-shadow: 0 -12px 32px -12px color-mix(in srgb, var(--color-ink) 28%, transparent);
+}
+
+:root[data-nav="down"]::view-transition-old(root) {
+  z-index: 2;
+  animation-name: nav-sink;
+  box-shadow: 0 -12px 32px -12px color-mix(in srgb, var(--color-ink) 28%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
