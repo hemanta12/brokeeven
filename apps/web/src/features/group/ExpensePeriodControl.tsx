@@ -94,7 +94,7 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
           onClick={() => setMenu(menu ? null : "main")}
           className={`focus-ring relative mx-0.5 inline-flex h-7.5 max-w-full items-center gap-1 rounded-full border pl-2.5 pr-2 font-sans text-micro font-semibold transition-colors duration-150 before:absolute before:-inset-x-0.5 before:-inset-y-2 before:content-[''] ${
             active
-              ? "border-accent bg-accent-wash text-accent"
+              ? "border-accent bg-selected text-accent"
               : "border-transparent bg-sunken text-ink hover:bg-ink/10"
           }`}
         >
@@ -236,7 +236,7 @@ function MenuItem({
       autoFocus={autoFocus}
       onClick={onClick}
       className={`focus-ring flex min-h-11.5 w-full items-center gap-2.5 rounded-inner px-3 text-left transition-colors duration-150 ${
-        checked ? "bg-accent-wash" : "hover:bg-ink/6 active:bg-ink/10"
+        checked ? "bg-selected" : "hover:bg-ink/6 active:bg-ink/10"
       }`}
     >
       <Check aria-hidden="true" className={`size-4 shrink-0 text-accent ${checked ? "" : "invisible"}`} strokeWidth={2.25} />

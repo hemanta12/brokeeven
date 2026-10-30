@@ -16,7 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement>, ButtonSha
 // maps below, not here: in BASE they beat a caller's className on source order
 // and forced `!` at call sites.
 const BASE =
-  'focus-ring inline-flex items-center justify-center gap-2 font-sans font-semibold pressable active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-45';
+  'focus-ring inline-flex items-center justify-center gap-2 font-sans font-semibold pressable active:scale-[0.97] disabled:cursor-not-allowed';
 
 // Pill-shaped at every size. lg is the 52px primary for the landing page and sticky bars.
 const SIZE_CLASSES: Record<Size, string> = {
@@ -29,20 +29,22 @@ const SIZE_CLASSES: Record<Size, string> = {
 
 const VARIANT_CLASSES: Record<Variant, string> = {
   // Reserved for one action per screen (DESIGN_SYSTEM.md §7).
-  primary: 'bg-accent text-surface hover:bg-accent-hover',
+  // Disabled is its own flat colour, not a faded green: the same on any ground.
+  primary:
+    'bg-accent text-surface enabled:hover:bg-accent-hover enabled:active:bg-accent-pressed disabled:bg-sunken disabled:text-dim',
   // line-strong, not line: this stroke bounds a control, so WCAG 1.4.11
   // needs 3:1 against both the white fill and the tinted page ground.
-  secondary: 'border border-line-strong bg-surface text-ink hover:bg-sunken',
+  secondary: 'border border-line-strong bg-surface text-ink hover:bg-sunken disabled:opacity-45',
   // Quiet-hover tint matching .segment; works for text or icon.
-  tertiary: 'bg-transparent text-ink hover:bg-ink/8',
+  tertiary: 'bg-transparent text-ink hover:bg-ink/8 disabled:opacity-45',
 };
 
 // Danger composes with each variant (outlined, text, solid destructive buttons
 // all exist), so it is a flag, not a fourth variant.
 const DANGER_CLASSES: Record<Variant, string> = {
-  primary: 'bg-down text-surface hover:bg-[color-mix(in_srgb,var(--color-down)_88%,black)]',
-  secondary: 'border border-down bg-surface text-down hover:bg-down/10',
-  tertiary: 'bg-transparent text-down hover:bg-down/10',
+  primary: 'bg-down text-surface hover:bg-down-hover disabled:opacity-45',
+  secondary: 'border border-down bg-surface text-down hover:bg-down/10 disabled:opacity-45',
+  tertiary: 'bg-transparent text-down hover:bg-down/10 disabled:opacity-45',
 };
 
 // Exported so <Link> CTAs share the exact treatment.

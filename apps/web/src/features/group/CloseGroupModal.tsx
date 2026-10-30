@@ -125,7 +125,7 @@ export function CloseGroupModal({ code, people, balances, currency, defaultThres
         {/* The gate, not a footnote. A group that still needs a payment cannot
             close: closing blocks settlements, so it would strand the money. */}
         {balanced ? (
-          <section className="rounded-card bg-accent-wash px-4 py-6 text-center">
+          <section className="rounded-card bg-balance px-4 py-6 text-center">
             <Amount value={0} currency={currency} className="block text-zero font-semibold tracking-[-0.04em]" />
             <p className="mt-1 font-sans text-body text-dim">Even. Ready to close.</p>
           </section>

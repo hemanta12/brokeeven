@@ -88,7 +88,7 @@ export function SettleModeChoice({
               onClick={() => setStaged(selected ? null : option.id)}
               className={`focus-ring flex min-h-14 w-full items-center gap-3 rounded-inner border px-3 py-2.5 text-left transition-colors duration-150 enabled:hover:bg-sunken disabled:cursor-default ${disabled || saving ? 'opacity-60' : ''} ${
                 selected
-                  ? 'border-accent bg-accent-wash'
+                  ? 'border-accent bg-selected'
                   : isStaged
                     ? 'border-dashed border-accent bg-surface'
                     : 'border-line bg-surface'

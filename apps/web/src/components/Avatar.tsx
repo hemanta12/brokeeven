@@ -7,7 +7,8 @@ interface AvatarProps {
 
 // Five hues, each ≥4.5:1 for a white initial, with no red or amber so a member
 // next to a `down` amount never reads as a warning.
-const PALETTE = ['#2f6b8f', '#6b4e9b', '#a03d6b', '#4a5a7d', '#2e6e6e'];
+// Clay replaces the old violet (no purple in the app); 5.8:1 for a white initial.
+const PALETTE = ['#2f6b8f', '#8a5a44', '#a03d6b', '#4a5a7d', '#2e6e6e'];
 
 const SIZE_CLASSES = {
   sm: 'size-7 text-micro',

@@ -32,28 +32,33 @@
   /* Three depths: page ground is tinted, card is white, sunken is the tinted
      fill inside a card. Do not flatten the bg/surface delta or collapse
      sunken into bg. */
-  --color-bg: #f0f2f0;
+  --color-bg: #eef1ee;
   --color-surface: #ffffff;
-  --color-sunken: #e7ece7; /* must still read inside a white card */
-  --color-desk: #e2e8e2; /* used >=640px, behind the sheet; must stay darker than bg */
+  --color-sunken: #e1e8e2; /* must still read inside a white card */
+  --color-desk: #d9e1da; /* used >=640px, behind the sheet; must stay darker than bg */
 
   --color-ink: #12140f; /* 16.5:1 on bg */
   --color-dim: #5b6360; /* 5.5:1 on bg */
 
   /* `line` is decorative only; anything that bounds a control (input,
      checkbox, outlined button) must use `line-strong` for WCAG 1.4.11's 3:1
-     minimum (`line` is only 1.22:1). line-strong holds 3.66:1 on white and
-     3.26:1 on the tinted page ground. */
+     minimum (`line` is only 1.22:1). line-strong holds 3.92:1 on white,
+     3.45:1 on the tinted page ground and 3.15:1 on sunken (compact-modal fields). */
   --color-line: #e3e8e3;
-  --color-line-strong: #7f887f;
+  --color-line-strong: #7a837a;
 
   --color-accent: #0a6b42; /* 5.8:1 on bg; white on it 6.6:1 */
   --color-accent-hover: #0c7a4c;
-  --color-accent-wash: #dce9e1; /* selected-row fill; ink on it stays 14:1 */
+  --color-accent-wash: #dce9e1; /* the one tint; ink on it stays 14:1. Use the named aliases below for these jobs, so one can be retuned without touching the others */
+  --color-selected: var(--color-accent-wash); /* a chosen option's fill */
+  --color-balance: var(--color-accent-wash); /* the settled/balance block */
+  --color-pulse: var(--color-accent-wash); /* the real-time row cue */
+  --color-accent-pressed: #095c39; /* primary pressed; white on it 8.1:1 */
   --color-mint: #3ddc91; /* 1.77:1 on white — fills on the band only, never text on a light surface */
 
-  --color-down: #be3623; /* 5.0:1 on bg */
+  --color-down: #b83220; /* 4.9:1 on bg; 4.8 on sunken and accent-wash, 4.7 on down-wash */
   --color-down-bright: #e8746a; /* 4.69:1 on --color-band (down itself is 2.5:1 there and fails); fills and text on the band only */
+  --color-down-hover: #a22c1c; /* danger hover: down at 88% toward black */
   --color-down-wash: #f7dfdb;
   --color-notice: #7a5e12; /* 5.4:1 on bg */
   --color-notice-wash: #f4ebd3;
@@ -468,35 +473,6 @@
   text-align: center;
 }
 
-.paid-by-date {
-  display: grid;
-  /* Proportional tracks, not a fixed date width — minmax(0, …) lets both
-     shrink past their content. Date gets the larger share since its native
-     picker runs wider than Paid by's avatar+name on some mobile browsers. */
-  grid-template-columns: minmax(0, 48fr) minmax(0, 52fr);
-  gap: 1rem;
-}
-
-.paid-by-date > div {
-  min-width: 0;
-}
-
-.paid-by-date select,
-.paid-by-date input[type="date"] {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-}
-
-/* iOS sizes date inputs to fit the full formatted date and icon, ignoring
-   width/min-width and overflowing the grid track. appearance:none makes it
-   respect the box model like the desktop control. */
-.paid-by-date input[type="date"] {
-  -webkit-appearance: none;
-  appearance: none;
-}
-
 /* Border and radius live here, not on the inner <button>, so the .row-pulse
    cue (set on the <li>) isn't painted over by its own child. */
 .entry-card {
@@ -579,7 +555,7 @@ li.row-pulse {
 li.row-pulse {
   /* Tinted, not solid: a full-strength accent fill drops ink-copy contrast
      below the readable floor. */
-  background-color: var(--color-accent-wash);
+  background-color: var(--color-pulse);
 }
 
 @media (prefers-reduced-motion: reduce) {

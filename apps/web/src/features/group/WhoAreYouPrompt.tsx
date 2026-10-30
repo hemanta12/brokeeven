@@ -51,7 +51,7 @@ export function WhoAreYouPrompt({ code, people, onClose }: WhoAreYouPromptProps)
                   <label
                     className={`focus-ring flex min-h-13 cursor-pointer items-center gap-2.5 rounded-inner border px-3 py-2 font-sans text-body font-medium text-ink transition-colors duration-100 ${
                       isSelected
-                        ? 'border-accent bg-accent-wash'
+                        ? 'border-accent bg-selected'
                         : 'border-line bg-[var(--field-bg,var(--color-surface))] hover:border-line-strong'
                     }`}
                   >

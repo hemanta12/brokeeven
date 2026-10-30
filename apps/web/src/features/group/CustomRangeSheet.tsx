@@ -142,7 +142,7 @@ function Tile({
         onClick={onClick}
         aria-pressed={active}
         className={`focus-ring min-h-14.5 rounded-inner border px-3 py-2 text-left transition-colors duration-150 ${
-          active ? "border-accent bg-accent-wash ring-1 ring-accent" : "border-line bg-surface hover:bg-ink/6 active:bg-ink/10"
+          active ? "border-accent bg-selected ring-1 ring-accent" : "border-line bg-surface hover:bg-ink/6 active:bg-ink/10"
         }`}
       >
         <small className={`block font-sans text-micro ${active ? "font-semibold text-accent" : "text-dim"}`}>{caption}</small>
