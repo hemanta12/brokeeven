@@ -5,14 +5,17 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   id: string;
   error?: string;
   helpText?: string;
+  // Keeps the label as the accessible name but drops it from the layout, for
+  // a field whose placeholder already states its purpose.
+  hideLabel?: boolean;
 }
 
 // Shared form-field shape: persistent label, on-blur error, help text (DESIGN_SYSTEM.md §9).
-export function Field({ label, id, error, helpText, className = '', ...inputProps }: FieldProps) {
+export function Field({ label, id, error, helpText, hideLabel = false, className = '', ...inputProps }: FieldProps) {
   const describedBy = error ? `${id}-error` : helpText ? `${id}-help` : undefined;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="font-sans text-label font-medium text-ink">
+      <label htmlFor={id} className={hideLabel ? 'sr-only' : 'font-sans text-label font-medium text-ink'}>
         {label}
       </label>
       <input

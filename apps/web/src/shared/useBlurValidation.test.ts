@@ -31,4 +31,11 @@ describe('useBlurValidation', () => {
     act(() => result.current.untouch('name'));
     expect(result.current.isRequiredError('name', '')).toBe(false);
   });
+
+  it('isTouched reports a blurred field regardless of its value', () => {
+    const { result } = renderHook(() => useBlurValidation());
+    expect(result.current.isTouched('amount')).toBe(false);
+    act(() => result.current.touch('amount'));
+    expect(result.current.isTouched('amount')).toBe(true);
+  });
 });

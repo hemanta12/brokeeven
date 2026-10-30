@@ -14,9 +14,13 @@ export function useBlurValidation() {
     setBlurred((current) => ({ ...current, [field]: false }));
   }
 
+  function isTouched(field: string) {
+    return Boolean(blurred[field]);
+  }
+
   function isRequiredError(field: string, value: string) {
     return Boolean(blurred[field]) && value.trim().length === 0;
   }
 
-  return { touch, untouch, isRequiredError };
+  return { touch, untouch, isTouched, isRequiredError };
 }
