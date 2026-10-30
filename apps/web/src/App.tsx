@@ -57,11 +57,12 @@ function Layout() {
   const { pathname } = useLocation();
   const navigationType = useNavigationType();
   // PUSH/REPLACE are animated by the view transition (see withViewTransitions),
-  // which keeps the old page on screen; only browsers without the API, a cold
-  // load and back/forward (POP) fall back to the page simply rising in.
+  // which keeps the old page on screen; only browsers without the API and a cold
+  // load fall back to the page simply rising in. POP gets nothing: iOS's swipe-back
+  // gesture already animated it natively, and a second rise-in glitches.
   const firstRender = useRef(true);
   const entering =
-    firstRender.current || navigationType === 'POP' || !SUPPORTS_VIEW_TRANSITIONS ? 'page-enter' : '';
+    firstRender.current || (navigationType !== 'POP' && !SUPPORTS_VIEW_TRANSITIONS) ? 'page-enter' : '';
   firstRender.current = false;
   return (
     <>
