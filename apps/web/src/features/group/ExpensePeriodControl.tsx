@@ -3,6 +3,7 @@ import { useRef, useState, type KeyboardEvent } from "react";
 
 import {
   ALL_TIME,
+  compactMonthLabel,
   monthIndexOfDate,
   monthName,
   periodLabel,
@@ -27,7 +28,7 @@ interface ExpensePeriodControlProps {
 type MenuView = "main" | "year";
 
 const ARROW_BUTTON =
-  "focus-ring grid size-11 shrink-0 place-items-center rounded-full text-dim transition-colors duration-150 enabled:hover:bg-ink/6 enabled:hover:text-ink enabled:active:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-30";
+  "focus-ring grid size-9 shrink-0 place-items-center rounded-full bg-ink/8 text-ink transition-colors duration-150 enabled:hover:bg-ink/12 enabled:active:bg-ink/16 disabled:cursor-not-allowed disabled:opacity-30";
 
 function countLabel(count: number): string {
   return `${count} ${count === 1 ? "expense" : "expenses"}`;
@@ -70,6 +71,7 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
   }
 
   const active = period.kind !== "all";
+  const isMonth = period.kind === "month";
   const yearCount = (year: number) => dates.filter((date) => yearOf(monthIndexOfDate(date)) === year).length;
 
   return (
@@ -91,16 +93,21 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
           type="button"
           aria-haspopup="menu"
           aria-expanded={menu !== null}
+          aria-label={isMonth ? periodLabel(period) : undefined}
           onClick={() => setMenu(menu ? null : "main")}
-          className={`focus-ring inline-flex h-11 max-w-full items-center gap-2 rounded-full pl-4 pr-3.5 font-sans text-label font-semibold transition-colors duration-150 active:bg-accent-pressed active:text-white ${
+          className={`focus-ring inline-flex h-11 min-w-0 max-w-full items-center rounded-full font-sans ${
+            isMonth ? "mx-0.5 gap-1.5 px-2.5" : "gap-2 pl-4 pr-3.5"
+          } text-label font-semibold transition-colors duration-150 active:bg-accent-pressed active:text-white ${
             active
               ? "bg-accent text-white hover:bg-accent-hover"
               : "bg-selected text-accent hover:bg-accent/15"
           }`}
         >
           <CalendarDays aria-hidden="true" className="size-4 shrink-0" />
-          <span className="truncate">{periodLabel(period)}</span>
-          <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
+          <span className="truncate">
+            {period.kind === "month" ? compactMonthLabel(period.index, thisMonth) : periodLabel(period)}
+          </span>
+          {!isMonth && <ChevronDown aria-hidden="true" className="size-4 shrink-0" />}
         </button>
         {period.kind === "month" && (
           <button

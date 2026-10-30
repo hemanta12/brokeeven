@@ -59,6 +59,14 @@ export function monthLabel(index: number): string {
   return `${monthName(index)} ${yearOf(index)}`;
 }
 
+// The pill between the month arrows sits in the ring's narrow column, so it drops
+// this year's year and shortens any other year: "Oct", "Sep '25".
+export function compactMonthLabel(index: number, thisMonth: number): string {
+  return yearOf(index) === yearOf(thisMonth)
+    ? monthName(index)
+    : `${monthName(index)} '${String(yearOf(index)).slice(-2)}`;
+}
+
 export function periodLabel(period: Period): string {
   switch (period.kind) {
     case 'all':

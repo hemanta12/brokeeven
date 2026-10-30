@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ALL_TIME,
+  compactMonthLabel,
   currentMonthIndex,
   draftFromPeriod,
   filterByPeriod,
@@ -53,6 +54,13 @@ describe('periodIncludes / filterByPeriod', () => {
 
   it('is empty for a month with no expenses', () => {
     expect(filterByPeriod(items, month(monthIndex(2026, 6)))).toEqual([]);
+  });
+});
+
+describe('compactMonthLabel', () => {
+  it('drops this year and shortens any other year', () => {
+    expect(compactMonthLabel(OCT_26, OCT_26)).toBe('Oct');
+    expect(compactMonthLabel(monthIndex(2025, 8), OCT_26)).toBe("Sep '25");
   });
 });
 
