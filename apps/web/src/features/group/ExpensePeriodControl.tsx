@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 
 import {
@@ -27,7 +27,7 @@ interface ExpensePeriodControlProps {
 type MenuView = "main" | "year";
 
 const ARROW_BUTTON =
-  "focus-ring relative grid text-dim enabled:hover:text-ink size-7.5 shrink-0 place-items-center rounded-full transition-colors duration-150 before:absolute before:-inset-2 before:content-[''] enabled:hover:bg-ink/6 enabled:active:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-30";
+  "focus-ring grid size-11 shrink-0 place-items-center rounded-full text-dim transition-colors duration-150 enabled:hover:bg-ink/6 enabled:hover:text-ink enabled:active:bg-ink/10 disabled:cursor-not-allowed disabled:opacity-30";
 
 function countLabel(count: number): string {
   return `${count} ${count === 1 ? "expense" : "expenses"}`;
@@ -92,14 +92,15 @@ export function ExpensePeriodControl({ period, thisMonth, bounds, years, dates, 
           aria-haspopup="menu"
           aria-expanded={menu !== null}
           onClick={() => setMenu(menu ? null : "main")}
-          className={`focus-ring relative mx-0.5 inline-flex h-7.5 max-w-full items-center gap-1 rounded-full border pl-2.5 pr-2 font-sans text-micro font-semibold transition-colors duration-150 before:absolute before:-inset-x-0.5 before:-inset-y-2 before:content-[''] ${
+          className={`focus-ring inline-flex h-11 max-w-full items-center gap-2 rounded-full pl-4 pr-3.5 font-sans text-label font-semibold transition-colors duration-150 active:bg-accent-pressed active:text-white ${
             active
-              ? "border-accent bg-selected text-accent"
-              : "border-transparent bg-sunken text-ink hover:bg-ink/10"
+              ? "bg-accent text-white hover:bg-accent-hover"
+              : "bg-selected text-accent hover:bg-accent/15"
           }`}
         >
+          <CalendarDays aria-hidden="true" className="size-4 shrink-0" />
           <span className="truncate">{periodLabel(period)}</span>
-          <ChevronDown aria-hidden="true" className="size-3.5 shrink-0" />
+          <ChevronDown aria-hidden="true" className="size-4 shrink-0" />
         </button>
         {period.kind === "month" && (
           <button
